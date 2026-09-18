@@ -48,6 +48,7 @@ export default function App() {
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [showImageModal, setShowImageModal] = useState(false);
 
   // Supabase Credentials State
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('cookshop_sb_url') || '');
@@ -156,7 +157,7 @@ export default function App() {
   const [dishImage, setDishImage] = useState('');
   const [dishIsSpecial, setDishIsSpecial] = useState(false);
 
-  // Compressed Image Upload Helper to prevent quota crashes
+  // Compressed Image Upload Helper
   const handleCompressedImage = (file: File, callback: (result: string) => void) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -423,9 +424,16 @@ export default function App() {
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
             {shopHeaderImage ? (
-              <img src={shopHeaderImage} alt="Logo" className="w-10 h-10 object-cover rounded-xl border border-amber-400 shadow-md" />
+              <img 
+                src={shopHeaderImage} 
+                alt="Logo" 
+                onClick={() => setShowImageModal(true)}
+                style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '12px', cursor: 'pointer', border: '2px solid #fbbf24', flexShrink: 0 }}
+                className="shadow-md hover:scale-105 transition-transform" 
+                title="Tap to zoom"
+              />
             ) : (
-              <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400">
+              <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400 flex-shrink-0">
                 <Flame className="text-amber-100" size={24} />
               </div>
             )}
@@ -443,6 +451,23 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Header Image Pop-up Modal */}
+      {showImageModal && shopHeaderImage && (
+        <div 
+          onClick={() => setShowImageModal(false)}
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="relative max-w-md w-full bg-stone-900 rounded-3xl p-3 border-2 border-amber-400 shadow-2xl flex flex-col items-center">
+            <img 
+              src={shopHeaderImage} 
+              alt="Enlarged Header" 
+              className="w-full max-h-[75vh] object-contain rounded-2xl" 
+            />
+            <p className="text-xs text-amber-200 mt-3 font-bold tracking-widest uppercase">Tap anywhere to close</p>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-3xl mx-auto p-4 sm:p-6">
         {shopStatus !== 'Open' && (
@@ -620,7 +645,12 @@ export default function App() {
                     <div>
                       <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Image size={16} className="text-amber-800" /> Header Logo / Banner Photo</label>
                       <input type="file" accept="image/*" onChange={handleHeaderImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
-                      {shopHeaderImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={shopHeaderImage} alt="Header Preview" className="w-12 h-12 object-cover rounded-lg border" /><span className="text-xs font-bold text-amber-900">Header photo active!</span></div>}
+                      {shopHeaderImage && (
+                        <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                          <img src={shopHeaderImage} alt="Header Preview" onClick={() => setShowImageModal(true)} style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer' }} className="border" />
+                          <span className="text-xs font-bold text-amber-900">Header photo active! (Tap to preview)</span>
+                        </div>
+                      )}
                     </div>
 
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
@@ -643,7 +673,7 @@ export default function App() {
                     <div>
                       <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery</label>
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
-                      {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
+                      {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }} className="border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
                     </div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="1800" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
                     <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
@@ -663,7 +693,7 @@ export default function App() {
                     {menuItems.map(item => (
                       <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
                         <div className="min-w-0 pr-2 flex items-center gap-3">
-                          {item.imageUrl && <img src={item.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" />}
+                          {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} className="border" />}
                           <div>
                             <span className="font-black text-stone-900 block truncate">{item.name}</span>
                             <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
