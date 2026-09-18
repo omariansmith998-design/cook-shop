@@ -33,7 +33,6 @@ export default function App() {
       script.id = 'tailwind-cdn';
       script.src = 'https://cdn.tailwindcss.com';
       script.onload = () => {
-        // Tiny timeout to let Tailwind fully parse DOM classes
         setTimeout(() => setIsReady(true), 150);
       };
       document.head.appendChild(script);
@@ -67,6 +66,8 @@ export default function App() {
   // Shop Settings State
   const [shopName, setShopName] = useState(() => localStorage.getItem('cookshop_name') || 'Island Spice Cookshop');
   const [shopPhone, setShopPhone] = useState(() => localStorage.getItem('cookshop_phone') || '18767739161');
+  const [shopInstagram, setShopInstagram] = useState(() => localStorage.getItem('cookshop_ig') || 'islandspicecookshop');
+  const [shopFacebook, setShopFacebook] = useState(() => localStorage.getItem('cookshop_fb') || 'islandspicecookshop');
   const [shopAddress, setShopAddress] = useState(() => localStorage.getItem('cookshop_address') || 'Main Street, Montego Bay');
   const [shopMapLink, setShopMapLink] = useState(() => localStorage.getItem('cookshop_map') || 'https://maps.google.com');
   const [shopStatus, setShopStatus] = useState<'Open' | 'Closing Soon' | 'Closed'>(() => (localStorage.getItem('cookshop_status') as any) || 'Open');
@@ -118,6 +119,8 @@ export default function App() {
       localStorage.setItem('cookshop_sb_key', supabaseKey);
       localStorage.setItem('cookshop_name', shopName);
       localStorage.setItem('cookshop_phone', shopPhone);
+      localStorage.setItem('cookshop_ig', shopInstagram);
+      localStorage.setItem('cookshop_fb', shopFacebook);
       localStorage.setItem('cookshop_address', shopAddress);
       localStorage.setItem('cookshop_map', shopMapLink);
       localStorage.setItem('cookshop_status', shopStatus);
@@ -158,7 +161,7 @@ export default function App() {
         }).then(() => {});
       });
     }
-  }, [supabaseUrl, supabaseKey, shopName, shopPhone, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, shopHeaderImage, menuItems, orders, sbLoaded]);
+  }, [supabaseUrl, supabaseKey, shopName, shopPhone, shopInstagram, shopFacebook, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, shopHeaderImage, menuItems, orders, sbLoaded]);
 
   // Dish Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -253,10 +256,10 @@ export default function App() {
     return orderType === 'Delivery' ? sub + deliveryFee : sub;
   };
 
-  const handleCheckout = async () => {
+  const prepareOrderData = () => {
     if (!customerName || !customerPhone) {
       alert('Please enter your name and phone number.');
-      return;
+      return null;
     }
 
     const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
@@ -270,9 +273,6 @@ export default function App() {
     }
     orderMessage += `\n*Total:* $${grandTotal} JMD\n*Type:* ${orderType}\n*Name:* ${customerName}\n*Phone:* ${customerPhone}`;
 
-    const cleanPhone = shopPhone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(orderMessage)}`;
-    
     const formattedTime = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const newOrder: Order = {
@@ -291,7 +291,7 @@ export default function App() {
 
     const sb = getSupabaseClient();
     if (sb) {
-      await sb.from('orders').upsert({
+      sb.from('orders').upsert({
         id: orderId,
         customer_name: customerName,
         customer_phone: customerPhone,
@@ -302,10 +302,35 @@ export default function App() {
         timestamp: formattedTime
       });
     }
-    
+
     setSelectedReceipt(newOrder);
-    window.open(whatsappUrl, '_blank');
     setCart([]);
+    return orderMessage;
+  };
+
+  const handleCheckoutWhatsApp = () => {
+    const message = prepareOrderData();
+    if (!message) return;
+    const cleanPhone = shopPhone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleCheckoutSocial = (platform: 'instagram' | 'facebook') => {
+    const message = prepareOrderData();
+    if (!message) return;
+
+    navigator.clipboard.writeText(message).then(() => {
+      alert(`📋 Order copied to clipboard!\n\nWe've opened ${platform === 'instagram' ? 'Instagram' : 'Facebook'} for you. Just paste your order into the chat!`);
+    }).catch(() => {
+      alert('Order placed successfully! Receipt saved.');
+    });
+
+    if (platform === 'instagram') {
+      window.open(`https://instagram.com/${shopInstagram.replace('@', '')}`, '_blank');
+    } else {
+      window.open(`https://facebook.com/${shopFacebook}`, '_blank');
+    }
   };
 
   const handleSaveDish = async (e: React.FormEvent) => {
@@ -623,7 +648,23 @@ export default function App() {
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Your Name</label><input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Omarian Smith" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Phone Number</label><input type="text" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="e.g. 876-555-0199" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Order Type</label><select value={orderType} onChange={(e) => setOrderType(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold bg-white focus:border-amber-600 focus:outline-none"><option value="Pickup">Pickup</option>{deliveryEnabled && <option value="Delivery">Delivery (+${deliveryFee} JMD)</option>}</select></div>
-                  <button onClick={handleCheckout} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-base tracking-wide mt-2">Send Order & Get Receipt 🚀</button>
+                  
+                  {/* Multi-Platform Checkout Options */}
+                  <div className="space-y-2 pt-2">
+                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider">Choose How to Send Order:</label>
+                    <button onClick={handleCheckoutWhatsApp} className="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-sm tracking-wide flex items-center justify-center gap-2">
+                      <span>Send via WhatsApp 🚀</span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => handleCheckoutSocial('instagram')} className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white py-3 rounded-2xl font-black hover:opacity-95 transition-all shadow-md text-xs flex items-center justify-center gap-1.5">
+                        <span>📷 Order via Instagram</span>
+                      </button>
+                      <button onClick={() => handleCheckoutSocial('facebook')} className="w-full bg-blue-600 text-white py-3 rounded-2xl font-black hover:bg-blue-700 transition-all shadow-md text-xs flex items-center justify-center gap-1.5">
+                        <span>📘 Order via Facebook</span>
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -776,6 +817,10 @@ export default function App() {
 
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label><input type="text" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Instagram Username</label><input type="text" value={shopInstagram} onChange={(e) => setShopInstagram(e.target.value)} placeholder="islandspicecookshop" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Facebook Page Username</label><input type="text" value={shopFacebook} onChange={(e) => setShopFacebook(e.target.value)} placeholder="islandspicecookshop" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    </div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label><input type="text" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Google Maps Pinned Location Link</label><input type="text" value={shopMapLink} onChange={(e) => setShopMapLink(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-stone-100">
