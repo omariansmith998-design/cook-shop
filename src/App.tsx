@@ -24,14 +24,20 @@ interface Order {
 }
 
 export default function App() {
+  const [isReady, setIsReady] = useState(false); // Prevents raw unstyled flash
+
   // Inject Tailwind & Supabase CDNs
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
       script.id = 'tailwind-cdn';
       script.src = 'https://cdn.tailwindcss.com';
+      script.onload = () => setIsReady(true);
       document.head.appendChild(script);
+    } else {
+      setIsReady(true);
     }
+
     if (!document.getElementById('supabase-cdn')) {
       const sbScript = document.createElement('script');
       sbScript.id = 'supabase-cdn';
@@ -69,7 +75,7 @@ export default function App() {
   // Master Developer PIN
   const MASTER_DEV_PIN = '9999';
 
-  // Menu State (Includes default bottle drinks like Ting and Boom)
+  // Menu State
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
     const saved = localStorage.getItem('cookshop_menu');
     if (saved) return JSON.parse(saved);
@@ -423,7 +429,7 @@ export default function App() {
       : menuItems.filter(i => i.category === selectedCategory);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
+    <div style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.2s ease-in' }} className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
       <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-4 sm:p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
