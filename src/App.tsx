@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -130,6 +130,18 @@ export default function App() {
   const [dishImage, setDishImage] = useState('');
   const [dishIsSpecial, setDishIsSpecial] = useState(false);
 
+  // Handle Image File Upload from Phone Gallery
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDishImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleOwnerTabClick = () => {
     if (isOwnerUnlocked) {
       setActiveTab('owner');
@@ -242,8 +254,8 @@ export default function App() {
     setDishDesc('');
     setDishPrice('');
     setDishImage('');
-    setDishCategory('Mains');
     setDishIsSpecial(false);
+    setDishCategory('Mains');
   };
 
   const startEditing = (item: MenuItem) => {
@@ -627,16 +639,26 @@ export default function App() {
                     className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
+                
+                {/* Photo Gallery Picker Upload */}
                 <div>
-                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Image URL (Photo link)</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery
+                  </label>
                   <input 
-                    type="text" 
-                    value={dishImage} 
-                    onChange={(e) => setDishImage(e.target.value)}
-                    placeholder="https://example.com/photo.jpg"
-                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer"
                   />
+                  {dishImage && (
+                    <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                      <img src={dishImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" />
+                      <span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span>
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label>
                   <input 
@@ -688,11 +710,16 @@ export default function App() {
               <div className="space-y-3">
                 {menuItems.map(item => (
                   <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
-                    <div className="min-w-0 pr-2">
-                      <span className="font-black text-stone-900 block truncate">{item.name}</span>
-                      <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
-                      {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
-                      {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
+                    <div className="min-w-0 pr-2 flex items-center gap-3">
+                      {item.imageUrl && (
+                        <img src={item.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" />
+                      )}
+                      <div>
+                        <span className="font-black text-stone-900 block truncate">{item.name}</span>
+                        <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
+                        {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
+                        {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <button 
