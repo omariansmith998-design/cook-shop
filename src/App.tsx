@@ -24,15 +24,18 @@ interface Order {
 }
 
 export default function App() {
-  const [isReady, setIsReady] = useState(false); // Prevents raw unstyled flash
+  const [isReady, setIsReady] = useState(false);
 
-  // Inject Tailwind & Supabase CDNs
+  // Inject Tailwind & Supabase CDNs with smooth loading check
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
       script.id = 'tailwind-cdn';
       script.src = 'https://cdn.tailwindcss.com';
-      script.onload = () => setIsReady(true);
+      script.onload = () => {
+        // Tiny timeout to let Tailwind fully parse DOM classes
+        setTimeout(() => setIsReady(true), 150);
+      };
       document.head.appendChild(script);
     } else {
       setIsReady(true);
@@ -428,8 +431,21 @@ export default function App() {
       ? menuItems.filter(i => i.isSpecial) 
       : menuItems.filter(i => i.category === selectedCategory);
 
+  // Branded Loading Screen until Tailwind is active
+  if (!isReady) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#451a03', color: '#fef3c7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', zIndex: 99999 }}>
+        <div style={{ background: '#d97706', padding: '16px', borderRadius: '20px', marginBottom: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
+          <span style={{ fontSize: '32px' }}>🔥</span>
+        </div>
+        <h1 style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '0.05em', margin: 0 }}>{shopName}</h1>
+        <p style={{ fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 'bold', marginTop: '8px' }}>Loading Authentic Taste...</p>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.2s ease-in' }} className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
       <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-4 sm:p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
