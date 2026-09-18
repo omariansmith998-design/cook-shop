@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -19,6 +19,7 @@ interface Order {
   total: number;
   type: 'Pickup' | 'Delivery';
   status: 'Received' | 'Completed';
+  timestamp: string;
 }
 
 export default function App() {
@@ -92,7 +93,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Sync state changes to browser localStorage automatically
   useEffect(() => {
     localStorage.setItem('cookshop_name', shopName);
     localStorage.setItem('cookshop_phone', shopPhone);
@@ -139,10 +139,7 @@ export default function App() {
     setCart(newCart);
   };
 
-  const calculateSubtotal = () => {
-    return cart.reduce((sum, item) => sum + item.price, 0);
-  };
-
+  const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price, 0);
   const calculateGrandTotal = () => {
     const sub = calculateSubtotal();
     return orderType === 'Delivery' ? sub + deliveryFee : sub;
@@ -165,10 +162,16 @@ export default function App() {
     }
     orderMessage += `\n*Total:* $${grandTotal} JMD\n*Type:* ${orderType}\n*Name:* ${customerName}\n*Phone:* ${customerPhone}`;
 
-    // CLEAN THE PHONE NUMBER: Remove all dashes, spaces, plus signs, brackets so wa.me works reliably
     const cleanPhone = shopPhone.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(orderMessage)}`;
     
+    const formattedTime = new Date().toLocaleString([], { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
     const newOrder: Order = {
       id: orderId,
       customerName,
@@ -176,7 +179,8 @@ export default function App() {
       items: cart,
       total: grandTotal,
       type: orderType,
-      status: 'Received'
+      status: 'Received',
+      timestamp: formattedTime
     };
     setOrders([newOrder, ...orders]);
     
@@ -258,53 +262,65 @@ export default function App() {
   const filteredMenuItems = selectedCategory === 'All' ? menuItems : menuItems.filter(i => i.category === selectedCategory);
 
   return (
-    <div className="min-h-screen bg-orange-50/30 text-stone-900 font-sans pb-12">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-amber-900 via-orange-900 to-amber-950 text-white p-5 shadow-lg border-b-4 border-amber-600">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
+      {/* Vibrant Header */}
+      <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50 backdrop-blur-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black tracking-wide drop-shadow-md">🔥 {shopName}</h1>
-            <p className="text-xs text-amber-200 tracking-wider uppercase font-medium">Authentic Jamaican Taste</p>
+          <div className="flex items-center gap-2.5">
+            <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400">
+              <Flame className="text-amber-100" size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-wide drop-shadow">{shopName}</h1>
+              <p className="text-[11px] text-amber-200 tracking-widest uppercase font-bold flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${shopStatus === 'Open' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
+                Authentic Jamaican Taste
+              </p>
+            </div>
           </div>
-          <div className="space-x-2 bg-black/20 p-1 rounded-lg backdrop-blur-sm">
+          <div className="flex gap-1.5 bg-black/30 p-1.5 rounded-xl backdrop-blur-md border border-white/10 shadow-inner">
             <button 
               onClick={() => setActiveTab('menu')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm ${activeTab === 'menu' ? 'bg-amber-600 text-white shadow' : 'text-amber-100 hover:text-white'}`}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md scale-105' : 'text-amber-100 hover:text-white hover:bg-white/10'}`}
             >
               Menu
             </button>
             <button 
               onClick={handleOwnerTabClick}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm ${activeTab === 'owner' ? 'bg-amber-600 text-white shadow' : 'text-amber-100 hover:text-white'}`}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md scale-105' : 'text-amber-100 hover:text-white hover:bg-white/10'}`}
             >
-              🔒 Owner Panel
+              🔒 Owner
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto p-4">
+      <main className="max-w-3xl mx-auto p-4 sm:p-6">
+        {/* Status Banner */}
         {shopStatus !== 'Open' && (
-          <div className={`mb-4 p-3 rounded-lg text-sm font-bold text-center shadow-sm flex items-center justify-center gap-2 ${shopStatus === 'Closing Soon' ? 'bg-amber-200 text-amber-900 border border-amber-300' : 'bg-red-100 text-red-800 border border-red-200'}`}>
-            <Clock size={18} /> Notice: We are currently <strong>{shopStatus}</strong>!
+          <div className={`mb-6 p-3.5 rounded-xl text-sm font-black text-center shadow-md flex items-center justify-center gap-2 border-2 ${shopStatus === 'Closing Soon' ? 'bg-amber-300 text-amber-950 border-amber-400' : 'bg-red-500 text-white border-red-600 animate-bounce'}`}>
+            <Clock size={20} /> Notice: We are currently {shopStatus.toUpperCase()}!
           </div>
         )}
 
         {activeTab === 'menu' ? (
           <div>
-            <div className="mb-6 p-4 bg-amber-100 rounded-lg border border-amber-200 text-amber-900 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            {/* Info & Map Card */}
+            <div className="mb-6 p-4 sm:p-5 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl border-2 border-amber-200 text-amber-950 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
               <div>
-                <p className="flex items-center gap-1 font-medium">
-                  <MapPin size={16} className="text-amber-800" /> <strong>Location:</strong> {shopAddress}
+                <p className="flex items-center gap-2 font-bold text-base">
+                  <MapPin size={18} className="text-amber-800 flex-shrink-0" /> {shopAddress}
                 </p>
-                <p className="text-xs mt-1 text-amber-800">🛵 <strong>Delivery Fee:</strong> ${deliveryFee} JMD ({deliveryEnabled ? 'Available' : 'Disabled'})</p>
+                <p className="text-xs mt-1 font-semibold text-amber-900/80 pl-6">
+                  🛵 Delivery Fee: <span className="font-black">${deliveryFee} JMD</span> ({deliveryEnabled ? 'Available' : 'Disabled'})
+                </p>
               </div>
               {shopMapLink && (
                 <a 
                   href={shopMapLink} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="bg-amber-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-900 transition shadow-sm"
+                  className="bg-amber-900 text-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-950 transition-all shadow hover:shadow-md flex items-center gap-1.5"
                 >
                   📍 View Pinned Map
                 </a>
@@ -312,46 +328,48 @@ export default function App() {
             </div>
 
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-stone-800">Today's Menu</h2>
+              <h2 className="text-2xl font-black text-stone-800 tracking-tight">Today's Menu</h2>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+            {/* Category Filter Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
               {categories.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition shadow-sm ${selectedCategory === cat ? 'bg-amber-800 text-white shadow' : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'}`}
+                  className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all shadow-sm ${selectedCategory === cat ? 'bg-amber-900 text-white shadow-md scale-105 ring-2 ring-amber-600/50' : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'}`}
                 >
                   {cat}
                 </button>
               ))}
             </div>
             
-            <div className="grid gap-4 mb-8">
+            {/* Menu Grid */}
+            <div className="grid gap-4 sm:gap-5 mb-8">
               {filteredMenuItems.map(item => (
-                <div key={item.id} className={`bg-white p-4 rounded-lg shadow-sm border transition-all flex gap-4 items-center ${item.isAvailable ? 'border-stone-200 hover:border-amber-400' : 'border-red-200 opacity-60 bg-stone-50'}`}>
+                <div key={item.id} className={`bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 transition-all duration-300 flex gap-4 items-center hover:-translate-y-0.5 hover:shadow-md ${item.isAvailable ? 'border-stone-100 hover:border-amber-400' : 'border-red-100 opacity-60 bg-stone-50'}`}>
                   {item.imageUrl && (
                     <img 
                       src={item.imageUrl} 
                       alt={item.name} 
-                      className="w-20 h-20 object-cover rounded-md border border-stone-200 flex-shrink-0 shadow-sm" 
+                      className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border border-stone-200 flex-shrink-0 shadow-sm" 
                     />
                   )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-lg text-stone-900">{item.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-black text-lg text-stone-900">{item.name}</h3>
                       {!item.isAvailable && (
-                        <span className="bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">Sold Out</span>
+                        <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">Sold Out</span>
                       )}
                     </div>
-                    <span className="text-xs uppercase font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">{item.category}</span>
-                    <p className="text-stone-600 text-sm mt-1">{item.description}</p>
-                    <p className="font-bold text-amber-900 mt-2">${item.price} JMD</p>
+                    <span className="inline-block text-[11px] uppercase font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-md mt-1">{item.category}</span>
+                    <p className="text-stone-600 text-xs sm:text-sm mt-1.5 line-clamp-2">{item.description}</p>
+                    <p className="font-black text-amber-900 text-base mt-2">${item.price} <span className="text-xs text-stone-500 font-bold">JMD</span></p>
                   </div>
                   <button 
                     onClick={() => addToCart(item)}
                     disabled={!item.isAvailable}
-                    className={`px-3 py-2 rounded-lg text-sm transition flex items-center gap-1 flex-shrink-0 shadow ${item.isAvailable ? 'bg-amber-800 text-white hover:bg-amber-900' : 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'}`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 flex-shrink-0 shadow ${item.isAvailable ? 'bg-amber-800 text-white hover:bg-amber-900 hover:scale-105 active:scale-95 shadow-amber-900/20' : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'}`}
                   >
                     <Plus size={16} /> Add
                   </button>
@@ -359,18 +377,19 @@ export default function App() {
               ))}
             </div>
 
+            {/* Cart Section */}
             {cart.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow-md border border-amber-200 mt-6">
-                <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-stone-800">
-                  <ShoppingBag size={20} /> Your Order ({cart.length} items)
+              <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-amber-300 mt-6 animate-fadeIn">
+                <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-stone-900 border-b pb-3">
+                  <ShoppingBag className="text-amber-800" size={22} /> Your Order ({cart.length} items)
                 </h3>
-                <div className="divide-y divide-stone-100 mb-4">
+                <div className="divide-y divide-stone-100 mb-4 max-h-60 overflow-y-auto pr-1">
                   {cart.map((item, index) => (
-                    <div key={index} className="py-2 flex justify-between items-center text-sm">
-                      <span>{item.name}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium">${item.price} JMD</span>
-                        <button onClick={() => removeFromCart(index)} className="text-red-500 hover:text-red-700">
+                    <div key={index} className="py-3 flex justify-between items-center text-sm">
+                      <span className="font-bold text-stone-800">{item.name}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="font-black text-amber-900">${item.price} JMD</span>
+                        <button onClick={() => removeFromCart(index)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded-lg">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -378,50 +397,50 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="border-t border-stone-200 pt-3 space-y-1 text-sm mb-4">
-                  <div className="flex justify-between text-stone-600">
+                <div className="border-t-2 border-dashed border-stone-200 pt-4 space-y-2 text-sm mb-6 bg-amber-50/50 p-4 rounded-2xl">
+                  <div className="flex justify-between text-stone-600 font-semibold">
                     <span>Subtotal:</span>
                     <span>${calculateSubtotal()} JMD</span>
                   </div>
                   {orderType === 'Delivery' && (
-                    <div className="flex justify-between text-stone-600">
+                    <div className="flex justify-between text-stone-600 font-semibold">
                       <span>Delivery Fee:</span>
                       <span>${deliveryFee} JMD</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-lg pt-2 border-t border-stone-100">
+                  <div className="flex justify-between font-black text-xl pt-2 border-t border-amber-200 text-amber-950">
                     <span>Total:</span>
-                    <span className="text-amber-900">${calculateGrandTotal()} JMD</span>
+                    <span>${calculateGrandTotal()} JMD</span>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Your Name</label>
+                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Your Name</label>
                     <input 
                       type="text" 
                       value={customerName} 
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Omarian Smith"
-                      className="w-full p-2 border border-stone-300 rounded text-sm"
+                      className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Phone Number</label>
+                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Phone Number</label>
                     <input 
                       type="text" 
                       value={customerPhone} 
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 876-555-0199"
-                      className="w-full p-2 border border-stone-300 rounded text-sm"
+                      className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Order Type</label>
+                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Order Type</label>
                     <select 
                       value={orderType} 
                       onChange={(e) => setOrderType(e.target.value as 'Pickup' | 'Delivery')}
-                      className="w-full p-2 border border-stone-300 rounded text-sm bg-white"
+                      className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold bg-white focus:border-amber-600 focus:outline-none"
                     >
                       <option value="Pickup">Pickup</option>
                       {deliveryEnabled && <option value="Delivery">Delivery (+${deliveryFee} JMD)</option>}
@@ -430,9 +449,9 @@ export default function App() {
 
                   <button 
                     onClick={handleCheckout}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition mt-2 shadow"
+                    className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-base tracking-wide mt-2"
                   >
-                    Send Order via WhatsApp
+                    Send Order via WhatsApp 🚀
                   </button>
                 </div>
               </div>
@@ -440,41 +459,42 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-stone-800">Owner Management Panel</h2>
+            <h2 className="text-2xl font-black text-stone-900">Owner Management Panel</h2>
 
-            <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
-                <Settings size={18} /> Shop Settings & Security
+            {/* Shop Settings Card */}
+            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3">
+                <Settings className="text-amber-800" size={20} /> Shop Settings & Security
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Cookshop Name</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Cookshop Name</label>
                   <input
                     type="text"
                     value={shopName}
                     onChange={(e) => setShopName(e.target.value)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm font-bold"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Owner PIN (Change anytime)</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Owner PIN (Change anytime)</label>
                   <input
                     type="text"
                     value={ownerPin}
                     onChange={(e) => setOwnerPin(e.target.value)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm font-bold text-amber-900"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-black text-amber-900 focus:border-amber-600 focus:outline-none"
                     placeholder="1234"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Shop Status Banner</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label>
                   <select
                     value={shopStatus}
                     onChange={(e) => setShopStatus(e.target.value as any)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm bg-white font-bold"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"
                   >
                     <option value="Open">🟢 Open for Business</option>
                     <option value="Closing Soon">⚠️ Closing Soon</option>
@@ -483,119 +503,120 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">WhatsApp Phone Number (e.g. 18767739161)</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label>
                   <input
                     type="text"
                     value={shopPhone}
                     onChange={(e) => setShopPhone(e.target.value)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Shop Address Text</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label>
                   <input
                     type="text"
                     value={shopAddress}
                     onChange={(e) => setShopAddress(e.target.value)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Google Maps Pinned Location Link</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Google Maps Pinned Location Link</label>
                   <input
                     type="text"
                     value={shopMapLink}
                     onChange={(e) => setShopMapLink(e.target.value)}
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-stone-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-stone-700">Enable Delivery</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-stone-100">
+                  <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border">
+                    <span className="text-sm font-black text-stone-800">Enable Delivery</span>
                     <input
                       type="checkbox"
                       checked={deliveryEnabled}
                       onChange={(e) => setDeliveryEnabled(e.target.checked)}
-                      className="w-4 h-4 accent-amber-800"
+                      className="w-5 h-5 accent-amber-800 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Delivery Fee (JMD)</label>
+                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Delivery Fee (JMD)</label>
                     <input
                       type="number"
                       value={deliveryFee}
                       onChange={(e) => setDeliveryFee(Number(e.target.value))}
-                      className="w-full p-1.5 border border-stone-300 rounded text-sm"
+                      className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
-                <Plus size={18} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}
+            {/* Add / Edit Dish Card */}
+            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3">
+                <Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}
               </h3>
-              <form onSubmit={handleSaveDish} className="space-y-3">
+              <form onSubmit={handleSaveDish} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Dish Name</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Dish Name</label>
                   <input 
                     type="text" 
                     value={dishName} 
                     onChange={(e) => setDishName(e.target.value)}
                     placeholder="e.g. Oxtail"
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Category</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label>
                   <input 
                     type="text" 
                     value={dishCategory} 
                     onChange={(e) => setDishCategory(e.target.value)}
                     placeholder="e.g. Mains"
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Description</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label>
                   <input 
                     type="text" 
                     value={dishDesc} 
                     onChange={(e) => setDishDesc(e.target.value)}
                     placeholder="e.g. Slow-cooked with butter beans."
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Image URL (Photo link)</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Image URL (Photo link)</label>
                   <input 
                     type="text" 
                     value={dishImage} 
                     onChange={(e) => setDishImage(e.target.value)}
                     placeholder="https://example.com/photo.jpg"
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Price (JMD)</label>
+                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label>
                   <input 
                     type="number" 
                     value={dishPrice} 
                     onChange={(e) => setDishPrice(e.target.value)}
                     placeholder="1800"
-                    className="w-full p-2 border border-stone-300 rounded text-sm"
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none"
                     required
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3 pt-2">
                   <button 
                     type="submit" 
-                    className="flex-1 bg-amber-800 text-white py-2 rounded text-sm font-bold hover:bg-amber-900 transition shadow"
+                    className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md"
                   >
                     {editingId ? 'Save Changes' : 'Add Dish to Menu'}
                   </button>
@@ -603,7 +624,7 @@ export default function App() {
                     <button 
                       type="button" 
                       onClick={cancelEditing}
-                      className="bg-stone-300 text-stone-700 px-4 py-2 rounded text-sm font-bold hover:bg-stone-400 transition"
+                      className="bg-stone-200 text-stone-700 px-6 py-3.5 rounded-2xl text-sm font-black hover:bg-stone-300 transition-all"
                     >
                       Cancel
                     </button>
@@ -612,35 +633,36 @@ export default function App() {
               </form>
             </div>
 
-            <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
-                <Utensils size={18} /> Manage Menu Items
+            {/* Manage Menu Items */}
+            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3">
+                <Utensils className="text-amber-800" size={20} /> Manage Menu Items
               </h3>
               <div className="space-y-3">
                 {menuItems.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg border border-stone-200 text-sm">
-                    <div>
-                      <span className="font-bold text-stone-900">{item.name}</span>
-                      <span className="text-xs text-stone-500 ml-2">${item.price} JMD</span>
-                      {!item.isAvailable && <span className="ml-2 text-xs bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">Sold Out</span>}
+                  <div key={item.id} className="flex items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm">
+                    <div className="min-w-0 pr-2">
+                      <span className="font-black text-stone-900 block truncate">{item.name}</span>
+                      <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
+                      {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button 
                         onClick={() => toggleAvailability(item.id)}
-                        className={`px-2 py-1 rounded text-xs font-bold ${item.isAvailable ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`}
                       >
                         {item.isAvailable ? 'Mark Sold Out' : 'Mark Available'}
                       </button>
                       <button 
                         onClick={() => startEditing(item)}
-                        className="p-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                        className="p-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all"
                         title="Edit dish"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button 
                         onClick={() => deleteDish(item.id)}
-                        className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                        className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all"
                         title="Delete dish"
                       >
                         <Trash2 size={16} />
@@ -651,52 +673,56 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold text-base flex items-center gap-2 text-stone-800">
-                  <ClipboardList size={18} /> Live Customer Orders ({orders.length})
+            {/* Live Orders Log */}
+            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+              <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 className="font-black text-lg flex items-center gap-2 text-stone-900">
+                  <ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})
                 </h3>
                 {orders.length > 0 && (
                   <button 
                     onClick={() => setOrders([])}
-                    className="text-xs text-red-600 hover:underline font-semibold"
+                    className="text-xs text-red-600 hover:underline font-black"
                   >
                     Clear All Orders
                   </button>
                 )}
               </div>
               {orders.length === 0 ? (
-                <p className="text-sm text-stone-500">No orders received yet.</p>
+                <p className="text-sm text-stone-500 py-4 text-center font-medium">No orders received yet.</p>
               ) : (
                 <div className="space-y-4">
                   {orders.map(order => (
-                    <div key={order.id} className="p-4 bg-amber-50/50 rounded-lg border border-amber-200 text-sm shadow-sm">
-                      <div className="flex justify-between items-center font-bold text-amber-900 mb-2 border-b border-amber-200 pb-2">
-                        <span className="text-base">{order.id}</span>
+                    <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
+                      <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
+                        <div>
+                          <span className="text-base tracking-wide">{order.id}</span>
+                          <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded text-xs text-white ${order.status === 'Completed' ? 'bg-green-700' : 'bg-amber-800'}`}>
+                          <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>
                             {order.status}
                           </span>
-                          <span className="bg-stone-800 text-white px-2 py-0.5 rounded text-xs">{order.type}</span>
+                          <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
                         </div>
                       </div>
                       
-                      <div className="bg-white p-2.5 rounded border border-stone-200 mb-2">
-                        <p className="font-bold text-stone-900 text-sm">👤 Customer: {order.customerName}</p>
-                        <p className="text-stone-600 text-xs mt-0.5">📞 Phone: {order.customerPhone}</p>
+                      <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
+                        <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
+                        <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
                       </div>
 
-                      <ul className="list-disc list-inside text-xs text-stone-700 mb-2 space-y-1">
+                      <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
                         {order.items.map((it, idx) => (
-                          <li key={idx}>{it.name} - ${it.price} JMD</li>
+                          <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
                         ))}
                       </ul>
                       
-                      <div className="flex justify-between items-center pt-2 border-t border-stone-200 mt-2">
-                        <span className="font-black text-stone-900 text-sm">Total: ${order.total} JMD</span>
+                      <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
+                        <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
                         <button
                           onClick={() => toggleOrderStatus(order.id)}
-                          className={`text-xs px-2.5 py-1 rounded font-bold transition flex items-center gap-1 ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                          className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                         >
                           <Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}
                         </button>
