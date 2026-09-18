@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock, Image } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -46,7 +46,7 @@ export default function App() {
   const [sbLoaded, setSbLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'owner'>('menu');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false); // True = Full Admin, False = Owner Orders-Only
+  const [isDevMode, setIsDevMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Supabase Credentials State
@@ -62,6 +62,7 @@ export default function App() {
   const [deliveryEnabled, setDeliveryEnabled] = useState(() => localStorage.getItem('cookshop_delivery') === 'true');
   const [deliveryFee, setDeliveryFee] = useState(() => Number(localStorage.getItem('cookshop_delivery_fee')) || 300);
   const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('cookshop_pin') || '1234');
+  const [shopHeaderImage, setShopHeaderImage] = useState(() => localStorage.getItem('cookshop_header_img') || '');
 
   // Master Developer PIN
   const MASTER_DEV_PIN = '9999';
@@ -88,9 +89,15 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Safe Supabase client initializer (won't crash on invalid/incomplete input)
   const getSupabaseClient = () => {
     if (!sbLoaded || !supabaseUrl || !supabaseKey || !(window as any).supabase) return null;
-    return (window as any).supabase.createClient(supabaseUrl, supabaseKey);
+    try {
+      if (!supabaseUrl.startsWith('https://')) return null;
+      return (window as any).supabase.createClient(supabaseUrl.trim(), supabaseKey.trim());
+    } catch (err) {
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -104,6 +111,7 @@ export default function App() {
     localStorage.setItem('cookshop_delivery', String(deliveryEnabled));
     localStorage.setItem('cookshop_delivery_fee', String(deliveryFee));
     localStorage.setItem('cookshop_pin', ownerPin);
+    localStorage.setItem('cookshop_header_img', shopHeaderImage);
     localStorage.setItem('cookshop_menu', JSON.stringify(menuItems));
     localStorage.setItem('cookshop_orders', JSON.stringify(orders));
 
@@ -134,7 +142,7 @@ export default function App() {
         }).then(() => {});
       });
     }
-  }, [supabaseUrl, supabaseKey, shopName, shopPhone, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, menuItems, orders, sbLoaded]);
+  }, [supabaseUrl, supabaseKey, shopName, shopPhone, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, shopHeaderImage, menuItems, orders, sbLoaded]);
 
   // Dish Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -154,18 +162,27 @@ export default function App() {
     }
   };
 
+  const handleHeaderImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setShopHeaderImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleOwnerTabClick = () => {
     if (isOwnerUnlocked) {
       setActiveTab('owner');
     } else {
-      const pinInput = prompt('Enter your PIN to access orders/admin panel:');
+      const pinInput = prompt('Enter PIN to access orders or admin panel:');
       if (pinInput === MASTER_DEV_PIN) {
         setIsOwnerUnlocked(true);
-        setIsDevMode(true); // Full Developer Admin Access
+        setIsDevMode(true);
         setActiveTab('owner');
       } else if (pinInput === ownerPin) {
         setIsOwnerUnlocked(true);
-        setIsDevMode(false); // Restricted Owner Orders-Only Access
+        setIsDevMode(false);
         setActiveTab('owner');
       } else if (pinInput !== null) {
         alert('Incorrect PIN! Access denied.');
@@ -372,9 +389,13 @@ export default function App() {
       <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-4 sm:p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
-            <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400">
-              <Flame className="text-amber-100" size={24} />
-            </div>
+            {shopHeaderImage ? (
+              <img src={shopHeaderImage} alt="Logo" className="w-10 h-10 object-cover rounded-xl border border-amber-400 shadow-md" />
+            ) : (
+              <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400">
+                <Flame className="text-amber-100" size={24} />
+              </div>
+            )}
             <div>
               <h1 className="text-lg sm:text-2xl font-black tracking-wide drop-shadow">{shopName}</h1>
               <p className="text-[10px] sm:text-[11px] text-amber-200 tracking-widest uppercase font-bold flex items-center gap-1.5">
@@ -470,13 +491,12 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* 1. RESTRICTED OWNER VIEW: If logged in with normal client PIN, they ONLY see Live Orders */}
             {!isDevMode ? (
               <div className="space-y-6">
                 <div className="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-950 flex items-center justify-between">
                   <div>
-                    <h3 className="font-black text-base flex items-center gap-2"><Lock size={18} /> Cookshop Owner Portal</h3>
-                    <p className="text-xs font-medium mt-0.5">Welcome! View and manage incoming customer orders below.</p>
+                    <h3 className="font-black text-base flex items-center gap-2"><Lock size={18} /> Cookshop Owner Orders Dashboard</h3>
+                    <p className="text-xs font-medium mt-0.5">Viewing incoming customer orders. Menu editing is managed by your developer.</p>
                   </div>
                   <button onClick={() => { setIsOwnerUnlocked(false); setActiveTab('menu'); }} className="text-xs bg-amber-900 text-white px-3 py-1.5 rounded-xl font-bold">Lock / Exit</button>
                 </div>
@@ -525,13 +545,12 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              /* 2. FULL DEVELOPER ADMIN VIEW: Unlocked ONLY with Master PIN '9999' */
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border-2 border-purple-400">
                   <h3 className="font-black text-lg mb-2 flex items-center gap-2 border-b border-purple-800 pb-3">
                     <ShieldAlert className="text-purple-300" size={22} /> Developer Master Control (Full Admin)
                   </h3>
-                  <p className="text-xs text-purple-200 mb-4 font-medium">Logged in via Master Developer PIN (`9999`). You have full control over menu items, settings, and client PINs.</p>
+                  <p className="text-xs text-purple-200 mb-4 font-medium">Logged in via Master Developer PIN (`9999`). You control the menu, header branding, and client PINs.</p>
                   
                   <div className="space-y-3 bg-black/30 p-4 rounded-2xl border border-purple-500/30">
                     <span className="text-xs font-bold text-purple-300 uppercase tracking-widest block">Client Owner PIN Management</span>
@@ -561,9 +580,16 @@ export default function App() {
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Security</h3>
+                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Header Branding</h3>
                   <div className="space-y-4">
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Cookshop Name</label><input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
+                    
+                    <div>
+                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Image size={16} className="text-amber-800" /> Header Logo / Banner Photo</label>
+                      <input type="file" accept="image/*" onChange={handleHeaderImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
+                      {shopHeaderImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={shopHeaderImage} alt="Header Preview" className="w-12 h-12 object-cover rounded-lg border" /><span className="text-xs font-bold text-amber-900">Header photo active!</span></div>}
+                    </div>
+
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label><input type="text" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                     <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label><input type="text" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
