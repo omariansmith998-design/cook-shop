@@ -106,7 +106,7 @@ export default function App() {
     localStorage.setItem('cookshop_orders', JSON.stringify(orders));
   }, [shopName, shopPhone, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, menuItems, orders]);
 
-  // Dish Form State (Supports Add & Edit)
+  // Dish Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dishName, setDishName] = useState('');
   const [dishCategory, setDishCategory] = useState('Mains');
@@ -165,7 +165,9 @@ export default function App() {
     }
     orderMessage += `\n*Total:* $${grandTotal} JMD\n*Type:* ${orderType}\n*Name:* ${customerName}\n*Phone:* ${customerPhone}`;
 
-    const whatsappUrl = `https://wa.me/${shopPhone}?text=${encodeURIComponent(orderMessage)}`;
+    // CLEAN THE PHONE NUMBER: Remove all dashes, spaces, plus signs, brackets so wa.me works reliably
+    const cleanPhone = shopPhone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(orderMessage)}`;
     
     const newOrder: Order = {
       id: orderId,
@@ -252,7 +254,6 @@ export default function App() {
     setOrders(orders.map(o => o.id === id ? { ...o, status: o.status === 'Received' ? 'Completed' : 'Received' } : o));
   };
 
-  // Filter menu items by category
   const categories = ['All', ...Array.from(new Set(menuItems.map(i => i.category)))];
   const filteredMenuItems = selectedCategory === 'All' ? menuItems : menuItems.filter(i => i.category === selectedCategory);
 
@@ -283,7 +284,6 @@ export default function App() {
       </header>
 
       <main className="max-w-3xl mx-auto p-4">
-        {/* Closing Soon / Status Notice Banner */}
         {shopStatus !== 'Open' && (
           <div className={`mb-4 p-3 rounded-lg text-sm font-bold text-center shadow-sm flex items-center justify-center gap-2 ${shopStatus === 'Closing Soon' ? 'bg-amber-200 text-amber-900 border border-amber-300' : 'bg-red-100 text-red-800 border border-red-200'}`}>
             <Clock size={18} /> Notice: We are currently <strong>{shopStatus}</strong>!
@@ -315,7 +315,6 @@ export default function App() {
               <h2 className="text-xl font-bold text-stone-800">Today's Menu</h2>
             </div>
 
-            {/* Category Filter Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
               {categories.map(cat => (
                 <button
@@ -360,7 +359,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Cart Section */}
             {cart.length > 0 && (
               <div className="bg-white p-6 rounded-lg shadow-md border border-amber-200 mt-6">
                 <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-stone-800">
@@ -444,7 +442,6 @@ export default function App() {
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-stone-800">Owner Management Panel</h2>
 
-            {/* Shop Settings Card */}
             <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
               <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
                 <Settings size={18} /> Shop Settings & Security
@@ -486,7 +483,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">WhatsApp Phone Number</label>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">WhatsApp Phone Number (e.g. 18767739161)</label>
                   <input
                     type="text"
                     value={shopPhone}
@@ -538,7 +535,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Add / Edit Dish Card */}
             <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
               <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
                 <Plus size={18} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}
@@ -616,7 +612,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Manage Menu Items (Edit, Sold Out, Delete) */}
             <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
               <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-stone-800">
                 <Utensils size={18} /> Manage Menu Items
@@ -656,7 +651,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Live Orders Log */}
             <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-base flex items-center gap-2 text-stone-800">
