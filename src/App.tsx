@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -9,6 +9,7 @@ interface MenuItem {
   price: number;
   imageUrl?: string;
   isAvailable: boolean;
+  isSpecial?: boolean;
 }
 
 interface Order {
@@ -23,6 +24,16 @@ interface Order {
 }
 
 export default function App() {
+  // Automatically inject Tailwind CSS CDN so styles never fail to load on Vercel
+  useEffect(() => {
+    if (!document.getElementById('tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(script);
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'menu' | 'owner'>('menu');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -49,7 +60,8 @@ export default function App() {
         description: 'Served with rice and peas or ground provision.', 
         price: 1000,
         imageUrl: 'https://images.unsplash.com/photo-1545224182-5e04c8f5f3e4?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true
+        isAvailable: true,
+        isSpecial: true
       },
       { 
         id: '2', 
@@ -58,7 +70,8 @@ export default function App() {
         description: 'Tender goat mutton cooked in authentic island curry.', 
         price: 1500,
         imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true
+        isAvailable: true,
+        isSpecial: true
       },
       { 
         id: '3', 
@@ -67,7 +80,8 @@ export default function App() {
         description: 'Crispy golden fried dough dumplings.', 
         price: 300,
         imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true
+        isAvailable: true,
+        isSpecial: false
       },
       { 
         id: '4', 
@@ -76,7 +90,8 @@ export default function App() {
         description: 'Rich, smooth coconut-flavored cornmeal porridge.', 
         price: 500,
         imageUrl: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true
+        isAvailable: true,
+        isSpecial: false
       }
     ];
   });
@@ -113,6 +128,7 @@ export default function App() {
   const [dishDesc, setDishDesc] = useState('');
   const [dishPrice, setDishPrice] = useState('');
   const [dishImage, setDishImage] = useState('');
+  const [dishIsSpecial, setDishIsSpecial] = useState(false);
 
   const handleOwnerTabClick = () => {
     if (isOwnerUnlocked) {
@@ -201,7 +217,8 @@ export default function App() {
             category: dishCategory,
             description: dishDesc,
             price: parseFloat(dishPrice),
-            imageUrl: dishImage || item.imageUrl
+            imageUrl: dishImage || item.imageUrl,
+            isSpecial: dishIsSpecial
           };
         }
         return item;
@@ -215,7 +232,8 @@ export default function App() {
         description: dishDesc,
         price: parseFloat(dishPrice),
         imageUrl: dishImage || 'https://images.unsplash.com/photo-1545224182-5e04c8f5f3e4?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true
+        isAvailable: true,
+        isSpecial: dishIsSpecial
       };
       setMenuItems([...menuItems, newItem]);
     }
@@ -225,6 +243,7 @@ export default function App() {
     setDishPrice('');
     setDishImage('');
     setDishCategory('Mains');
+    setDishIsSpecial(false);
   };
 
   const startEditing = (item: MenuItem) => {
@@ -234,6 +253,7 @@ export default function App() {
     setDishDesc(item.description);
     setDishPrice(item.price.toString());
     setDishImage(item.imageUrl || '');
+    setDishIsSpecial(item.isSpecial || false);
   };
 
   const cancelEditing = () => {
@@ -242,10 +262,15 @@ export default function App() {
     setDishDesc('');
     setDishPrice('');
     setDishImage('');
+    setDishIsSpecial(false);
   };
 
   const toggleAvailability = (id: string) => {
     setMenuItems(menuItems.map(i => i.id === id ? { ...i, isAvailable: !i.isAvailable } : i));
+  };
+
+  const toggleSpecial = (id: string) => {
+    setMenuItems(menuItems.map(i => i.id === id ? { ...i, isSpecial: !i.isSpecial } : i));
   };
 
   const deleteDish = (id: string) => {
@@ -258,36 +283,41 @@ export default function App() {
     setOrders(orders.map(o => o.id === id ? { ...o, status: o.status === 'Received' ? 'Completed' : 'Received' } : o));
   };
 
-  const categories = ['All', ...Array.from(new Set(menuItems.map(i => i.category)))];
-  const filteredMenuItems = selectedCategory === 'All' ? menuItems : menuItems.filter(i => i.category === selectedCategory);
+  const categories = ['All', '⭐ Specials', ...Array.from(new Set(menuItems.map(i => i.category)))];
+  
+  const filteredMenuItems = selectedCategory === 'All' 
+    ? menuItems 
+    : selectedCategory === '⭐ Specials' 
+      ? menuItems.filter(i => i.isSpecial) 
+      : menuItems.filter(i => i.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
       {/* Vibrant Header */}
-      <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50 backdrop-blur-md">
+      <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-4 sm:p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
             <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400">
               <Flame className="text-amber-100" size={24} />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-wide drop-shadow">{shopName}</h1>
-              <p className="text-[11px] text-amber-200 tracking-widest uppercase font-bold flex items-center gap-1.5">
+              <h1 className="text-lg sm:text-2xl font-black tracking-wide drop-shadow">{shopName}</h1>
+              <p className="text-[10px] sm:text-[11px] text-amber-200 tracking-widest uppercase font-bold flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${shopStatus === 'Open' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
                 Authentic Jamaican Taste
               </p>
             </div>
           </div>
-          <div className="flex gap-1.5 bg-black/30 p-1.5 rounded-xl backdrop-blur-md border border-white/10 shadow-inner">
+          <div className="flex gap-1.5 bg-black/30 p-1 rounded-xl border border-white/10">
             <button 
               onClick={() => setActiveTab('menu')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md scale-105' : 'text-amber-100 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}
             >
               Menu
             </button>
             <button 
               onClick={handleOwnerTabClick}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md scale-105' : 'text-amber-100 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}
             >
               🔒 Owner
             </button>
@@ -320,7 +350,7 @@ export default function App() {
                   href={shopMapLink} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="bg-amber-900 text-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-950 transition-all shadow hover:shadow-md flex items-center gap-1.5"
+                  className="bg-amber-900 text-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-950 transition-all shadow flex items-center gap-1.5"
                 >
                   📍 View Pinned Map
                 </a>
@@ -332,12 +362,12 @@ export default function App() {
             </div>
 
             {/* Category Filter Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
+            <div className="flex gap-2 overflow-x-auto pb-3 mb-6">
               {categories.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all shadow-sm ${selectedCategory === cat ? 'bg-amber-900 text-white shadow-md scale-105 ring-2 ring-amber-600/50' : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'}`}
+                  className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all shadow-sm ${selectedCategory === cat ? 'bg-amber-900 text-white shadow-md ring-2 ring-amber-600/50' : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'}`}
                 >
                   {cat}
                 </button>
@@ -347,7 +377,7 @@ export default function App() {
             {/* Menu Grid */}
             <div className="grid gap-4 sm:gap-5 mb-8">
               {filteredMenuItems.map(item => (
-                <div key={item.id} className={`bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 transition-all duration-300 flex gap-4 items-center hover:-translate-y-0.5 hover:shadow-md ${item.isAvailable ? 'border-stone-100 hover:border-amber-400' : 'border-red-100 opacity-60 bg-stone-50'}`}>
+                <div key={item.id} className={`bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 transition-all flex gap-4 items-center relative overflow-hidden ${item.isSpecial ? 'border-amber-400 bg-gradient-to-r from-amber-50/60 to-white shadow-md' : item.isAvailable ? 'border-stone-100 hover:border-amber-300' : 'border-red-100 opacity-60 bg-stone-50'}`}>
                   {item.imageUrl && (
                     <img 
                       src={item.imageUrl} 
@@ -358,8 +388,13 @@ export default function App() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-black text-lg text-stone-900">{item.name}</h3>
+                      {item.isSpecial && (
+                        <span className="bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                          <Star size={10} fill="currentColor" /> Chef's Special
+                        </span>
+                      )}
                       {!item.isAvailable && (
-                        <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">Sold Out</span>
+                        <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Sold Out</span>
                       )}
                     </div>
                     <span className="inline-block text-[11px] uppercase font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-md mt-1">{item.category}</span>
@@ -369,7 +404,7 @@ export default function App() {
                   <button 
                     onClick={() => addToCart(item)}
                     disabled={!item.isAvailable}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 flex-shrink-0 shadow ${item.isAvailable ? 'bg-amber-800 text-white hover:bg-amber-900 hover:scale-105 active:scale-95 shadow-amber-900/20' : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'}`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 flex-shrink-0 shadow ${item.isAvailable ? 'bg-amber-800 text-white hover:bg-amber-900 shadow-amber-900/20' : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'}`}
                   >
                     <Plus size={16} /> Add
                   </button>
@@ -379,7 +414,7 @@ export default function App() {
 
             {/* Cart Section */}
             {cart.length > 0 && (
-              <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-amber-300 mt-6 animate-fadeIn">
+              <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-amber-300 mt-6">
                 <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-stone-900 border-b pb-3">
                   <ShoppingBag className="text-amber-800" size={22} /> Your Order ({cart.length} items)
                 </h3>
@@ -613,6 +648,18 @@ export default function App() {
                     required
                   />
                 </div>
+                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <input
+                    type="checkbox"
+                    id="isSpecialCheck"
+                    checked={dishIsSpecial}
+                    onChange={(e) => setDishIsSpecial(e.target.checked)}
+                    className="w-5 h-5 accent-amber-800 rounded"
+                  />
+                  <label htmlFor="isSpecialCheck" className="text-xs font-black text-amber-950 uppercase tracking-wide cursor-pointer">
+                    ⭐ Mark as Chef's Special (Highlights on Menu)
+                  </label>
+                </div>
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="submit" 
@@ -640,13 +687,20 @@ export default function App() {
               </h3>
               <div className="space-y-3">
                 {menuItems.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm">
+                  <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
                     <div className="min-w-0 pr-2">
                       <span className="font-black text-stone-900 block truncate">{item.name}</span>
                       <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
+                      {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
                       {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button 
+                        onClick={() => toggleSpecial(item.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isSpecial ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}
+                      >
+                        {item.isSpecial ? '⭐ Starred' : 'Make Special'}
+                      </button>
                       <button 
                         onClick={() => toggleAvailability(item.id)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`}
