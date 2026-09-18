@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -46,7 +46,7 @@ export default function App() {
   const [sbLoaded, setSbLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'owner'>('menu');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false); // True = Full Admin, False = Owner Orders-Only
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Supabase Credentials State
@@ -158,14 +158,14 @@ export default function App() {
     if (isOwnerUnlocked) {
       setActiveTab('owner');
     } else {
-      const pinInput = prompt('Enter Owner or Developer PIN:');
+      const pinInput = prompt('Enter your PIN to access orders/admin panel:');
       if (pinInput === MASTER_DEV_PIN) {
         setIsOwnerUnlocked(true);
-        setIsDevMode(true);
+        setIsDevMode(true); // Full Developer Admin Access
         setActiveTab('owner');
       } else if (pinInput === ownerPin) {
         setIsOwnerUnlocked(true);
-        setIsDevMode(false);
+        setIsDevMode(false); // Restricted Owner Orders-Only Access
         setActiveTab('owner');
       } else if (pinInput !== null) {
         alert('Incorrect PIN! Access denied.');
@@ -385,7 +385,7 @@ export default function App() {
           </div>
           <div className="flex gap-1.5 bg-black/30 p-1 rounded-xl border border-white/10">
             <button onClick={() => setActiveTab('menu')} className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>Menu</button>
-            <button onClick={handleOwnerTabClick} className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🔒 Owner</button>
+            <button onClick={handleOwnerTabClick} className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🔒 Orders / Admin</button>
           </div>
         </div>
       </header>
@@ -470,152 +470,203 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            <h2 className="text-2xl font-black text-stone-900">Owner Management Panel</h2>
-
-            {isDevMode && (
-              <div className="bg-gradient-to-r from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border-2 border-purple-400">
-                <h3 className="font-black text-lg mb-2 flex items-center gap-2 border-b border-purple-800 pb-3">
-                  <ShieldAlert className="text-purple-300" size={22} /> Developer Master Control (Bypass Mode)
-                </h3>
-                <p className="text-xs text-purple-200 mb-4 font-medium">You are logged in with the secret developer bypass code (`9999`). The client cannot lock you out of this section.</p>
-                
-                <div className="space-y-3 bg-black/30 p-4 rounded-2xl border border-purple-500/30">
-                  <span className="text-xs font-bold text-purple-300 uppercase tracking-widest block">Quick Action: Reset Client Owner PIN</span>
-                  <div className="flex gap-3">
-                    <input type="text" value={ownerPin} onChange={(e) => setOwnerPin(e.target.value)} className="w-full p-2.5 bg-stone-900 text-white border border-purple-400 rounded-xl text-sm font-bold" />
-                    <button onClick={() => alert('Owner PIN updated successfully!')} className="bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl text-xs font-black">Save PIN</button>
+            {/* 1. RESTRICTED OWNER VIEW: If logged in with normal client PIN, they ONLY see Live Orders */}
+            {!isDevMode ? (
+              <div className="space-y-6">
+                <div className="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-950 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-base flex items-center gap-2"><Lock size={18} /> Cookshop Owner Portal</h3>
+                    <p className="text-xs font-medium mt-0.5">Welcome! View and manage incoming customer orders below.</p>
                   </div>
+                  <button onClick={() => { setIsOwnerUnlocked(false); setActiveTab('menu'); }} className="text-xs bg-amber-900 text-white px-3 py-1.5 rounded-xl font-bold">Lock / Exit</button>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+                  <div className="flex justify-between items-center mb-4 border-b pb-3">
+                    <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
+                    {orders.length > 0 && <button onClick={() => setOrders([])} className="text-xs text-red-600 hover:underline font-black">Clear All Orders</button>}
+                  </div>
+                  {orders.length === 0 ? (
+                    <p className="text-sm text-stone-500 py-6 text-center font-medium">No orders received yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map(order => (
+                        <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
+                          <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
+                            <div>
+                              <span className="text-base tracking-wide">{order.id}</span>
+                              <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>{order.status}</span>
+                              <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
+                            <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
+                            <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
+                          </div>
+
+                          <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
+                            {order.items.map((it, idx) => (
+                              <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
+                            ))}
+                          </ul>
+                          
+                          <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
+                            <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
+                            <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* 2. FULL DEVELOPER ADMIN VIEW: Unlocked ONLY with Master PIN '9999' */
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border-2 border-purple-400">
+                  <h3 className="font-black text-lg mb-2 flex items-center gap-2 border-b border-purple-800 pb-3">
+                    <ShieldAlert className="text-purple-300" size={22} /> Developer Master Control (Full Admin)
+                  </h3>
+                  <p className="text-xs text-purple-200 mb-4 font-medium">Logged in via Master Developer PIN (`9999`). You have full control over menu items, settings, and client PINs.</p>
+                  
+                  <div className="space-y-3 bg-black/30 p-4 rounded-2xl border border-purple-500/30">
+                    <span className="text-xs font-bold text-purple-300 uppercase tracking-widest block">Client Owner PIN Management</span>
+                    <div className="flex gap-3">
+                      <input type="text" value={ownerPin} onChange={(e) => setOwnerPin(e.target.value)} className="w-full p-2.5 bg-stone-900 text-white border border-purple-400 rounded-xl text-sm font-bold" />
+                      <button onClick={() => alert('Client Owner PIN updated successfully!')} className="bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl text-xs font-black">Save PIN</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-amber-300 bg-gradient-to-br from-amber-50/40 to-white">
+                  <h3 className="font-black text-lg mb-2 flex items-center gap-2 text-stone-900 border-b pb-3">
+                    <Database className="text-amber-800" size={20} /> Supabase Cloud Database Connection
+                  </h3>
+                  <p className="text-xs text-stone-600 mb-4 font-medium">Connect your Supabase project so menu items, settings, and orders sync live in the cloud!</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Project URL</label>
+                      <input type="text" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} placeholder="https://xxxxxx.supabase.co" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Anon Key</label>
+                      <input type="password" value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} placeholder="eyJhbGciOi..." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Security</h3>
+                  <div className="space-y-4">
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Cookshop Name</label><input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label><input type="text" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label><input type="text" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Google Maps Pinned Location Link</label><input type="text" value={shopMapLink} onChange={(e) => setShopMapLink(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-stone-100">
+                      <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border"><span className="text-sm font-black text-stone-800">Enable Delivery</span><input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" /></div>
+                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Delivery Fee (JMD)</label><input type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(Number(e.target.value))} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}</h3>
+                  <form onSubmit={handleSaveDish} className="space-y-4">
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Dish Name</label><input type="text" value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="e.g. Oxtail" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label><input type="text" value={dishCategory} onChange={(e) => setDishCategory(e.target.value)} placeholder="e.g. Mains" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label><input type="text" value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="e.g. Slow-cooked with butter beans." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div>
+                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery</label>
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
+                      {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
+                    </div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="1800" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
+                    <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                      <input type="checkbox" id="isSpecialCheck" checked={dishIsSpecial} onChange={(e) => setDishIsSpecial(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" />
+                      <label htmlFor="isSpecialCheck" className="text-xs font-black text-amber-950 uppercase tracking-wide cursor-pointer">⭐ Mark as Chef's Special (Highlights on Menu)</label>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md">{editingId ? 'Save Changes' : 'Add Dish to Menu'}</button>
+                      {editingId && <button type="button" onClick={cancelEditing} className="bg-stone-200 text-stone-700 px-6 py-3.5 rounded-2xl text-sm font-black hover:bg-stone-300 transition-all">Cancel</button>}
+                    </div>
+                  </form>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Utensils className="text-amber-800" size={20} /> Manage Menu Items</h3>
+                  <div className="space-y-3">
+                    {menuItems.map(item => (
+                      <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
+                        <div className="min-w-0 pr-2 flex items-center gap-3">
+                          {item.imageUrl && <img src={item.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" />}
+                          <div>
+                            <span className="font-black text-stone-900 block truncate">{item.name}</span>
+                            <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
+                            {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
+                            {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button onClick={() => toggleSpecial(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isSpecial ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}>{item.isSpecial ? '⭐ Starred' : 'Make Special'}</button>
+                          <button onClick={() => toggleAvailability(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`}>{item.isAvailable ? 'Mark Sold Out' : 'Mark Available'}</button>
+                          <button onClick={() => startEditing(item)} className="p-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all" title="Edit dish"><Edit2 size={16} /></button>
+                          <button onClick={() => deleteDish(item.id)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all" title="Delete dish"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
+                  <div className="flex justify-between items-center mb-4 border-b pb-3">
+                    <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
+                    {orders.length > 0 && <button onClick={() => setOrders([])} className="text-xs text-red-600 hover:underline font-black">Clear All Orders</button>}
+                  </div>
+                  {orders.length === 0 ? (
+                    <p className="text-sm text-stone-500 py-4 text-center font-medium">No orders received yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map(order => (
+                        <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
+                          <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
+                            <div>
+                              <span className="text-base tracking-wide">{order.id}</span>
+                              <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>{order.status}</span>
+                              <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
+                            <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
+                            <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
+                          </div>
+
+                          <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
+                            {order.items.map((it, idx) => (
+                              <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
+                            ))}
+                          </ul>
+                          
+                          <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
+                            <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
+                            <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-
-            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-amber-300 bg-gradient-to-br from-amber-50/40 to-white">
-              <h3 className="font-black text-lg mb-2 flex items-center gap-2 text-stone-900 border-b pb-3">
-                <Database className="text-amber-800" size={20} /> Supabase Cloud Database Connection
-              </h3>
-              <p className="text-xs text-stone-600 mb-4 font-medium">Connect your Supabase project so menu items, settings, and orders sync live in the cloud!</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Project URL</label>
-                  <input type="text" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} placeholder="https://xxxxxx.supabase.co" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Anon Key</label>
-                  <input type="password" value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} placeholder="eyJhbGciOi..." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
-                </div>
-                <div className="p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs font-bold text-amber-950 flex items-center gap-2">
-                  <span>{supabaseUrl && supabaseKey ? '🟢 Connected to Supabase Cloud' : '⚠️ Operating in Local Storage Mode (Enter keys above to sync)'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Security</h3>
-              <div className="space-y-4">
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Cookshop Name</label><input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Owner PIN (Change anytime)</label><input type="text" value={ownerPin} onChange={(e) => setOwnerPin(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-black text-amber-900 focus:border-amber-600 focus:outline-none" placeholder="1234" /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label><input type="text" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label><input type="text" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Google Maps Pinned Location Link</label><input type="text" value={shopMapLink} onChange={(e) => setShopMapLink(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-stone-100">
-                  <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border"><span className="text-sm font-black text-stone-800">Enable Delivery</span><input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" /></div>
-                  <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Delivery Fee (JMD)</label><input type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(Number(e.target.value))} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}</h3>
-              <form onSubmit={handleSaveDish} className="space-y-4">
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Dish Name</label><input type="text" value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="e.g. Oxtail" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label><input type="text" value={dishCategory} onChange={(e) => setDishCategory(e.target.value)} placeholder="e.g. Mains" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label><input type="text" value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="e.g. Slow-cooked with butter beans." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                <div>
-                  <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery</label>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
-                  {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
-                </div>
-                <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="1800" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
-                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                  <input type="checkbox" id="isSpecialCheck" checked={dishIsSpecial} onChange={(e) => setDishIsSpecial(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" />
-                  <label htmlFor="isSpecialCheck" className="text-xs font-black text-amber-950 uppercase tracking-wide cursor-pointer">⭐ Mark as Chef's Special (Highlights on Menu)</label>
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md">{editingId ? 'Save Changes' : 'Add Dish to Menu'}</button>
-                  {editingId && <button type="button" onClick={cancelEditing} className="bg-stone-200 text-stone-700 px-6 py-3.5 rounded-2xl text-sm font-black hover:bg-stone-300 transition-all">Cancel</button>}
-                </div>
-              </form>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-              <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Utensils className="text-amber-800" size={20} /> Manage Menu Items</h3>
-              <div className="space-y-3">
-                {menuItems.map(item => (
-                  <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
-                    <div className="min-w-0 pr-2 flex items-center gap-3">
-                      {item.imageUrl && <img src={item.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" />}
-                      <div>
-                        <span className="font-black text-stone-900 block truncate">{item.name}</span>
-                        <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
-                        {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
-                        {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => toggleSpecial(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isSpecial ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}>{item.isSpecial ? '⭐ Starred' : 'Make Special'}</button>
-                      <button onClick={() => toggleAvailability(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`}>{item.isAvailable ? 'Mark Sold Out' : 'Mark Available'}</button>
-                      <button onClick={() => startEditing(item)} className="p-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all" title="Edit dish"><Edit2 size={16} /></button>
-                      <button onClick={() => deleteDish(item.id)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all" title="Delete dish"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-              <div className="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
-                {orders.length > 0 && <button onClick={() => setOrders([])} className="text-xs text-red-600 hover:underline font-black">Clear All Orders</button>}
-              </div>
-              {orders.length === 0 ? (
-                <p className="text-sm text-stone-500 py-4 text-center font-medium">No orders received yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {orders.map(order => (
-                    <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
-                      <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
-                        <div>
-                          <span className="text-base tracking-wide">{order.id}</span>
-                          <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>{order.status}</span>
-                          <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
-                        <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
-                        <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
-                      </div>
-
-                      <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
-                        {order.items.map((it, idx) => (
-                          <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
-                        ))}
-                      </ul>
-                      
-                      <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
-                        <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
-                        <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </main>
