@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock, Image } from 'lucide-react';
+import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock, Image, FileText } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -44,11 +44,12 @@ export default function App() {
   }, []);
 
   const [sbLoaded, setSbLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'menu' | 'owner'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'owner' | 'my-orders'>('menu');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<Order | null>(null);
 
   // Supabase Credentials State
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('cookshop_sb_url') || '');
@@ -68,7 +69,7 @@ export default function App() {
   // Master Developer PIN
   const MASTER_DEV_PIN = '9999';
 
-  // Menu State
+  // Menu State (Includes default bottle drinks like Ting and Boom)
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
     const saved = localStorage.getItem('cookshop_menu');
     if (saved) return JSON.parse(saved);
@@ -76,7 +77,9 @@ export default function App() {
       { id: '1', name: 'Brown Stew Chicken', category: 'Mains', description: 'Served with rice and peas or ground provision.', price: 1000, imageUrl: 'https://images.unsplash.com/photo-1545224182-5e04c8f5f3e4?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: true },
       { id: '2', name: 'Curry Goat', category: 'Mains', description: 'Tender goat mutton cooked in authentic island curry.', price: 1500, imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: true },
       { id: '3', name: 'Fried Dumplings (3pc)', category: 'Sides', description: 'Crispy golden fried dough dumplings.', price: 300, imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
-      { id: '4', name: 'Cornmeal Porridge', category: 'Breakfast Sides', description: 'Rich, smooth coconut-flavored cornmeal porridge.', price: 500, imageUrl: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false }
+      { id: '4', name: 'Cornmeal Porridge', category: 'Breakfast Sides', description: 'Rich, smooth coconut-flavored cornmeal porridge.', price: 500, imageUrl: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
+      { id: '5', name: 'Ting Grapefruit Soda', category: 'Bottle Drinks', description: 'Refreshing Jamaican grapefruit sparkling beverage.', price: 200, imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
+      { id: '6', name: 'Boom Energy Drink', category: 'Bottle Drinks', description: 'Popular Jamaican energy booster.', price: 250, imageUrl: 'https://images.unsplash.com/photo-1622543925917-763c34d1a86e?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false }
     ];
   });
 
@@ -291,6 +294,7 @@ export default function App() {
       });
     }
     
+    setSelectedReceipt(newOrder);
     window.open(whatsappUrl, '_blank');
     setCart([]);
   };
@@ -446,8 +450,9 @@ export default function App() {
             </div>
           </div>
           <div className="flex gap-1.5 bg-black/30 p-1 rounded-xl border border-white/10">
-            <button onClick={() => setActiveTab('menu')} className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>Menu</button>
-            <button onClick={handleOwnerTabClick} className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🔒 Orders / Admin</button>
+            <button onClick={() => setActiveTab('menu')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>Menu</button>
+            <button onClick={() => setActiveTab('my-orders')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'my-orders' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🧾 Receipts</button>
+            <button onClick={handleOwnerTabClick} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🔒 Admin</button>
           </div>
         </div>
       </header>
@@ -465,6 +470,60 @@ export default function App() {
               className="w-full max-h-[75vh] object-contain rounded-2xl" 
             />
             <p className="text-xs text-amber-200 mt-3 font-bold tracking-widest uppercase">Tap anywhere to close</p>
+          </div>
+        </div>
+      )}
+
+      {/* Digital Receipt Popup Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-4 border-amber-400 space-y-4 relative animate-fade-in">
+            <div className="text-center border-b pb-4">
+              <h3 className="text-xl font-black text-amber-950">{shopName}</h3>
+              <p className="text-xs font-bold text-stone-500">{shopAddress}</p>
+              <div className="mt-3 inline-block bg-amber-100 text-amber-950 px-3 py-1 rounded-full text-xs font-black">
+                Official Digital Receipt
+              </div>
+            </div>
+
+            <div className="space-y-1 text-xs font-semibold text-stone-700">
+              <p className="flex justify-between"><span>Order ID:</span> <span className="font-black text-stone-900">{selectedReceipt.id}</span></p>
+              <p className="flex justify-between"><span>Date/Time:</span> <span className="font-black text-stone-900">{selectedReceipt.timestamp}</span></p>
+              <p className="flex justify-between"><span>Customer:</span> <span className="font-black text-stone-900">{selectedReceipt.customerName}</span></p>
+              <p className="flex justify-between"><span>Phone:</span> <span className="font-black text-stone-900">{selectedReceipt.customerPhone}</span></p>
+              <p className="flex justify-between"><span>Fulfillment:</span> <span className="font-black text-stone-900">{selectedReceipt.type}</span></p>
+              <p className="flex justify-between"><span>Status:</span> <span className={`font-black px-2 py-0.5 rounded text-white ${selectedReceipt.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-600'}`}>{selectedReceipt.status}</span></p>
+            </div>
+
+            <div className="border-t border-b py-3 space-y-2 max-h-40 overflow-y-auto">
+              <p className="text-xs font-black uppercase text-stone-400 tracking-wider">Items Ordered</p>
+              {selectedReceipt.items.map((it, idx) => (
+                <div key={idx} className="flex justify-between text-xs font-bold text-stone-800">
+                  <span>{it.name}</span>
+                  <span className="text-amber-900">${it.price} JMD</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center pt-2 font-black text-lg text-amber-950">
+              <span>Total Paid:</span>
+              <span>${selectedReceipt.total} JMD</span>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => window.print()} 
+                className="flex-1 bg-amber-900 text-white py-3 rounded-2xl text-xs font-black hover:bg-amber-950 transition-all shadow"
+              >
+                Print / Save Receipt 🖨️
+              </button>
+              <button 
+                onClick={() => setSelectedReceipt(null)} 
+                className="bg-stone-200 text-stone-700 px-5 py-3 rounded-2xl text-xs font-black hover:bg-stone-300 transition-all"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -542,8 +601,45 @@ export default function App() {
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Your Name</label><input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Omarian Smith" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Phone Number</label><input type="text" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="e.g. 876-555-0199" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                   <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Order Type</label><select value={orderType} onChange={(e) => setOrderType(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold bg-white focus:border-amber-600 focus:outline-none"><option value="Pickup">Pickup</option>{deliveryEnabled && <option value="Delivery">Delivery (+${deliveryFee} JMD)</option>}</select></div>
-                  <button onClick={handleCheckout} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-base tracking-wide mt-2">Send Order via WhatsApp 🚀</button>
+                  <button onClick={handleCheckout} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-base tracking-wide mt-2">Send Order & Get Receipt 🚀</button>
                 </div>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'my-orders' ? (
+          <div className="space-y-4">
+            <div className="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-950">
+              <h3 className="font-black text-base flex items-center gap-2"><FileText size={18} /> Customer Order Receipts</h3>
+              <p className="text-xs font-medium mt-0.5">Here are the orders placed from this device. Tap any order to open its full digital receipt.</p>
+            </div>
+
+            {orders.length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl text-center shadow-sm border-2 border-stone-200">
+                <p className="text-sm text-stone-500 font-bold">No orders or receipts found on this device yet.</p>
+                <button onClick={() => setActiveTab('menu')} className="mt-4 bg-amber-900 text-white px-5 py-2.5 rounded-xl text-xs font-black">Browse Menu</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {orders.map(order => (
+                  <div key={order.id} className="bg-white p-4 rounded-2xl shadow-sm border-2 border-stone-200 flex justify-between items-center">
+                    <div>
+                      <span className="font-black text-amber-950 text-base">{order.id}</span>
+                      <p className="text-xs text-stone-500 font-bold">{order.timestamp} • {order.customerName}</p>
+                      <p className="text-xs font-black text-stone-900 mt-1">${order.total} JMD ({order.type})</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full text-white ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>
+                        {order.status}
+                      </span>
+                      <button 
+                        onClick={() => setSelectedReceipt(order)} 
+                        className="bg-amber-900 text-amber-50 px-3.5 py-2 rounded-xl text-xs font-black hover:bg-amber-950 shadow"
+                      >
+                        View Receipt 🧾
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -594,7 +690,10 @@ export default function App() {
                           
                           <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
                             <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
-                            <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}</button>
+                            <div className="flex gap-2">
+                              <button onClick={() => setSelectedReceipt(order)} className="text-xs px-3 py-2 bg-stone-900 text-white rounded-xl font-black">Receipt</button>
+                              <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen' : 'Complete'}</button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -667,21 +766,21 @@ export default function App() {
                 <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
                   <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}</h3>
                   <form onSubmit={handleSaveDish} className="space-y-4">
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Dish Name</label><input type="text" value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="e.g. Oxtail" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label><input type="text" value={dishCategory} onChange={(e) => setDishCategory(e.target.value)} placeholder="e.g. Mains" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label><input type="text" value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="e.g. Slow-cooked with butter beans." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Item Name</label><input type="text" value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="e.g. Ting or Boom" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label><input type="text" value={dishCategory} onChange={(e) => setDishCategory(e.target.value)} placeholder="e.g. Bottle Drinks" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label><input type="text" value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="e.g. Cold bottled drink." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
                     <div>
                       <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery</label>
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
                       {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }} className="border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
                     </div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="1800" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
+                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="200" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
                     <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
                       <input type="checkbox" id="isSpecialCheck" checked={dishIsSpecial} onChange={(e) => setDishIsSpecial(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" />
                       <label htmlFor="isSpecialCheck" className="text-xs font-black text-amber-950 uppercase tracking-wide cursor-pointer">⭐ Mark as Chef's Special (Highlights on Menu)</label>
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <button type="submit" className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md">{editingId ? 'Save Changes' : 'Add Dish to Menu'}</button>
+                      <button type="submit" className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md">{editingId ? 'Save Changes' : 'Add Item to Menu'}</button>
                       {editingId && <button type="button" onClick={cancelEditing} className="bg-stone-200 text-stone-700 px-6 py-3.5 rounded-2xl text-sm font-black hover:bg-stone-300 transition-all">Cancel</button>}
                     </div>
                   </form>
@@ -747,7 +846,10 @@ export default function App() {
                           
                           <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
                             <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
-                            <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen Order' : 'Mark Completed'}</button>
+                            <div className="flex gap-2">
+                              <button onClick={() => setSelectedReceipt(order)} className="text-xs px-3 py-2 bg-stone-900 text-white rounded-xl font-black">Receipt</button>
+                              <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen' : 'Complete'}</button>
+                            </div>
                           </div>
                         </div>
                       ))}
