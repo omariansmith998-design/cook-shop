@@ -1,933 +1,758 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Utensils, Settings, ClipboardList, Plus, Trash2, MapPin, Clock, Edit2, Check, Flame, Star, Image as ImageIcon, Database, ShieldAlert, Lock, Image, FileText } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yard Vibes Cookshop</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div id="root"></div>
 
-interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  imageUrl?: string;
-  isAvailable: boolean;
-  isSpecial?: boolean;
-}
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-interface Order {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  items: { name: string; price: number }[];
-  total: number;
-  type: 'Pickup' | 'Delivery';
-  status: 'Received' | 'Completed';
-  timestamp: string;
-}
+        // Default Initial Menu
+        const INITIAL_MENU = [
+            { id: 1, name: "Curry Goat & Rice", price: 1400, category: "Mains", desc: "Tender goat slow-cooked in Jamaican curry spices with butter bean.", image: "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: true },
+            { id: 2, name: "Brown Stew Chicken", price: 1000, category: "Mains", desc: "Caramelized savory chicken stewed with carrots, bell peppers, and thyme.", image: "https://images.unsplash.com/photo-1604908176997-125f2596f37c?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: false },
+            { id: 3, name: "Fried Chicken & Chips", price: 900, category: "Mains", desc: "Crispy seasoned golden fried chicken served with hot seasoned french fries.", image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: true },
+            { id: 4, name: "Festival (2 pcs)", price: 150, category: "Sides", desc: "Sweet, golden-brown fried cornmeal dumplings.", image: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: false },
+            { id: 5, name: "Fried Plantains", price: 200, category: "Sides", desc: "Sweet ripe yellow plantains fried to perfection.", image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: false },
+            { id: 6, name: "Tru-Juice Pineapple", price: 250, category: "Drinks", desc: "Refreshing Jamaican chilled fruit drink.", image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: false }
+        ];
 
-export default function App() {
-  const [isReady, setIsReady] = useState(false);
+        // Default Event Menu Items
+        const INITIAL_EVENT_MENU = [
+            { id: 101, name: "Steamed Fish & Bammy (Weekend Special)", price: 2200, category: "Event Specials", desc: "Fresh snapper steamed with okra, crackers, and scotch bonnet pepper.", image: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: true },
+            { id: 102, name: "Mannish Water (Soup)", price: 800, category: "Event Specials", desc: "Traditional goat soup with green bananas, yam, and dumplings.", image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80", inStock: true, isSpecial: true }
+        ];
 
-  // Inject Tailwind & Supabase CDNs with smooth loading check
-  useEffect(() => {
-    if (!document.getElementById('tailwind-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'tailwind-cdn';
-      script.src = 'https://cdn.tailwindcss.com';
-      script.onload = () => {
-        setTimeout(() => setIsReady(true), 150);
-      };
-      document.head.appendChild(script);
-    } else {
-      setIsReady(true);
-    }
+        function App() {
+            // State Management
+            const [view, setView] = useState('customer'); // 'customer' or 'admin'
+            const [shopConfig, setShopConfig] = useState(() => {
+                const saved = localStorage.getItem('cookshop_config');
+                return saved ? JSON.parse(saved) : {
+                    name: "Yard Vibes Cookshop",
+                    phone: "18765550192",
+                    status: "Open",
+                    hours: "Mon - Sat: 10:00 AM - 9:00 PM",
+                    location: "Montego Bay, St. James",
+                    crossPromoName: "Sister's Island Treats",
+                    crossPromoUrl: "https://sisters-treats.vercel.app",
+                    isEventMode: false,
+                    eventTitle: "🔥 Weekend Fish Fry & Sound System Link-Up!",
+                    eventBanner: "Live music, fresh snapper, and ice cold drinks rolling all weekend!"
+                };
+            });
 
-    if (!document.getElementById('supabase-cdn')) {
-      const sbScript = document.createElement('script');
-      sbScript.id = 'supabase-cdn';
-      sbScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-      sbScript.onload = () => setSbLoaded(true);
-      document.head.appendChild(sbScript);
-    } else if ((window as any).supabase) {
-      setSbLoaded(true);
-    }
-  }, []);
+            const [menu, setMenu] = useState(() => {
+                const saved = localStorage.getItem('cookshop_menu');
+                return saved ? JSON.parse(saved) : INITIAL_MENU;
+            });
 
-  const [sbLoaded, setSbLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'menu' | 'owner' | 'my-orders'>('menu');
-  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState<Order | null>(null);
+            const [eventMenu, setEventMenu] = useState(() => {
+                const saved = localStorage.getItem('cookshop_event_menu');
+                return saved ? JSON.parse(saved) : INITIAL_EVENT_MENU;
+            });
 
-  // Supabase Credentials State
-  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('cookshop_sb_url') || '');
-  const [supabaseKey, setSupabaseKey] = useState(() => localStorage.getItem('cookshop_sb_key') || '');
-  
-  // Shop Settings State
-  const [shopName, setShopName] = useState(() => localStorage.getItem('cookshop_name') || 'Island Spice Cookshop');
-  const [shopPhone, setShopPhone] = useState(() => localStorage.getItem('cookshop_phone') || '18767739161');
-  const [shopInstagram, setShopInstagram] = useState(() => localStorage.getItem('cookshop_ig') || 'islandspicecookshop');
-  const [shopFacebook, setShopFacebook] = useState(() => localStorage.getItem('cookshop_fb') || 'islandspicecookshop');
-  const [shopAddress, setShopAddress] = useState(() => localStorage.getItem('cookshop_address') || 'Main Street, Montego Bay');
-  const [shopMapLink, setShopMapLink] = useState(() => localStorage.getItem('cookshop_map') || 'https://maps.google.com');
-  const [shopStatus, setShopStatus] = useState<'Open' | 'Closing Soon' | 'Closed'>(() => (localStorage.getItem('cookshop_status') as any) || 'Open');
-  const [deliveryEnabled, setDeliveryEnabled] = useState(() => localStorage.getItem('cookshop_delivery') === 'true');
-  const [deliveryFee, setDeliveryFee] = useState(() => Number(localStorage.getItem('cookshop_delivery_fee')) || 300);
-  const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('cookshop_pin') || '1234');
-  const [shopHeaderImage, setShopHeaderImage] = useState(() => localStorage.getItem('cookshop_header_img') || '');
+            const [cart, setCart] = useState(() => {
+                const saved = localStorage.getItem('cookshop_cart');
+                return saved ? JSON.parse(saved) : [];
+            });
 
-  // Master Developer PIN
-  const MASTER_DEV_PIN = '9999';
+            const [orders, setOrders] = useState(() => {
+                const saved = localStorage.getItem('cookshop_orders');
+                return saved ? JSON.parse(saved) : [];
+            });
 
-  // Menu State
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const saved = localStorage.getItem('cookshop_menu');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: '1', name: 'Brown Stew Chicken', category: 'Mains', description: 'Served with rice and peas or ground provision.', price: 1000, imageUrl: 'https://images.unsplash.com/photo-1545224182-5e04c8f5f3e4?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: true },
-      { id: '2', name: 'Curry Goat', category: 'Mains', description: 'Tender goat mutton cooked in authentic island curry.', price: 1500, imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: true },
-      { id: '3', name: 'Fried Dumplings (3pc)', category: 'Sides', description: 'Crispy golden fried dough dumplings.', price: 300, imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
-      { id: '4', name: 'Cornmeal Porridge', category: 'Breakfast Sides', description: 'Rich, smooth coconut-flavored cornmeal porridge.', price: 500, imageUrl: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
-      { id: '5', name: 'Ting Grapefruit Soda', category: 'Bottle Drinks', description: 'Refreshing Jamaican grapefruit sparkling beverage.', price: 200, imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false },
-      { id: '6', name: 'Boom Energy Drink', category: 'Bottle Drinks', description: 'Popular Jamaican energy booster.', price: 250, imageUrl: 'https://images.unsplash.com/photo-1622543925917-763c34d1a86e?auto=format&fit=crop&w=400&q=80', isAvailable: true, isSpecial: false }
-    ];
-  });
+            const [suggestions, setSuggestions] = useState(() => {
+                const saved = localStorage.getItem('cookshop_suggestions');
+                return saved ? JSON.parse(saved) : [
+                    { id: 1, text: "Oxtail on Fridays", count: 14 },
+                    { id: 2, text: "Curry Duck", count: 9 },
+                    { id: 3, text: "Stuffed Conch", count: 6 }
+                ];
+            });
 
-  // Cart & Orders State
-  const [cart, setCart] = useState<MenuItem[]>([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [orderType, setOrderType] = useState<'Pickup' | 'Delivery'>('Pickup');
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('cookshop_orders');
-    return saved ? JSON.parse(saved) : [];
-  });
+            const [selectedCategory, setSelectedCategory] = useState('All');
+            const [isCartOpen, setIsCartOpen] = useState(false);
+            const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
+            const [selectedItemForCustomizer, setSelectedItemForCustomizer] = useState(null);
+            
+            // Customizer state
+            const [pepperLevel, setPepperLevel] = useState('Normal Pepper');
+            const [gravyOption, setGravyOption] = useState('Normal Gravy');
+            const [customerName, setCustomerName] = useState('');
+            const [customerPhone, setCustomerPhone] = useState('');
+            const [paymentMethod, setPaymentMethod] = useState('Cash on Pickup');
+            const [bankRefCode, setBankRefCode] = useState('');
 
-  const getSupabaseClient = () => {
-    if (!sbLoaded || !supabaseUrl || !supabaseKey || !(window as any).supabase) return null;
-    try {
-      if (!supabaseUrl.startsWith('https://')) return null;
-      return (window as any).supabase.createClient(supabaseUrl.trim(), supabaseKey.trim());
-    } catch (err) {
-      return null;
-    }
-  };
+            // Suggestion Modal state
+            const [suggestText, setSuggestText] = useState('');
+            const [selectedSuggestionCheckbox, setSelectedSuggestionCheckbox] = useState('');
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('cookshop_sb_url', supabaseUrl);
-      localStorage.setItem('cookshop_sb_key', supabaseKey);
-      localStorage.setItem('cookshop_name', shopName);
-      localStorage.setItem('cookshop_phone', shopPhone);
-      localStorage.setItem('cookshop_ig', shopInstagram);
-      localStorage.setItem('cookshop_fb', shopFacebook);
-      localStorage.setItem('cookshop_address', shopAddress);
-      localStorage.setItem('cookshop_map', shopMapLink);
-      localStorage.setItem('cookshop_status', shopStatus);
-      localStorage.setItem('cookshop_delivery', String(deliveryEnabled));
-      localStorage.setItem('cookshop_delivery_fee', String(deliveryFee));
-      localStorage.setItem('cookshop_pin', ownerPin);
-      localStorage.setItem('cookshop_header_img', shopHeaderImage);
-      localStorage.setItem('cookshop_menu', JSON.stringify(menuItems));
-      localStorage.setItem('cookshop_orders', JSON.stringify(orders));
-    } catch (e) {
-      console.warn('Storage quota limit reached.');
-    }
+            // Admin Login state
+            const [adminPin, setAdminPin] = useState('');
+            const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
-    const sb = getSupabaseClient();
-    if (sb) {
-      sb.from('shop_settings').upsert({
-        id: 1,
-        shop_name: shopName,
-        shop_phone: shopPhone,
-        shop_address: shopAddress,
-        shop_map: shopMapLink,
-        shop_status: shopStatus,
-        delivery_enabled: deliveryEnabled,
-        delivery_fee: deliveryFee,
-        owner_pin: ownerPin
-      }).then(() => {});
+            // Audio Alert Ref
+            const audioRef = useRef(null);
 
-      menuItems.forEach(item => {
-        sb.from('menu_items').upsert({
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          description: item.description,
-          price: item.price,
-          image_url: item.imageUrl,
-          is_available: item.isAvailable,
-          is_special: item.isSpecial
-        }).then(() => {});
-      });
-    }
-  }, [supabaseUrl, supabaseKey, shopName, shopPhone, shopInstagram, shopFacebook, shopAddress, shopMapLink, shopStatus, deliveryEnabled, deliveryFee, ownerPin, shopHeaderImage, menuItems, orders, sbLoaded]);
+            // Save to LocalStorage
+            useEffect(() => { localStorage.setItem('cookshop_config', JSON.stringify(shopConfig)); }, [shopConfig]);
+            useEffect(() => { localStorage.setItem('cookshop_menu', JSON.stringify(menu)); }, [menu]);
+            useEffect(() => { localStorage.setItem('cookshop_event_menu', JSON.stringify(eventMenu)); }, [eventMenu]);
+            useEffect(() => { localStorage.setItem('cookshop_cart', JSON.stringify(cart)); }, [cart]);
+            useEffect(() => { localStorage.setItem('cookshop_orders', JSON.stringify(orders)); }, [orders]);
+            useEffect(() => { localStorage.setItem('cookshop_suggestions', JSON.stringify(suggestions)); }, [suggestions]);
 
-  // Dish Form State
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [dishName, setDishName] = useState('');
-  const [dishCategory, setDishCategory] = useState('Mains');
-  const [dishDesc, setDishDesc] = useState('');
-  const [dishPrice, setDishPrice] = useState('');
-  const [dishImage, setDishImage] = useState('');
-  const [dishIsSpecial, setDishIsSpecial] = useState(false);
+            // Play Chime on New Order
+            const playChime = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.2); // A5
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                } catch(e) { console.log("Audio not allowed yet"); }
+            };
 
-  // Compressed Image Upload Helper
-  const handleCompressedImage = (file: File, callback: (result: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIM = 400;
-        let width = img.width;
-        let height = img.height;
+            // Add to Cart with Customizer Options
+            const handleAddToCart = (item) => {
+                setSelectedItemForCustomizer(item);
+                setPepperLevel('Normal Pepper');
+                setGravyOption('Normal Gravy');
+            };
 
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height *= MAX_DIM / width;
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width *= MAX_DIM / height;
-            height = MAX_DIM;
-          }
+            const confirmAddToCart = () => {
+                if (!selectedItemForCustomizer) return;
+                const cartItem = {
+                    ...selectedItemForCustomizer,
+                    cartId: Date.now() + Math.random(),
+                    options: `🌶️ ${pepperLevel} | 🍛 ${gravyOption}`
+                };
+                setCart([...cart, cartItem]);
+                setSelectedItemForCustomizer(null);
+            };
+
+            const removeFromCart = (cartId) => {
+                setCart(cart.filter(item => item.cartId !== cartId));
+            };
+
+            const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+
+            // Checkout Handlers
+            const handleWhatsAppCheckout = () => {
+                if (!customerName.trim() || !customerPhone.trim()) {
+                    alert("Please enter your Name and Phone Number before checking out.");
+                    return;
+                }
+                const orderSummary = cart.map(i => `• ${i.name} (${i.options}) - $${i.price} JMD`).join('%0A');
+                const total = `Total: $${cartTotal} JMD`;
+                const paymentInfo = `Payment: ${paymentMethod} ${paymentRefText()}`;
+                const custInfo = `Customer: ${customerName} (${customerPhone})%0A`;
+                const text = `*NEW COOKSHOP ORDER*%0A${custInfo}%0A${orderSummary}%0A%0A${total}%0A${paymentInfo}`;
+                
+                const newOrder = {
+                    id: Date.now(),
+                    customerName,
+                    customerPhone,
+                    items: [...cart],
+                    total: cartTotal,
+                    payment: paymentMethod,
+                    time: new Date().toLocaleTimeString(),
+                    status: 'Pending'
+                };
+                setOrders([newOrder, ...orders]);
+                playChime();
+
+                window.open(`https://wa.me/${shopConfig.phone}?text=${text}`, '_blank');
+                setCart([]);
+                setIsCartOpen(false);
+            };
+
+            const handleSocialCheckout = (platform) => {
+                if (!customerName.trim() || !customerPhone.trim()) {
+                    alert("Please enter your Name and Phone Number before checking out.");
+                    return;
+                }
+                const orderSummary = cart.map(i => `• ${i.name} (${i.options}) - $${i.price} JMD`).join('\n');
+                const text = `NEW ORDER:\nCustomer: ${customerName} (${customerPhone})\n\n${orderSummary}\n\nTotal: $${cartTotal} JMD\nPayment: ${paymentMethod}`;
+                
+                navigator.clipboard.writeText(text);
+                alert(`Order copied to clipboard! Paste it directly into our ${platform} DM.`);
+
+                const newOrder = {
+                    id: Date.now(),
+                    customerName,
+                    customerPhone,
+                    items: [...cart],
+                    total: cartTotal,
+                    payment: paymentMethod,
+                    time: new Date().toLocaleTimeString(),
+                    status: 'Pending'
+                };
+                setOrders([newOrder, ...orders]);
+                playChime();
+
+                setCart([]);
+                setIsCartOpen(false);
+            };
+
+            const paymentRefText = () => {
+                if (paymentMethod === 'Bank Transfer / Lynk' && bankRefCode) {
+                    return `(Ref: ${bankRefCode})`;
+                }
+                return '';
+            };
+
+            // Submit Suggestion
+            const submitSuggestion = (e) => {
+                e.preventDefault();
+                const textToSubmit = suggestText.trim() || selectedSuggestionCheckbox;
+                if (!textToSubmit) return;
+
+                const existing = suggestions.find(s => s.text.toLowerCase() === textToSubmit.toLowerCase());
+                if (existing) {
+                    setSuggestions(suggestions.map(s => s.text === existing.text ? {...s, count: s.count + 1} : s));
+                } else {
+                    setSuggestions([...suggestions, { id: Date.now(), text: textToSubmit, count: 1 }]);
+                }
+                setSuggestText('');
+                setSelectedSuggestionCheckbox('');
+                setIsSuggestionOpen(false);
+                alert("Thank you! Your suggestion has been sent to the kitchen wishlist.");
+            };
+
+            // Admin Login Handler
+            const handleAdminLogin = (e) => {
+                e.preventDefault();
+                if (adminPin === '1234' || adminPin === '9999') {
+                    setIsAdminLoggedIn(true);
+                } else {
+                    alert("Incorrect PIN. Try 1234");
+                }
+            };
+
+            return (
+                <div className="max-w-md mx-auto bg-slate-900 min-h-screen pb-24 shadow-2xl relative border-x border-slate-800">
+                    
+                    {/* Top Bar / Navigation */}
+                    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+                        <div>
+                            <h1 className="font-extrabold text-lg text-emerald-400 flex items-center gap-1.5">
+                                🍲 {shopConfig.name}
+                            </h1>
+                            <p className="text-xs text-slate-400">{shopConfig.location} • <span className="text-emerald-400 font-semibold">{shopConfig.status}</span></p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => setView(view === 'customer' ? 'admin' : 'customer')}
+                                className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-700 font-medium transition">
+                                {view === 'customer' ? '🔒 Admin' : '🏠 Menu'}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Sister Shop Cross-Promotion Banner */}
+                    {shopConfig.crossPromoName && view === 'customer' && (
+                        <div className="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between text-xs">
+                            <span className="text-amber-300 font-medium">✨ Check out family spot: <strong className="text-white">{shopConfig.crossPromoName}</strong></span>
+                            <a href={shopConfig.crossPromoUrl} target="_blank" rel="noreferrer" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded shadow transition">
+                                Visit ↗
+                            </a>
+                        </div>
+                    )}
+
+                    {/* CUSTOMER VIEW */}
+                    {view === 'customer' && (
+                        <main className="p-4">
+                            
+                            {/* Event Mode Banner */}
+                            {shopConfig.isEventMode && (
+                                <div className="mb-6 bg-gradient-to-r from-red-600 to-amber-600 p-4 rounded-2xl shadow-lg border border-red-400/30 text-white">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Special Event</span>
+                                    </div>
+                                    <h2 className="font-bold text-lg mb-1">{shopConfig.eventTitle}</h2>
+                                    <p className="text-xs text-amber-100">{shopConfig.eventBanner}</p>
+                                </div>
+                            )}
+
+                            {/* Hours & Info */}
+                            <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3 mb-5 text-xs text-slate-300 flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-slate-200">🕒 Operating Hours</p>
+                                    <p className="text-slate-400">{shopConfig.hours}</p>
+                                </div>
+                                <button 
+                                    onClick={() => setIsSuggestionOpen(true)}
+                                    className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-lg font-medium text-center transition">
+                                    💡 Suggest Dish
+                                </button>
+                            </div>
+
+                            {/* Category Filter Tabs */}
+                            <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+                                {['All', 'Mains', 'Sides', 'Drinks', ...(shopConfig.isEventMode ? ['Event Specials'] : [])].map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                                            selectedCategory === cat 
+                                                ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' 
+                                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                        }`}>
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Menu Grid */}
+                            <div className="space-y-4">
+                                {[...menu, ...(shopConfig.isEventMode ? eventMenu : [])]
+                                    .filter(item => selectedCategory === 'All' || item.category === selectedCategory)
+                                    .map(item => (
+                                    <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow hover:border-slate-700 transition flex gap-3 p-3">
+                                        <img src={item.image} alt={item.name} className="w-24 h-24 object-cover rounded-xl bg-slate-800 flex-shrink-0" />
+                                        <div className="flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex items-start justify-between gap-1">
+                                                    <h3 className="font-bold text-sm text-slate-100">{item.name}</h3>
+                                                    {item.isSpecial && <span className="bg-amber-500/20 text-amber-400 text-[10px] px-1.5 py-0.5 rounded font-bold">★ Special</span>}
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-1 line-clamp-2">{item.desc}</p>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-2">
+                                                <span className="font-extrabold text-emerald-400 text-sm">${item.price} JMD</span>
+                                                {item.inStock ? (
+                                                    <button 
+                                                        onClick={() => handleAddToCart(item)}
+                                                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow">
+                                                        + Add to Box
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded font-bold">Sold Out</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Sticky Floating Cart Bar */}
+                            {cart.length > 0 && (
+                                <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto bg-emerald-600 text-slate-950 p-3.5 rounded-2xl shadow-2xl flex items-center justify-between z-40 animate-bounce-short">
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-emerald-800 text-white w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs">
+                                            {cart.length}
+                                        </span>
+                                        <span className="font-bold text-sm">Box Total: ${cartTotal} JMD</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsCartOpen(true)}
+                                        className="bg-slate-950 text-emerald-400 font-bold px-4 py-2 rounded-xl text-xs shadow hover:bg-slate-900 transition">
+                                        Review & Checkout ➔
+                                    </button>
+                                </div>
+                            )}
+                        </main>
+                    )}
+
+                    {/* ADMIN VIEW */}
+                    {view === 'admin' && (
+                        <main className="p-4">
+                            {!isAdminLoggedIn ? (
+                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-center max-w-xs mx-auto mt-12">
+                                    <h2 className="text-lg font-bold text-slate-100 mb-2">🔒 Owner Portal</h2>
+                                    <p className="text-xs text-slate-400 mb-4">Enter your 4-digit PIN to manage orders and settings.</p>
+                                    <form onSubmit={handleAdminLogin} className="space-y-3">
+                                        <input 
+                                            type="password" 
+                                            placeholder="Enter PIN (1234)" 
+                                            value={adminPin}
+                                            onChange={(e) => setAdminPin(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-center text-lg tracking-widest text-white focus:outline-none focus:border-emerald-500"
+                                            maxLength="4"
+                                            required
+                                        />
+                                        <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition">
+                                            Unlock Dashboard
+                                        </button>
+                                    </form>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+                                        <div>
+                                            <h2 className="font-bold text-sm text-emerald-400">Kitchen Operations Hub</h2>
+                                            <p className="text-xs text-slate-400">Live order queue & customization controls.</p>
+                                        </div>
+                                        <button onClick={() => setIsAdminLoggedIn(false)} className="text-xs bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300">Lock</button>
+                                    </div>
+
+                                    {/* Event Mode Toggle Card */}
+                                    <div className="bg-slate-800/40 border border-slate-700 p-4 rounded-2xl">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="font-bold text-sm text-amber-400">🎉 Event Mode & Event Menu</h3>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={shopConfig.isEventMode}
+                                                onChange={(e) => setShopConfig({...shopConfig, isEventMode: e.target.checked})}
+                                                className="w-5 h-5 accent-emerald-500 cursor-pointer"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-slate-400 mb-3">Turn on for weekend fish fries or special yard cookout events.</p>
+                                        {shopConfig.isEventMode && (
+                                            <div className="space-y-2">
+                                                <input 
+                                                    type="text" 
+                                                    value={shopConfig.eventTitle}
+                                                    onChange={(e) => setShopConfig({...shopConfig, eventTitle: e.target.value})}
+                                                    placeholder="Event Title"
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    value={shopConfig.eventBanner}
+                                                    onChange={(e) => setShopConfig({...shopConfig, eventBanner: e.target.value})}
+                                                    placeholder="Event Description Banner"
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Live Orders Queue */}
+                                    <div className="bg-slate-800/40 border border-slate-700 p-4 rounded-2xl">
+                                        <h3 className="font-bold text-sm text-slate-200 mb-3 flex items-center justify-between">
+                                            <span>🔔 Incoming Orders Queue</span>
+                                            <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-bold">{orders.length} Orders</span>
+                                        </h3>
+                                        {orders.length === 0 ? (
+                                            <p className="text-xs text-slate-500 text-center py-4">No active orders yet.</p>
+                                        ) : (
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                                {orders.map(ord => (
+                                                    <div key={ord.id} className="bg-slate-900 border border-slate-700 p-3 rounded-xl text-xs space-y-1">
+                                                        <div className="flex justify-between font-bold text-slate-200">
+                                                            <span>{ord.customerName} ({ord.customerPhone})</span>
+                                                            <span className="text-emerald-400">{ord.time}</span>
+                                                        </div>
+                                                        <p className="text-slate-400">Payment: <strong className="text-slate-300">{ord.payment}</strong></p>
+                                                        <div className="border-t border-slate-800 pt-1 mt-1">
+                                                            {ord.items.map((i, idx) => (
+                                                                <div key={idx} className="flex justify-between text-slate-300">
+                                                                    <span>{i.name} <span className="text-[10px] text-slate-500">({i.options})</span></span>
+                                                                    <span>${i.price}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex justify-between items-center pt-2 font-bold text-emerald-400 border-t border-slate-800">
+                                                            <span>Total: ${ord.total} JMD</span>
+                                                            <button 
+                                                                onClick={() => setOrders(orders.filter(o => o.id !== ord.id))}
+                                                                className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1 rounded text-[10px]">
+                                                                Complete / Clear
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Customer Suggestion Box Tally */}
+                                    <div className="bg-slate-800/40 border border-slate-700 p-4 rounded-2xl">
+                                        <h3 className="font-bold text-sm text-slate-200 mb-3">💡 Customer Wishlist & Suggestions</h3>
+                                        <div className="space-y-2">
+                                            {suggestions.map(s => (
+                                                <div key={s.id} className="bg-slate-900 border border-slate-700 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                                                    <span className="text-slate-300 font-medium">{s.text}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full">{s.count} votes</span>
+                                                        <button 
+                                                            onClick={() => setSuggestions(suggestions.filter(item => item.id !== s.id))}
+                                                            className="text-red-400 hover:text-red-300 font-bold px-1">×</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Branding & Cross-Promo Settings */}
+                                    <div className="bg-slate-800/40 border border-slate-700 p-4 rounded-2xl space-y-3">
+                                        <h3 className="font-bold text-sm text-slate-200">⚙️ Shop Branding & Sister Link</h3>
+                                        <div>
+                                            <label className="text-[11px] text-slate-400 block mb-1">Shop Name</label>
+                                            <input 
+                                                type="text" 
+                                                value={shopConfig.name}
+                                                onChange={(e) => setShopConfig({...shopConfig, name: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-slate-400 block mb-1">WhatsApp Order Number</label>
+                                            <input 
+                                                type="text" 
+                                                value={shopConfig.phone}
+                                                onChange={(e) => setShopConfig({...shopConfig, phone: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-slate-400 block mb-1">Sister's Spot Name (Cross-Promotion)</label>
+                                            <input 
+                                                type="text" 
+                                                value={shopConfig.crossPromoName}
+                                                onChange={(e) => setShopConfig({...shopConfig, crossPromoName: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-slate-400 block mb-1">Sister's Spot Link (URL)</label>
+                                            <input 
+                                                type="text" 
+                                                value={shopConfig.crossPromoUrl}
+                                                onChange={(e) => setShopConfig({...shopConfig, crossPromoUrl: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                    )}
+
+                    {/* PLATE CUSTOMIZER MODAL */}
+                    {selectedItemForCustomizer && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl animate-fade-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-base text-slate-100">Customize Your Plate</h3>
+                                    <button onClick={() => setSelectedItemForCustomizer(null)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-emerald-400 font-bold">{selectedItemForCustomizer.name} — ${selectedItemForCustomizer.price} JMD</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{selectedItemForCustomizer.desc}</p>
+                                </div>
+
+                                {/* Pepper Level */}
+                                <div>
+                                    <label className="text-xs font-bold text-slate-300 block mb-1.5">🌶️ Pepper / Spice Level</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['No Pepper', 'Normal Pepper', 'Extra Spicy'].map(lvl => (
+                                            <button
+                                                key={lvl}
+                                                type="button"
+                                                onClick={() => setPepperLevel(lvl)}
+                                                className={`py-2 px-1 rounded-xl text-xs font-semibold border transition ${
+                                                    pepperLevel === lvl 
+                                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+                                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                                                }`}>
+                                                {lvl}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Gravy Option */}
+                                <div>
+                                    <label className="text-xs font-bold text-slate-300 block mb-1.5">🍛 Gravy Style</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['No Gravy', 'Normal Gravy', 'Extra Gravy'].map(grav => (
+                                            <button
+                                                key={grav}
+                                                type="button"
+                                                onClick={() => setGravyOption(grav)}
+                                                className={`py-2 px-1 rounded-xl text-xs font-semibold border transition ${
+                                                    gravyOption === grav 
+                                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+                                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                                                }`}>
+                                                {grav}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={confirmAddToCart}
+                                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-lg shadow-emerald-500/20 mt-2">
+                                    Add to Order Box
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SUGGESTION MODAL */}
+                    {isSuggestionOpen && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-base text-slate-100">💡 Suggest a Dish</h3>
+                                    <button onClick={() => setIsSuggestionOpen(false)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+                                </div>
+                                <p className="text-xs text-slate-400">What do you want to see on the menu next? Tap a popular option or type your own!</p>
+
+                                <form onSubmit={submitSuggestion} className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        {['Oxtail on Fridays', 'Curry Duck', 'Stuffed Conch', 'Mannish Water'].map(opt => (
+                                            <label key={opt} className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs transition ${selectedSuggestionCheckbox === opt ? 'bg-emerald-500/20 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}>
+                                                <input 
+                                                    type="radio" 
+                                                    name="suggestionOpt"
+                                                    checked={selectedSuggestionCheckbox === opt}
+                                                    onChange={() => { setSelectedSuggestionCheckbox(opt); setSuggestText(''); }}
+                                                    className="accent-emerald-500"
+                                                />
+                                                {opt}
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Or type your own craving here..."
+                                            value={suggestText}
+                                            onChange={(e) => { setSuggestText(e.target.value); setSelectedSuggestionCheckbox(''); }}
+                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                        />
+                                    </div>
+
+                                    <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow">
+                                        Submit Suggestion
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CART & CHECKOUT MODAL */}
+                    {isCartOpen && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                            <div className="bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+                                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                                    <h3 className="font-bold text-base text-slate-100">🛒 Your Order Box</h3>
+                                    <button onClick={() => setIsCartOpen(false)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+                                </div>
+
+                                {/* Items List */}
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {cart.map((item) => (
+                                        <div key={item.cartId} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                                            <div>
+                                                <p className="font-bold text-slate-200">{item.name}</p>
+                                                <p className="text-[10px] text-emerald-400">{item.options}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-bold text-slate-300">${item.price} JMD</span>
+                                                <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 font-bold">×</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Customer Info */}
+                                <div className="space-y-2 pt-2 border-t border-slate-800">
+                                    <label className="text-xs font-bold text-slate-300 block">Your Contact Details</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Your Full Name"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                        required
+                                    />
+                                    <input 
+                                        type="tel" 
+                                        placeholder="Phone Number (e.g., 876-555-0192)"
+                                        value={customerPhone}
+                                        onChange={(e) => setCustomerPhone(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Payment Methods */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-300 block">Select Payment Method</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['Cash on Pickup', 'Bank Transfer / Lynk'].map(pm => (
+                                            <button
+                                                key={pm}
+                                                type="button"
+                                                onClick={() => setPaymentMethod(pm)}
+                                                className={`py-2 px-2 rounded-xl text-xs font-semibold border transition text-center ${
+                                                    paymentMethod === pm 
+                                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+                                                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                                                }`}>
+                                                {pm}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {paymentMethod === 'Bank Transfer / Lynk' && (
+                                        <input 
+                                            type="text" 
+                                            placeholder="Enter Transaction Ref Code"
+                                            value={bankRefCode}
+                                            onChange={(e) => setBankRefCode(e.target.value)}
+                                            className="w-full mt-2 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Total & Checkout Buttons */}
+                                <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[10px] text-slate-400">Total Amount</p>
+                                        <p className="text-base font-extrabold text-emerald-400">${cartTotal} JMD</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleSocialCheckout('Instagram/Facebook')}
+                                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-2.5 rounded-xl text-xs border border-slate-700 transition">
+                                            📋 Copy Social Order
+                                        </button>
+                                        <button 
+                                            onClick={handleWhatsAppCheckout}
+                                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow transition">
+                                            💬 WhatsApp Order
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
         }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        callback(canvas.toDataURL('image/jpeg', 0.7));
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleCompressedImage(file, (compressedBase64) => setDishImage(compressedBase64));
-    }
-  };
-
-  const handleHeaderImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleCompressedImage(file, (compressedBase64) => setShopHeaderImage(compressedBase64));
-    }
-  };
-
-  const handleOwnerTabClick = () => {
-    if (isOwnerUnlocked) {
-      setActiveTab('owner');
-    } else {
-      const pinInput = prompt('Enter PIN to access orders or admin panel:');
-      if (pinInput === MASTER_DEV_PIN) {
-        setIsOwnerUnlocked(true);
-        setIsDevMode(true);
-        setActiveTab('owner');
-      } else if (pinInput === ownerPin) {
-        setIsOwnerUnlocked(true);
-        setIsDevMode(false);
-        setActiveTab('owner');
-      } else if (pinInput !== null) {
-        alert('Incorrect PIN! Access denied.');
-      }
-    }
-  };
-
-  const addToCart = (item: MenuItem) => {
-    if (!item.isAvailable) return;
-    setCart([...cart, item]);
-  };
-
-  const removeFromCart = (index: number) => {
-    const newCart = [...cart];
-    newCart.splice(index, 1);
-    setCart(newCart);
-  };
-
-  const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price, 0);
-  const calculateGrandTotal = () => {
-    const sub = calculateSubtotal();
-    return orderType === 'Delivery' ? sub + deliveryFee : sub;
-  };
-
-  const prepareOrderData = () => {
-    if (!customerName || !customerPhone) {
-      alert('Please enter your name and phone number.');
-      return null;
-    }
-
-    const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
-    const subtotal = calculateSubtotal();
-    const grandTotal = calculateGrandTotal();
-    
-    const itemsList = cart.map(i => `- ${i.name} ($${i.price} JMD)`).join('\n');
-    let orderMessage = `Hi! I'd like to order *${orderId}*:\n${itemsList}\n\n*Subtotal:* $${subtotal} JMD`;
-    if (orderType === 'Delivery') {
-      orderMessage += `\n*Delivery Fee:* $${deliveryFee} JMD`;
-    }
-    orderMessage += `\n*Total:* $${grandTotal} JMD\n*Type:* ${orderType}\n*Name:* ${customerName}\n*Phone:* ${customerPhone}`;
-
-    const formattedTime = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-    const newOrder: Order = {
-      id: orderId,
-      customerName,
-      customerPhone,
-      items: cart,
-      total: grandTotal,
-      type: orderType,
-      status: 'Received',
-      timestamp: formattedTime
-    };
-
-    const updatedOrders = [newOrder, ...orders];
-    setOrders(updatedOrders);
-
-    const sb = getSupabaseClient();
-    if (sb) {
-      sb.from('orders').upsert({
-        id: orderId,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        items: cart,
-        total: grandTotal,
-        type: orderType,
-        status: 'Received',
-        timestamp: formattedTime
-      });
-    }
-
-    setSelectedReceipt(newOrder);
-    setCart([]);
-    return orderMessage;
-  };
-
-  const handleCheckoutWhatsApp = () => {
-    const message = prepareOrderData();
-    if (!message) return;
-    const cleanPhone = shopPhone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
-  const handleCheckoutSocial = (platform: 'instagram' | 'facebook') => {
-    const message = prepareOrderData();
-    if (!message) return;
-
-    navigator.clipboard.writeText(message).then(() => {
-      alert(`📋 Order copied to clipboard!\n\nWe've opened ${platform === 'instagram' ? 'Instagram' : 'Facebook'} for you. Just paste your order into the chat!`);
-    }).catch(() => {
-      alert('Order placed successfully! Receipt saved.');
-    });
-
-    if (platform === 'instagram') {
-      window.open(`https://instagram.com/${shopInstagram.replace('@', '')}`, '_blank');
-    } else {
-      window.open(`https://facebook.com/${shopFacebook}`, '_blank');
-    }
-  };
-
-  const handleSaveDish = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!dishName || !dishPrice) return;
-
-    let updatedMenu = [...menuItems];
-    if (editingId) {
-      updatedMenu = menuItems.map(item => item.id === editingId ? {
-        ...item,
-        name: dishName,
-        category: dishCategory,
-        description: dishDesc,
-        price: parseFloat(dishPrice),
-        imageUrl: dishImage || item.imageUrl,
-        isSpecial: dishIsSpecial
-      } : item);
-      setEditingId(null);
-    } else {
-      const newItem: MenuItem = {
-        id: Date.now().toString(),
-        name: dishName,
-        category: dishCategory,
-        description: dishDesc,
-        price: parseFloat(dishPrice),
-        imageUrl: dishImage || 'https://images.unsplash.com/photo-1545224182-5e04c8f5f3e4?auto=format&fit=crop&w=400&q=80',
-        isAvailable: true,
-        isSpecial: dishIsSpecial
-      };
-      updatedMenu = [...menuItems, newItem];
-    }
-
-    setMenuItems(updatedMenu);
-
-    const sb = getSupabaseClient();
-    if (sb) {
-      const targetItem = updatedMenu.find(i => i.id === (editingId || updatedMenu[updatedMenu.length - 1].id));
-      if (targetItem) {
-        await sb.from('menu_items').upsert({
-          id: targetItem.id,
-          name: targetItem.name,
-          category: targetItem.category,
-          description: targetItem.description,
-          price: targetItem.price,
-          image_url: targetItem.imageUrl,
-          is_available: targetItem.isAvailable,
-          is_special: targetItem.isSpecial
-        });
-      }
-    }
-
-    setDishName('');
-    setDishDesc('');
-    setDishPrice('');
-    setDishImage('');
-    setDishIsSpecial(false);
-    setDishCategory('Mains');
-  };
-
-  const startEditing = (item: MenuItem) => {
-    setEditingId(item.id);
-    setDishName(item.name);
-    setDishCategory(item.category);
-    setDishDesc(item.description);
-    setDishPrice(item.price.toString());
-    setDishImage(item.imageUrl || '');
-    setDishIsSpecial(item.isSpecial || false);
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setDishName('');
-    setDishDesc('');
-    setDishPrice('');
-    setDishImage('');
-    setDishIsSpecial(false);
-  };
-
-  const toggleAvailability = async (id: string) => {
-    const updated = menuItems.map(i => i.id === id ? { ...i, isAvailable: !i.isAvailable } : i);
-    setMenuItems(updated);
-    const item = updated.find(i => i.id === id);
-    const sb = getSupabaseClient();
-    if (sb && item) {
-      await sb.from('menu_items').update({ is_available: item.isAvailable }).eq('id', id);
-    }
-  };
-
-  const toggleSpecial = async (id: string) => {
-    const updated = menuItems.map(i => i.id === id ? { ...i, isSpecial: !i.isSpecial } : i);
-    setMenuItems(updated);
-    const item = updated.find(i => i.id === id);
-    const sb = getSupabaseClient();
-    if (sb && item) {
-      await sb.from('menu_items').update({ is_special: item.isSpecial }).eq('id', id);
-    }
-  };
-
-  const deleteDish = async (id: string) => {
-    if (confirm('Are you sure you want to delete this dish?')) {
-      setMenuItems(menuItems.filter(i => i.id !== id));
-      const sb = getSupabaseClient();
-      if (sb) {
-        await sb.from('menu_items').delete().eq('id', id);
-      }
-    }
-  };
-
-  const toggleOrderStatus = async (id: string) => {
-    const updated = orders.map(o => o.id === id ? { ...o, status: (o.status === 'Received' ? 'Completed' : 'Received') as any } : o);
-    setOrders(updated);
-    const order = updated.find(o => o.id === id);
-    const sb = getSupabaseClient();
-    if (sb && order) {
-      await sb.from('orders').update({ status: order.status }).eq('id', id);
-    }
-  };
-
-  const categories = ['All', '⭐ Specials', ...Array.from(new Set(menuItems.map(i => i.category)))];
-  const filteredMenuItems = selectedCategory === 'All' 
-    ? menuItems 
-    : selectedCategory === '⭐ Specials' 
-      ? menuItems.filter(i => i.isSpecial) 
-      : menuItems.filter(i => i.category === selectedCategory);
-
-  // Branded Loading Screen until Tailwind is active
-  if (!isReady) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: '#451a03', color: '#fef3c7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', zIndex: 99999 }}>
-        <div style={{ background: '#d97706', padding: '16px', borderRadius: '20px', marginBottom: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
-          <span style={{ fontSize: '32px' }}>🔥</span>
-        </div>
-        <h1 style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '0.05em', margin: 0 }}>{shopName}</h1>
-        <p style={{ fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 'bold', marginTop: '8px' }}>Loading Authentic Taste...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/50 to-stone-100 text-stone-900 font-sans pb-16">
-      <header className="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-950 text-white p-4 sm:p-5 shadow-xl border-b-4 border-amber-500 sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2.5">
-            {shopHeaderImage ? (
-              <img 
-                src={shopHeaderImage} 
-                alt="Logo" 
-                onClick={() => setShowImageModal(true)}
-                style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '12px', cursor: 'pointer', border: '2px solid #fbbf24', flexShrink: 0 }}
-                className="shadow-md hover:scale-105 transition-transform" 
-                title="Tap to zoom"
-              />
-            ) : (
-              <div className="bg-amber-600 p-2 rounded-xl shadow-md border border-amber-400 flex-shrink-0">
-                <Flame className="text-amber-100" size={24} />
-              </div>
-            )}
-            <div>
-              <h1 className="text-lg sm:text-2xl font-black tracking-wide drop-shadow">{shopName}</h1>
-              <p className="text-[10px] sm:text-[11px] text-amber-200 tracking-widest uppercase font-bold flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${shopStatus === 'Open' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
-                Authentic Jamaican Taste
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-1.5 bg-black/30 p-1 rounded-xl border border-white/10">
-            <button onClick={() => setActiveTab('menu')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'menu' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>Menu</button>
-            <button onClick={() => setActiveTab('my-orders')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'my-orders' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🧾 Receipts</button>
-            <button onClick={handleOwnerTabClick} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeTab === 'owner' ? 'bg-amber-500 text-white shadow-md' : 'text-amber-100 hover:text-white'}`}>🔒 Admin</button>
-          </div>
-        </div>
-      </header>
-
-      {/* Header Image Pop-up Modal */}
-      {showImageModal && shopHeaderImage && (
-        <div 
-          onClick={() => setShowImageModal(false)}
-          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm cursor-pointer"
-        >
-          <div className="relative max-w-md w-full bg-stone-900 rounded-3xl p-3 border-2 border-amber-400 shadow-2xl flex flex-col items-center">
-            <img 
-              src={shopHeaderImage} 
-              alt="Enlarged Header" 
-              className="w-full max-h-[75vh] object-contain rounded-2xl" 
-            />
-            <p className="text-xs text-amber-200 mt-3 font-bold tracking-widest uppercase">Tap anywhere to close</p>
-          </div>
-        </div>
-      )}
-
-      {/* Digital Receipt Popup Modal */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-4 border-amber-400 space-y-4 relative animate-fade-in">
-            <div className="text-center border-b pb-4">
-              <h3 className="text-xl font-black text-amber-950">{shopName}</h3>
-              <p className="text-xs font-bold text-stone-500">{shopAddress}</p>
-              <div className="mt-3 inline-block bg-amber-100 text-amber-950 px-3 py-1 rounded-full text-xs font-black">
-                Official Digital Receipt
-              </div>
-            </div>
-
-            <div className="space-y-1 text-xs font-semibold text-stone-700">
-              <p className="flex justify-between"><span>Order ID:</span> <span className="font-black text-stone-900">{selectedReceipt.id}</span></p>
-              <p className="flex justify-between"><span>Date/Time:</span> <span className="font-black text-stone-900">{selectedReceipt.timestamp}</span></p>
-              <p className="flex justify-between"><span>Customer:</span> <span className="font-black text-stone-900">{selectedReceipt.customerName}</span></p>
-              <p className="flex justify-between"><span>Phone:</span> <span className="font-black text-stone-900">{selectedReceipt.customerPhone}</span></p>
-              <p className="flex justify-between"><span>Fulfillment:</span> <span className="font-black text-stone-900">{selectedReceipt.type}</span></p>
-              <p className="flex justify-between"><span>Status:</span> <span className={`font-black px-2 py-0.5 rounded text-white ${selectedReceipt.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-600'}`}>{selectedReceipt.status}</span></p>
-            </div>
-
-            <div className="border-t border-b py-3 space-y-2 max-h-40 overflow-y-auto">
-              <p className="text-xs font-black uppercase text-stone-400 tracking-wider">Items Ordered</p>
-              {selectedReceipt.items.map((it, idx) => (
-                <div key={idx} className="flex justify-between text-xs font-bold text-stone-800">
-                  <span>{it.name}</span>
-                  <span className="text-amber-900">${it.price} JMD</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center pt-2 font-black text-lg text-amber-950">
-              <span>Total Paid:</span>
-              <span>${selectedReceipt.total} JMD</span>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button 
-                onClick={() => window.print()} 
-                className="flex-1 bg-amber-900 text-white py-3 rounded-2xl text-xs font-black hover:bg-amber-950 transition-all shadow"
-              >
-                Print / Save Receipt 🖨️
-              </button>
-              <button 
-                onClick={() => setSelectedReceipt(null)} 
-                className="bg-stone-200 text-stone-700 px-5 py-3 rounded-2xl text-xs font-black hover:bg-stone-300 transition-all"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="max-w-3xl mx-auto p-4 sm:p-6">
-        {shopStatus !== 'Open' && (
-          <div className={`mb-6 p-3.5 rounded-xl text-sm font-black text-center shadow-md flex items-center justify-center gap-2 border-2 ${shopStatus === 'Closing Soon' ? 'bg-amber-300 text-amber-950 border-amber-400' : 'bg-red-500 text-white border-red-600 animate-bounce'}`}>
-            <Clock size={20} /> Notice: We are currently {shopStatus.toUpperCase()}!
-          </div>
-        )}
-
-        {activeTab === 'menu' ? (
-          <div>
-            <div className="mb-6 p-4 sm:p-5 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl border-2 border-amber-200 text-amber-950 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
-              <div>
-                <p className="flex items-center gap-2 font-bold text-base"><MapPin size={18} className="text-amber-800 flex-shrink-0" /> {shopAddress}</p>
-                <p className="text-xs mt-1 font-semibold text-amber-900/80 pl-6">🛵 Delivery Fee: <span className="font-black">${deliveryFee} JMD</span> ({deliveryEnabled ? 'Available' : 'Disabled'})</p>
-              </div>
-              {shopMapLink && (
-                <a href={shopMapLink} target="_blank" rel="noopener noreferrer" className="bg-amber-900 text-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-950 transition-all shadow flex items-center gap-1.5">📍 View Pinned Map</a>
-              )}
-            </div>
-
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-black text-stone-800 tracking-tight">Today's Menu</h2>
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-3 mb-6">
-              {categories.map(cat => (
-                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all shadow-sm ${selectedCategory === cat ? 'bg-amber-900 text-white shadow-md ring-2 ring-amber-600/50' : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'}`}>{cat}</button>
-              ))}
-            </div>
-            
-            <div className="grid gap-4 sm:gap-5 mb-8">
-              {filteredMenuItems.map(item => (
-                <div key={item.id} className={`bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 transition-all flex gap-4 items-center relative overflow-hidden ${item.isSpecial ? 'border-amber-400 bg-gradient-to-r from-amber-50/60 to-white shadow-md' : item.isAvailable ? 'border-stone-100 hover:border-amber-300' : 'border-red-100 opacity-60 bg-stone-50'}`}>
-                  {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border border-stone-200 flex-shrink-0 shadow-sm" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-black text-lg text-stone-900">{item.name}</h3>
-                      {item.isSpecial && <span className="bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm"><Star size={10} fill="currentColor" /> Chef's Special</span>}
-                      {!item.isAvailable && <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Sold Out</span>}
-                    </div>
-                    <span className="inline-block text-[11px] uppercase font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-md mt-1">{item.category}</span>
-                    <p className="text-stone-600 text-xs sm:text-sm mt-1.5 line-clamp-2">{item.description}</p>
-                    <p className="font-black text-amber-900 text-base mt-2">${item.price} <span className="text-xs text-stone-500 font-bold">JMD</span></p>
-                  </div>
-                  <button onClick={() => addToCart(item)} disabled={!item.isAvailable} className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 flex-shrink-0 shadow ${item.isAvailable ? 'bg-amber-800 text-white hover:bg-amber-900 shadow-amber-900/20' : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'}`}><Plus size={16} /> Add</button>
-                </div>
-              ))}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-amber-300 mt-6">
-                <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><ShoppingBag className="text-amber-800" size={22} /> Your Order ({cart.length} items)</h3>
-                <div className="divide-y divide-stone-100 mb-4 max-h-60 overflow-y-auto pr-1">
-                  {cart.map((item, index) => (
-                    <div key={index} className="py-3 flex justify-between items-center text-sm">
-                      <span className="font-bold text-stone-800">{item.name}</span>
-                      <div className="flex items-center gap-4">
-                        <span className="font-black text-amber-900">${item.price} JMD</span>
-                        <button onClick={() => removeFromCart(index)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded-lg"><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t-2 border-dashed border-stone-200 pt-4 space-y-2 text-sm mb-6 bg-amber-50/50 p-4 rounded-2xl">
-                  <div className="flex justify-between text-stone-600 font-semibold"><span>Subtotal:</span><span>${calculateSubtotal()} JMD</span></div>
-                  {orderType === 'Delivery' && <div className="flex justify-between text-stone-600 font-semibold"><span>Delivery Fee:</span><span>${deliveryFee} JMD</span></div>}
-                  <div className="flex justify-between font-black text-xl pt-2 border-t border-amber-200 text-amber-950"><span>Total:</span><span>${calculateGrandTotal()} JMD</span></div>
-                </div>
-
-                <div className="space-y-4">
-                  <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Your Name</label><input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Omarian Smith" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                  <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Phone Number</label><input type="text" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="e.g. 876-555-0199" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                  <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Order Type</label><select value={orderType} onChange={(e) => setOrderType(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold bg-white focus:border-amber-600 focus:outline-none"><option value="Pickup">Pickup</option>{deliveryEnabled && <option value="Delivery">Delivery (+${deliveryFee} JMD)</option>}</select></div>
-                  
-                  {/* Multi-Platform Checkout Options */}
-                  <div className="space-y-2 pt-2">
-                    <label className="block text-xs font-black text-stone-700 uppercase tracking-wider">Choose How to Send Order:</label>
-                    <button onClick={handleCheckoutWhatsApp} className="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 text-sm tracking-wide flex items-center justify-center gap-2">
-                      <span>Send via WhatsApp 🚀</span>
-                    </button>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => handleCheckoutSocial('instagram')} className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white py-3 rounded-2xl font-black hover:opacity-95 transition-all shadow-md text-xs flex items-center justify-center gap-1.5">
-                        <span>📷 Order via Instagram</span>
-                      </button>
-                      <button onClick={() => handleCheckoutSocial('facebook')} className="w-full bg-blue-600 text-white py-3 rounded-2xl font-black hover:bg-blue-700 transition-all shadow-md text-xs flex items-center justify-center gap-1.5">
-                        <span>📘 Order via Facebook</span>
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            )}
-          </div>
-        ) : activeTab === 'my-orders' ? (
-          <div className="space-y-4">
-            <div className="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-950">
-              <h3 className="font-black text-base flex items-center gap-2"><FileText size={18} /> Customer Order Receipts</h3>
-              <p className="text-xs font-medium mt-0.5">Here are the orders placed from this device. Tap any order to open its full digital receipt.</p>
-            </div>
-
-            {orders.length === 0 ? (
-              <div className="bg-white p-8 rounded-3xl text-center shadow-sm border-2 border-stone-200">
-                <p className="text-sm text-stone-500 font-bold">No orders or receipts found on this device yet.</p>
-                <button onClick={() => setActiveTab('menu')} className="mt-4 bg-amber-900 text-white px-5 py-2.5 rounded-xl text-xs font-black">Browse Menu</button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {orders.map(order => (
-                  <div key={order.id} className="bg-white p-4 rounded-2xl shadow-sm border-2 border-stone-200 flex justify-between items-center">
-                    <div>
-                      <span className="font-black text-amber-950 text-base">{order.id}</span>
-                      <p className="text-xs text-stone-500 font-bold">{order.timestamp} • {order.customerName}</p>
-                      <p className="text-xs font-black text-stone-900 mt-1">${order.total} JMD ({order.type})</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full text-white ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>
-                        {order.status}
-                      </span>
-                      <button 
-                        onClick={() => setSelectedReceipt(order)} 
-                        className="bg-amber-900 text-amber-50 px-3.5 py-2 rounded-xl text-xs font-black hover:bg-amber-950 shadow"
-                      >
-                        View Receipt 🧾
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {!isDevMode ? (
-              <div className="space-y-6">
-                <div className="bg-amber-100 p-4 rounded-2xl border-2 border-amber-300 text-amber-950 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-black text-base flex items-center gap-2"><Lock size={18} /> Cookshop Owner Orders Dashboard</h3>
-                    <p className="text-xs font-medium mt-0.5">Viewing incoming customer orders. Menu editing is managed by your developer.</p>
-                  </div>
-                  <button onClick={() => { setIsOwnerUnlocked(false); setActiveTab('menu'); }} className="text-xs bg-amber-900 text-white px-3 py-1.5 rounded-xl font-bold">Lock / Exit</button>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <div className="flex justify-between items-center mb-4 border-b pb-3">
-                    <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
-                    {orders.length > 0 && <button onClick={() => setOrders([])} className="text-xs text-red-600 hover:underline font-black">Clear All Orders</button>}
-                  </div>
-                  {orders.length === 0 ? (
-                    <p className="text-sm text-stone-500 py-6 text-center font-medium">No orders received yet.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {orders.map(order => (
-                        <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
-                          <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
-                            <div>
-                              <span className="text-base tracking-wide">{order.id}</span>
-                              <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>{order.status}</span>
-                              <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
-                            <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
-                            <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
-                          </div>
-
-                          <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
-                            {order.items.map((it, idx) => (
-                              <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
-                            ))}
-                          </ul>
-                          
-                          <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
-                            <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
-                            <div className="flex gap-2">
-                              <button onClick={() => setSelectedReceipt(order)} className="text-xs px-3 py-2 bg-stone-900 text-white rounded-xl font-black">Receipt</button>
-                              <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen' : 'Complete'}</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border-2 border-purple-400">
-                  <h3 className="font-black text-lg mb-2 flex items-center gap-2 border-b border-purple-800 pb-3">
-                    <ShieldAlert className="text-purple-300" size={22} /> Developer Master Control (Full Admin)
-                  </h3>
-                  <p className="text-xs text-purple-200 mb-4 font-medium">Logged in via Master Developer PIN (`9999`). You control the menu, header branding, and client PINs.</p>
-                  
-                  <div className="space-y-3 bg-black/30 p-4 rounded-2xl border border-purple-500/30">
-                    <span className="text-xs font-bold text-purple-300 uppercase tracking-widest block">Client Owner PIN Management</span>
-                    <div className="flex gap-3">
-                      <input type="text" value={ownerPin} onChange={(e) => setOwnerPin(e.target.value)} className="w-full p-2.5 bg-stone-900 text-white border border-purple-400 rounded-xl text-sm font-bold" />
-                      <button onClick={() => alert('Client Owner PIN updated successfully!')} className="bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl text-xs font-black">Save PIN</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-amber-300 bg-gradient-to-br from-amber-50/40 to-white">
-                  <h3 className="font-black text-lg mb-2 flex items-center gap-2 text-stone-900 border-b pb-3">
-                    <Database className="text-amber-800" size={20} /> Supabase Cloud Database Connection
-                  </h3>
-                  <p className="text-xs text-stone-600 mb-4 font-medium">Connect your Supabase project so menu items, settings, and orders sync live in the cloud!</p>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Project URL</label>
-                      <input type="text" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} placeholder="https://xxxxxx.supabase.co" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Supabase Anon Key</label>
-                      <input type="password" value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} placeholder="eyJhbGciOi..." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Header Branding</h3>
-                  <div className="space-y-4">
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Cookshop Name</label><input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
-                    
-                    <div>
-                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Image size={16} className="text-amber-800" /> Header Logo / Banner Photo</label>
-                      <input type="file" accept="image/*" onChange={handleHeaderImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
-                      {shopHeaderImage && (
-                        <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                          <img src={shopHeaderImage} alt="Header Preview" onClick={() => setShowImageModal(true)} style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer' }} className="border" />
-                          <span className="text-xs font-bold text-amber-900">Header photo active! (Tap to preview)</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Status Banner</label><select value={shopStatus} onChange={(e) => setShopStatus(e.target.value as any)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm bg-white font-black focus:border-amber-600 focus:outline-none"><option value="Open">🟢 Open for Business</option><option value="Closing Soon">⚠️ Closing Soon</option><option value="Closed">🔴 Closed</option></select></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">WhatsApp Phone Number</label><input type="text" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Instagram Username</label><input type="text" value={shopInstagram} onChange={(e) => setShopInstagram(e.target.value)} placeholder="islandspicecookshop" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Facebook Page Username</label><input type="text" value={shopFacebook} onChange={(e) => setShopFacebook(e.target.value)} placeholder="islandspicecookshop" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    </div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Shop Address Text</label><input type="text" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Google Maps Pinned Location Link</label><input type="text" value={shopMapLink} onChange={(e) => setShopMapLink(e.target.value)} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-stone-100">
-                      <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border"><span className="text-sm font-black text-stone-800">Enable Delivery</span><input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" /></div>
-                      <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Delivery Fee (JMD)</label><input type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(Number(e.target.value))} className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-bold focus:border-amber-600 focus:outline-none" /></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}</h3>
-                  <form onSubmit={handleSaveDish} className="space-y-4">
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Item Name</label><input type="text" value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="e.g. Ting or Boom" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Category</label><input type="text" value={dishCategory} onChange={(e) => setDishCategory(e.target.value)} placeholder="e.g. Bottle Drinks" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Description</label><input type="text" value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="e.g. Cold bottled drink." className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" /></div>
-                    <div>
-                      <label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ImageIcon size={16} className="text-amber-800" /> Upload Photo from Gallery</label>
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2.5 border-2 border-stone-200 rounded-xl text-sm bg-stone-50 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-800 file:text-white hover:file:bg-amber-900 cursor-pointer" />
-                      {dishImage && <div className="mt-2 flex items-center gap-3 bg-amber-50 p-2.5 rounded-xl border border-amber-200"><img src={dishImage} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }} className="border" /><span className="text-xs font-bold text-amber-900">Photo loaded successfully!</span></div>}
-                    </div>
-                    <div><label className="block text-xs font-black text-stone-700 uppercase tracking-wider mb-1">Price (JMD)</label><input type="number" value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} placeholder="200" className="w-full p-3 border-2 border-stone-200 rounded-xl text-sm font-medium focus:border-amber-600 focus:outline-none" required /></div>
-                    <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                      <input type="checkbox" id="isSpecialCheck" checked={dishIsSpecial} onChange={(e) => setDishIsSpecial(e.target.checked)} className="w-5 h-5 accent-amber-800 rounded" />
-                      <label htmlFor="isSpecialCheck" className="text-xs font-black text-amber-950 uppercase tracking-wide cursor-pointer">⭐ Mark as Chef's Special (Highlights on Menu)</label>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="flex-1 bg-amber-900 text-white py-3.5 rounded-2xl text-sm font-black hover:bg-amber-950 transition-all shadow-md">{editingId ? 'Save Changes' : 'Add Item to Menu'}</button>
-                      {editingId && <button type="button" onClick={cancelEditing} className="bg-stone-200 text-stone-700 px-6 py-3.5 rounded-2xl text-sm font-black hover:bg-stone-300 transition-all">Cancel</button>}
-                    </div>
-                  </form>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Utensils className="text-amber-800" size={20} /> Manage Menu Items</h3>
-                  <div className="space-y-3">
-                    {menuItems.map(item => (
-                      <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-stone-50 rounded-2xl border-2 border-stone-200 text-sm gap-3">
-                        <div className="min-w-0 pr-2 flex items-center gap-3">
-                          {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} className="border" />}
-                          <div>
-                            <span className="font-black text-stone-900 block truncate">{item.name}</span>
-                            <span className="text-xs text-stone-500 font-bold">${item.price} JMD</span>
-                            {item.isSpecial && <span className="ml-2 text-[10px] bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded-full">⭐ Special</span>}
-                            {!item.isAvailable && <span className="ml-2 text-[10px] bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Sold Out</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button onClick={() => toggleSpecial(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isSpecial ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}>{item.isSpecial ? '⭐ Starred' : 'Make Special'}</button>
-                          <button onClick={() => toggleAvailability(item.id)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${item.isAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`}>{item.isAvailable ? 'Mark Sold Out' : 'Mark Available'}</button>
-                          <button onClick={() => startEditing(item)} className="p-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all" title="Edit dish"><Edit2 size={16} /></button>
-                          <button onClick={() => deleteDish(item.id)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all" title="Delete dish"><Trash2 size={16} /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
-                  <div className="flex justify-between items-center mb-4 border-b pb-3">
-                    <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
-                    {orders.length > 0 && <button onClick={() => setOrders([])} className="text-xs text-red-600 hover:underline font-black">Clear All Orders</button>}
-                  </div>
-                  {orders.length === 0 ? (
-                    <p className="text-sm text-stone-500 py-4 text-center font-medium">No orders received yet.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {orders.map(order => (
-                        <div key={order.id} className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border-2 border-amber-200 text-sm shadow-sm">
-                          <div className="flex justify-between items-start font-black text-amber-950 mb-3 border-b border-amber-200/60 pb-3">
-                            <div>
-                              <span className="text-base tracking-wide">{order.id}</span>
-                              <p className="text-[11px] font-bold text-stone-500 mt-0.5">{order.timestamp}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2.5 py-1 rounded-full text-xs text-white font-black shadow-sm ${order.status === 'Completed' ? 'bg-emerald-600' : 'bg-amber-800'}`}>{order.status}</span>
-                              <span className="bg-stone-900 text-white px-2.5 py-1 rounded-full text-xs font-black">{order.type}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-white p-3 rounded-xl border-2 border-stone-200 mb-3 shadow-inner">
-                            <p className="font-black text-stone-900 text-sm">👤 {order.customerName}</p>
-                            <p className="text-stone-600 text-xs font-bold mt-1">📞 {order.customerPhone}</p>
-                          </div>
-
-                          <ul className="list-disc list-inside text-xs font-medium text-stone-700 mb-3 space-y-1 pl-1">
-                            {order.items.map((it, idx) => (
-                              <li key={idx} className="font-bold">{it.name} - <span className="text-amber-900">${it.price} JMD</span></li>
-                            ))}
-                          </ul>
-                          
-                          <div className="flex justify-between items-center pt-3 border-t border-amber-200/60 mt-2">
-                            <span className="font-black text-stone-900 text-base">Total: ${order.total} JMD</span>
-                            <div className="flex gap-2">
-                              <button onClick={() => setSelectedReceipt(order)} className="text-xs px-3 py-2 bg-stone-900 text-white rounded-xl font-black">Receipt</button>
-                              <button onClick={() => toggleOrderStatus(order.id)} className={`text-xs px-3.5 py-2 rounded-xl font-black transition-all flex items-center gap-1.5 shadow-sm ${order.status === 'Completed' ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}><Check size={14} /> {order.status === 'Completed' ? 'Reopen' : 'Complete'}</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
