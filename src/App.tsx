@@ -89,7 +89,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Safe Supabase client initializer (won't crash on invalid/incomplete input)
   const getSupabaseClient = () => {
     if (!sbLoaded || !supabaseUrl || !supabaseKey || !(window as any).supabase) return null;
     try {
@@ -101,19 +100,23 @@ export default function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem('cookshop_sb_url', supabaseUrl);
-    localStorage.setItem('cookshop_sb_key', supabaseKey);
-    localStorage.setItem('cookshop_name', shopName);
-    localStorage.setItem('cookshop_phone', shopPhone);
-    localStorage.setItem('cookshop_address', shopAddress);
-    localStorage.setItem('cookshop_map', shopMapLink);
-    localStorage.setItem('cookshop_status', shopStatus);
-    localStorage.setItem('cookshop_delivery', String(deliveryEnabled));
-    localStorage.setItem('cookshop_delivery_fee', String(deliveryFee));
-    localStorage.setItem('cookshop_pin', ownerPin);
-    localStorage.setItem('cookshop_header_img', shopHeaderImage);
-    localStorage.setItem('cookshop_menu', JSON.stringify(menuItems));
-    localStorage.setItem('cookshop_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('cookshop_sb_url', supabaseUrl);
+      localStorage.setItem('cookshop_sb_key', supabaseKey);
+      localStorage.setItem('cookshop_name', shopName);
+      localStorage.setItem('cookshop_phone', shopPhone);
+      localStorage.setItem('cookshop_address', shopAddress);
+      localStorage.setItem('cookshop_map', shopMapLink);
+      localStorage.setItem('cookshop_status', shopStatus);
+      localStorage.setItem('cookshop_delivery', String(deliveryEnabled));
+      localStorage.setItem('cookshop_delivery_fee', String(deliveryFee));
+      localStorage.setItem('cookshop_pin', ownerPin);
+      localStorage.setItem('cookshop_header_img', shopHeaderImage);
+      localStorage.setItem('cookshop_menu', JSON.stringify(menuItems));
+      localStorage.setItem('cookshop_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.warn('Storage quota limit reached.');
+    }
 
     const sb = getSupabaseClient();
     if (sb) {
@@ -153,21 +156,51 @@ export default function App() {
   const [dishImage, setDishImage] = useState('');
   const [dishIsSpecial, setDishIsSpecial] = useState(false);
 
+  // Compressed Image Upload Helper to prevent quota crashes
+  const handleCompressedImage = (file: File, callback: (result: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        callback(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setDishImage(reader.result as string);
-      reader.readAsDataURL(file);
+      handleCompressedImage(file, (compressedBase64) => setDishImage(compressedBase64));
     }
   };
 
   const handleHeaderImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setShopHeaderImage(reader.result as string);
-      reader.readAsDataURL(file);
+      handleCompressedImage(file, (compressedBase64) => setShopHeaderImage(compressedBase64));
     }
   };
 
