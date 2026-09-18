@@ -46,7 +46,7 @@ export default function App() {
   const [sbLoaded, setSbLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'owner'>('menu');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false); // Tracks if you logged in using the Developer Master PIN
+  const [isDevMode, setIsDevMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Supabase Credentials State
@@ -58,12 +58,12 @@ export default function App() {
   const [shopPhone, setShopPhone] = useState(() => localStorage.getItem('cookshop_phone') || '18767739161');
   const [shopAddress, setShopAddress] = useState(() => localStorage.getItem('cookshop_address') || 'Main Street, Montego Bay');
   const [shopMapLink, setShopMapLink] = useState(() => localStorage.getItem('cookshop_map') || 'https://maps.google.com');
-  const [shopStatus, setShopStatus] = useState<'Open' | 'Closing Soon' | 'Closed'>(() => (localStorage.getItem('cookshop_status'] as any) || 'Open');
+  const [shopStatus, setShopStatus] = useState<'Open' | 'Closing Soon' | 'Closed'>(() => (localStorage.getItem('cookshop_status') as any) || 'Open');
   const [deliveryEnabled, setDeliveryEnabled] = useState(() => localStorage.getItem('cookshop_delivery') === 'true');
   const [deliveryFee, setDeliveryFee] = useState(() => Number(localStorage.getItem('cookshop_delivery_fee')) || 300);
   const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('cookshop_pin') || '1234');
 
-  // Master Developer PIN (Hardcoded here so you can NEVER be locked out)
+  // Master Developer PIN
   const MASTER_DEV_PIN = '9999';
 
   // Menu State
@@ -161,7 +161,7 @@ export default function App() {
       const pinInput = prompt('Enter Owner or Developer PIN:');
       if (pinInput === MASTER_DEV_PIN) {
         setIsOwnerUnlocked(true);
-        setIsDevMode(true); // Grants developer override access
+        setIsDevMode(true);
         setActiveTab('owner');
       } else if (pinInput === ownerPin) {
         setIsOwnerUnlocked(true);
@@ -472,7 +472,6 @@ export default function App() {
           <div className="space-y-6">
             <h2 className="text-2xl font-black text-stone-900">Owner Management Panel</h2>
 
-            {/* Developer Master Override Section (Only visible/active if you log in with Master PIN '9999') */}
             {isDevMode && (
               <div className="bg-gradient-to-r from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border-2 border-purple-400">
                 <h3 className="font-black text-lg mb-2 flex items-center gap-2 border-b border-purple-800 pb-3">
@@ -490,7 +489,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Supabase Database Connection Card */}
             <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-amber-300 bg-gradient-to-br from-amber-50/40 to-white">
               <h3 className="font-black text-lg mb-2 flex items-center gap-2 text-stone-900 border-b pb-3">
                 <Database className="text-amber-800" size={20} /> Supabase Cloud Database Connection
@@ -512,7 +510,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Shop Settings Card */}
             <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
               <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Settings className="text-amber-800" size={20} /> Shop Settings & Security</h3>
               <div className="space-y-4">
@@ -529,7 +526,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Add / Edit Dish Card */}
             <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
               <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Plus className="text-amber-800" size={20} /> {editingId ? 'Edit Existing Dish' : 'Add New Dish'}</h3>
               <form onSubmit={handleSaveDish} className="space-y-4">
@@ -553,7 +549,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Manage Menu Items */}
             <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
               <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-stone-900 border-b pb-3"><Utensils className="text-amber-800" size={20} /> Manage Menu Items</h3>
               <div className="space-y-3">
@@ -579,7 +574,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Live Orders Log */}
             <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-stone-200">
               <div className="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 className="font-black text-lg flex items-center gap-2 text-stone-900"><ClipboardList className="text-amber-800" size={20} /> Live Customer Orders ({orders.length})</h3>
