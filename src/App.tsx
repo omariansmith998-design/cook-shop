@@ -38,8 +38,6 @@ interface ShopProfile {
   address: string;
   pin: string;
   themeColor: string;
-  instagram: string;
-  facebook: string;
   deliveryFee: number;
   isOpen: boolean;
   isDeliveryActive: boolean;
@@ -55,9 +53,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     whatsapp: "18765551234",
     address: "Hip Strip, Montego Bay, St. James",
     pin: "1234",
-    themeColor: "emerald",
-    instagram: "mamas_yard_ja",
-    facebook: "MamasYardCookshop",
+    themeColor: "#047857", // Emerald
     deliveryFee: 300,
     isOpen: true,
     isDeliveryActive: true,
@@ -70,9 +66,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     whatsapp: "18765555678",
     address: "Falmouth Main Road, Trelawny",
     pin: "5678",
-    themeColor: "amber",
-    instagram: "aunties_ital",
-    facebook: "AuntiesItalCorner",
+    themeColor: "#d97706", // Amber
     deliveryFee: 250,
     isOpen: true,
     isDeliveryActive: true,
@@ -324,7 +318,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
     alert("Invalid PIN. Please check your code.");
   };
 
-  // --- ADMIN ACTIONS ---
   const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
     setOrders(prev => ({
       ...prev,
@@ -388,9 +381,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
       whatsapp: newShopWhatsapp,
       address: newShopAddress || "Jamaica",
       pin: newShopPin || "1234",
-      themeColor: "emerald",
-      instagram: "",
-      facebook: "",
+      themeColor: "#047857",
       deliveryFee: 300,
       isOpen: true,
       isDeliveryActive: true,
@@ -430,34 +421,27 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
     alert("Master Developer PIN updated securely!");
   };
 
-  // Theme color mapping
-  const themeClasses: Record<string, { bg: string, text: string, border: string, badge: string }> = {
-    emerald: { bg: "bg-emerald-700", text: "text-emerald-700", border: "border-emerald-600", badge: "bg-emerald-100 text-emerald-800" },
-    amber: { bg: "bg-amber-700", text: "text-amber-700", border: "border-amber-600", badge: "bg-amber-100 text-amber-800" }
-  };
-  const activeTheme = themeClasses[activeShop.themeColor] || themeClasses.emerald;
-
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans pb-24">
+    <div style={{ minHeight: "100vh", backgroundColor: "#f9f8f6", color: "#1c1917", fontFamily: "system-ui, -apple-system, sans-serif", paddingBottom: "100px" }}>
       {/* --- HEADER BAR --- */}
-      <header className={`${activeTheme.bg} text-white shadow-md sticky top-0 z-40 transition-colors duration-300`}>
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black tracking-tight">{activeShop.name}</h1>
-            <p className="text-xs opacity-90">{activeShop.tagline}</p>
+      <header style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", boxShadow: "0 2px 4px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 40 }}>
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "between" }}>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontSize: "18px", fontWeight: 900, margin: 0, letterSpacing: "-0.5px" }}>{activeShop.name}</h1>
+            <p style={{ fontSize: "11px", opacity: 0.9, margin: "2px 0 0 0" }}>{activeShop.tagline}</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <select
               value={activeShopId}
               onChange={(e) => {
                 setActiveShopId(e.target.value);
                 window.history.pushState({}, "", `?shop=${e.target.value}`);
               }}
-              className="bg-black/30 text-white text-xs font-medium px-2 py-1.5 rounded border border-white/20 outline-none cursor-pointer"
+              style={{ backgroundColor: "rgba(0,0,0,0.3)", color: "#ffffff", fontSize: "12px", fontWeight: 600, padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.3)", outline: "none", cursor: "pointer" }}
             >
               {shops.map(s => (
-                <option key={s.id} value={s.id} className="text-stone-900">
+                <option key={s.id} value={s.id} style={{ color: "#1c1917" }}>
                   🏪 {s.name}
                 </option>
               ))}
@@ -465,7 +449,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
             <button
               onClick={() => setAdminModalOpen(true)}
-              className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-xs font-bold transition-all border border-white/30"
+              style={{ backgroundColor: "rgba(255,255,255,0.2)", color: "#ffffff", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, border: "1px solid rgba(255,255,255,0.3)", cursor: "pointer" }}
             >
               🔐 Admin
             </button>
@@ -474,59 +458,57 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
       </header>
 
       {/* --- MAIN CONTENT AREA --- */}
-      <main className="max-w-4xl mx-auto px-4 pt-6">
+      <main style={{ maxWidth: "800px", margin: "0 auto", padding: "16px" }}>
         {!activeShop.isOpen && (
-          <div className="bg-rose-100 border border-rose-300 text-rose-800 p-3 rounded-lg mb-4 text-center font-bold text-sm">
+          <div style={{ backgroundColor: "#ffe4e6", border: "1px solid #fda4af", color: "#881337", padding: "12px", borderRadius: "8px", marginBottom: "16px", textAlign: "center", fontWeight: "bold", fontSize: "13px" }}>
             🔴 This cookshop is currently closed for new orders. Check back later!
           </div>
         )}
 
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-stone-800">Today's Menu</h2>
-            <span className="text-xs bg-stone-200 px-2.5 py-1 rounded-full font-semibold">
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#292524", margin: 0 }}>Today's Menu</h2>
+            <span style={{ fontSize: "11px", backgroundColor: "#e7e5e4", color: "#44403c", padding: "4px 10px", borderRadius: "999px", fontWeight: 600 }}>
               {currentShopMenu.filter(d => d.inStock).length} Available Items
             </span>
           </div>
 
-          {/* Dish Grid with Fixed Card & Alignment Structure */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Clean Card Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
             {currentShopMenu.map(dish => (
-              <div key={dish.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col justify-between transition-all hover:shadow-md">
-                <div className="p-4 flex gap-4 items-start">
+              <div key={dish.id} style={{ backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", border: "1px solid #e7e5e4", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ padding: "16px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
                   {dish.image ? (
                     <img 
                       src={dish.image} 
                       alt={dish.name} 
-                      className="w-24 h-24 object-cover rounded-lg border border-stone-100 bg-stone-100 shrink-0" 
+                      style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #f5f5f4", backgroundColor: "#f5f5f4", flexShrink: 0 }} 
                     />
                   ) : (
-                    <div className="w-24 h-24 bg-stone-100 rounded-lg border border-stone-200 flex items-center justify-center text-2xl shrink-0">
+                    <div style={{ width: "80px", height: "80px", backgroundColor: "#f5f5f4", borderRadius: "8px", border: "1px solid #e7e5e4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", flexShrink: 0 }}>
                       🍲
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-stone-900 text-base truncate">{dish.name}</h3>
-                      <span className="font-extrabold text-emerald-700 whitespace-nowrap text-sm">${dish.price} JMD</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
+                      <h3 style={{ fontSize: "15px", fontWeight: "bold", color: "#1c1917", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dish.name}</h3>
+                      <span style={{ fontSize: "14px", fontWeight: 900, color: activeShop.themeColor, whiteSpace: "nowrap" }}>${dish.price} JMD</span>
                     </div>
-                    <p className="text-xs text-stone-500 mt-1 line-clamp-2">{dish.description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-medium">
-                        {dish.category}
-                      </span>
-                    </div>
+                    <p style={{ fontSize: "12px", color: "#78716c", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{dish.description}</p>
+                    <span style={{ fontSize: "10px", backgroundColor: "#f5f5f4", color: "#57534e", padding: "2px 8px", borderRadius: "4px", fontWeight: 600 }}>
+                      {dish.category}
+                    </span>
                   </div>
                 </div>
 
-                <div className="bg-stone-50 px-4 py-2.5 border-t border-stone-100 flex items-center justify-between">
-                  <span className={`text-xs font-bold ${dish.inStock ? "text-emerald-600" : "text-rose-600"}`}>
+                <div style={{ backgroundColor: "#fafaf9", padding: "12px 16px", borderTop: "1px solid #f5f5f4", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "bold", color: dish.inStock ? "#059669" : "#e11d48" }}>
                     {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
                   </span>
                   {activeShop.isOpen && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
-                      className={`${activeTheme.bg} text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-all shadow-sm`}
+                      style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.1)" }}
                     >
                       + Add to Plate
                     </button>
@@ -537,74 +519,74 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
           </div>
         </div>
 
-        {/* --- ACTIVE CART / CHECKOUT SECTION --- */}
+        {/* --- CART / CHECKOUT SECTION --- */}
         {cart.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-stone-200 p-5 mt-8 mb-12">
-            <h3 className="text-base font-black text-stone-800 mb-3 flex items-center justify-between">
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #e7e5e4", padding: "20px", marginTop: "32px", marginBottom: "40px" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#1c1917", margin: "0 0 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span>🛒 Your Order Plate</span>
-              <span className="text-xs font-normal text-stone-500">{cart.length} items</span>
+              <span style={{ fontSize: "12px", fontWeight: "normal", color: "#78716c" }}>{cart.length} items</span>
             </h3>
 
-            <div className="divide-y divide-stone-100 mb-4">
+            <div style={{ borderTop: "1px solid #f5f5f4", borderBottom: "1px solid #f5f5f4", marginBottom: "16px" }}>
               {cart.map((item, idx) => (
-                <div key={idx} className="py-2.5 flex items-center justify-between text-sm">
+                <div key={idx} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", borderBottom: idx < cart.length - 1 ? "1px solid #f5f5f4" : "none" }}>
                   <div>
-                    <span className="font-bold text-stone-800">{item.quantity}x {item.dish.name}</span>
-                    <div className="text-xs text-stone-500">Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
-                    {item.notes && <div className="text-xs italic text-stone-500">Note: "{item.notes}"</div>}
+                    <span style={{ fontWeight: "bold", color: "#1c1917" }}>{item.quantity}x {item.dish.name}</span>
+                    <div style={{ fontSize: "11px", color: "#78716c", marginTop: "2px" }}>Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
+                    {item.notes && <div style={{ fontSize: "11px", fontStyle: "italic", color: "#78716c" }}>Note: "{item.notes}"</div>}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-stone-900">${item.dish.price * item.quantity} JMD</span>
-                    <button onClick={() => removeFromCart(idx)} className="text-rose-500 hover:text-rose-700 text-xs font-bold">✕</button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ fontWeight: "bold", color: "#1c1917" }}>${item.dish.price * item.quantity} JMD</span>
+                    <button onClick={() => removeFromCart(idx)} style={{ color: "#e11d48", background: "none", border: "none", fontWeight: "bold", fontSize: "14px", cursor: "pointer" }}>✕</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-4 space-y-3">
-              <div className="flex gap-2">
+            <div style={{ backgroundColor: "#fafaf9", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4", marginBottom: "16px" }}>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <button
                   type="button"
                   onClick={() => setOrderType("delivery")}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${orderType === "delivery" ? `${activeTheme.bg} text-white border-transparent` : "bg-white text-stone-700 border-stone-300"}`}
+                  style={{ flex: 1, padding: "8px", fontSize: "12px", fontWeight: "bold", borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #d1d5db", backgroundColor: orderType === "delivery" ? activeShop.themeColor : "#ffffff", color: orderType === "delivery" ? "#ffffff" : "#374151", cursor: "pointer" }}
                 >
                   🚚 Delivery (${activeShop.deliveryFee} JMD)
                 </button>
                 <button
                   type="button"
                   onClick={() => setOrderType("pickup")}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${orderType === "pickup" ? `${activeTheme.bg} text-white border-transparent` : "bg-white text-stone-700 border-stone-300"}`}
+                  style={{ flex: 1, padding: "8px", fontSize: "12px", fontWeight: "bold", borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #d1d5db", backgroundColor: orderType === "pickup" ? activeShop.themeColor : "#ffffff", color: orderType === "pickup" ? "#ffffff" : "#374151", cursor: "pointer" }}
                 >
                   🏪 Store Pickup
                 </button>
               </div>
 
               {orderType === "delivery" && activeShop.deliveryZoneNote && (
-                <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                <p style={{ fontSize: "11px", color: "#92400e", backgroundColor: "#fef3c7", padding: "8px", borderRadius: "6px", border: "1px solid #fde68a", margin: "0 0 12px 0" }}>
                   ⚠️ <strong>Delivery Notice:</strong> {activeShop.deliveryZoneNote}
                 </p>
               )}
 
-              <div className="space-y-2 pt-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Your Name / Nickname *</label>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "4px" }}>Your Name / Nickname *</label>
                   <input
                     type="text"
                     placeholder="e.g. Omarian"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full bg-white text-stone-900 border border-stone-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                    style={{ width: "100%", backgroundColor: "#ffffff", color: "#1c1917", border: "1px solid #d1d5db", borderRadius: "8px", padding: "8px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
 
                 {orderType === "delivery" && (
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-stone-700">Delivery Address / Landmark *</label>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "bold", color: "#374151" }}>Delivery Address / Landmark *</label>
                       <button
                         type="button"
                         onClick={handlePinLocation}
-                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                        style={{ fontSize: "11px", fontWeight: "bold", color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                       >
                         📍 Pin My Current GPS Location
                       </button>
@@ -614,40 +596,40 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       placeholder="e.g. Near Hip Strip / Paste Google Maps link here"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      className="w-full bg-white text-stone-900 border border-stone-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                      style={{ width: "100%", backgroundColor: "#ffffff", color: "#1c1917", border: "1px solid #d1d5db", borderRadius: "8px", padding: "8px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="border-t border-stone-200 pt-3 mb-4 space-y-1 text-sm">
-              <div className="flex justify-between text-stone-600">
+            <div style={{ borderTop: "1px solid #e7e5e4", paddingTop: "12px", marginBottom: "16px", fontSize: "13px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#57534e", marginBottom: "4px" }}>
                 <span>Subtotal</span>
                 <span>${cartSubtotal} JMD</span>
               </div>
               {orderType === "delivery" && activeShop.isDeliveryActive && (
-                <div className="flex justify-between text-stone-600">
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#57534e", marginBottom: "4px" }}>
                   <span>Delivery Fee</span>
                   <span>${deliveryCost} JMD</span>
                 </div>
               )}
-              <div className="flex justify-between text-stone-900 font-black text-base pt-1 border-t border-dashed border-stone-200">
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#1c1917", fontWeight: 900, fontSize: "15px", paddingTop: "8px", borderTop: "1px dashed #e7e5e4" }}>
                 <span>Total Due</span>
                 <span>${cartTotal} JMD</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <button
                 onClick={() => dispatchOrder("whatsapp")}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                style={{ width: "100%", backgroundColor: "#059669", color: "#ffffff", fontWeight: "bold", padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer" }}
               >
                 📲 Dispatch via WhatsApp
               </button>
               <button
                 onClick={() => dispatchOrder("social")}
-                className="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                style={{ width: "100%", backgroundColor: "#292524", color: "#ffffff", fontWeight: "bold", padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer" }}
               >
                 📋 Copy Order for IG / FB DM
               </button>
@@ -658,28 +640,28 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
       {/* --- DISH CUSTOMIZER MODAL --- */}
       {selectedDish && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-start mb-4">
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
               <div>
-                <h3 className="text-lg font-black text-stone-900">{selectedDish.name}</h3>
-                <p className="text-emerald-700 font-extrabold text-sm">${selectedDish.price} JMD</p>
+                <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#1c1917", margin: 0 }}>{selectedDish.name}</h3>
+                <p style={{ color: activeShop.themeColor, fontWeight: 900, fontSize: "14px", margin: "2px 0 0 0" }}>${selectedDish.price} JMD</p>
               </div>
-              <button onClick={() => setSelectedDish(null)} className="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
+              <button onClick={() => setSelectedDish(null)} style={{ color: "#a8a29e", background: "none", border: "none", fontWeight: "bold", fontSize: "16px", cursor: "pointer" }}>✕</button>
             </div>
 
-            <p className="text-xs text-stone-600 mb-4">{selectedDish.description}</p>
+            <p style={{ fontSize: "12px", color: "#78716c", margin: "0 0 16px 0" }}>{selectedDish.description}</p>
 
-            <div className="space-y-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1.5">🌶️ Pepper / Spice Level</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "6px" }}>🌶️ Pepper / Spice Level</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                   {["No Pepper", "Medium", "Extra Scotch Bonnet"].map(lvl => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setSpiceLevel(lvl)}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all ${spiceLevel === lvl ? `${activeTheme.bg} text-white border-transparent` : "bg-stone-50 text-stone-700 border-stone-200"}`}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: "bold", borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #d1d5db", backgroundColor: spiceLevel === lvl ? activeShop.themeColor : "#f9f8f6", color: spiceLevel === lvl ? "#ffffff" : "#374151", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -688,14 +670,14 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1.5">🍲 Gravy Preference</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "6px" }}>🍲 Gravy Preference</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                   {["No Gravy", "Normal", "Extra Drowned"].map(lvl => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setGravyLevel(lvl)}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all ${gravyLevel === lvl ? `${activeTheme.bg} text-white border-transparent` : "bg-stone-50 text-stone-700 border-stone-200"}`}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: "bold", borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #d1d5db", backgroundColor: gravyLevel === lvl ? activeShop.themeColor : "#f9f8f6", color: gravyLevel === lvl ? "#ffffff" : "#374151", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -704,29 +686,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Special Cooking Instructions</label>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "4px" }}>Special Cooking Instructions</label>
                 <input
                   type="text"
                   placeholder="e.g. Separate gravy, extra fork please"
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                  style={{ width: "100%", backgroundColor: "#f9f8f6", border: "1px solid #d1d5db", borderRadius: "8px", padding: "8px 12px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
                 />
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div style={{ display: "flex", gap: "8px", marginTop: "20px" }}>
               <button
                 onClick={() => setSelectedDish(null)}
-                className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs"
+                style={{ flex: 1, backgroundColor: "#f5f5f4", color: "#44403c", fontWeight: "bold", padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => addToCart(selectedDish)}
-                className={`flex-1 ${activeTheme.bg} text-white font-bold py-2.5 rounded-xl text-xs shadow-sm hover:opacity-90`}
+                style={{ flex: 1, backgroundColor: activeShop.themeColor, color: "#ffffff", fontWeight: "bold", padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
               >
-                Add to Plate (${selectedDish.price} JMD)
+                Add (${selectedDish.price} JMD)
               </button>
             </div>
           </div>
@@ -735,29 +717,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
       {/* --- POST-DISPATCH RECEIPT & TRACKING MODAL --- */}
       {activeReceipt && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
-            <div className="text-center mb-4">
-              <span className="text-3xl">✅</span>
-              <h3 className="text-lg font-black text-stone-900 mt-1">Order Dispatched!</h3>
-              <p className="text-xs text-stone-500">Order ID: {activeReceipt.id}</p>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)" }}>
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <span style={{ fontSize: "32px" }}>✅</span>
+              <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#1c1917", margin: "4px 0 2px 0" }}>Order Dispatched!</h3>
+              <p style={{ fontSize: "11px", color: "#78716c", margin: 0 }}>Order ID: {activeReceipt.id}</p>
             </div>
 
-            <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2 text-xs mb-4">
-              <div className="flex justify-between"><span className="font-bold">Customer:</span><span>{activeReceipt.customerName}</span></div>
-              <div className="flex justify-between"><span className="font-bold">Fulfillment:</span><span className="capitalize">{activeReceipt.type}</span></div>
-              <div className="flex justify-between"><span className="font-bold">Total:</span><span className="font-black text-emerald-700">${activeReceipt.total} JMD</span></div>
+            <div style={{ backgroundColor: "#f9f8f6", padding: "12px", borderRadius: "8px", border: "1px solid #e7e5e4", fontSize: "12px", marginBottom: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: "bold" }}>Customer:</span><span>{activeReceipt.customerName}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: "bold" }}>Fulfillment:</span><span style={{ textTransform: "capitalize" }}>{activeReceipt.type}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: "bold" }}>Total:</span><span style={{ fontWeight: 900, color: "#059669" }}>${activeReceipt.total} JMD</span></div>
             </div>
 
-            <div className="mb-6">
-              <p className="text-xs font-bold text-stone-700 mb-2">Need to make a change? Choose an option below:</p>
-              <div className="grid grid-cols-3 gap-2">
+            <div style={{ marginBottom: "20px" }}>
+              <p style={{ fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "8px" }}>Need to make a change? Choose an option below:</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                 <button
                   onClick={() => {
                     alert("Acknowledged. Waiting for delivery time.");
                     setActiveReceipt(null);
                   }}
-                  className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center"
+                  style={{ backgroundColor: "#f5f5f4", color: "#292524", fontSize: "10px", fontWeight: "bold", padding: "10px 4px", borderRadius: "6px", border: "none", cursor: "pointer", textAlign: "center" }}
                 >
                   ⏱️ Wait for Delivery
                 </button>
@@ -767,7 +749,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20would%20like%20to%20switch%20my%20order%20%23${activeReceipt.id}%20to%20Store%20Pickup.`, "_blank");
                     setActiveReceipt(null);
                   }}
-                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center border border-amber-200"
+                  style={{ backgroundColor: "#fef3c7", color: "#92400e", fontSize: "10px", fontWeight: "bold", padding: "10px 4px", borderRadius: "6px", border: "1px solid #fde68a", cursor: "pointer", textAlign: "center" }}
                 >
                   🏪 Switch to Pickup
                 </button>
@@ -777,7 +759,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20CANCEL%20my%20order%20%23${activeReceipt.id}.`, "_blank");
                     setActiveReceipt(null);
                   }}
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center border border-rose-200"
+                  style={{ backgroundColor: "#ffe4e6", color: "#881337", fontSize: "10px", fontWeight: "bold", padding: "10px 4px", borderRadius: "6px", border: "1px solid #fda4af", cursor: "pointer", textAlign: "center" }}
                 >
                   ❌ Cancel Order
                 </button>
@@ -786,7 +768,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
             <button
               onClick={() => setActiveReceipt(null)}
-              className="w-full bg-stone-900 text-white font-bold py-2.5 rounded-xl text-xs"
+              style={{ width: "100%", backgroundColor: "#1c1917", color: "#ffffff", fontWeight: "bold", padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
             >
               Close Window
             </button>
@@ -796,117 +778,112 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
       {/* --- ADMIN AUTH / DASHBOARD MODAL --- */}
       {adminModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 my-8">
-            <div className="flex justify-between items-center mb-4 border-b border-stone-100 pb-3">
-              <h3 className="text-lg font-black text-stone-900">
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "600px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)", margin: "32px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #e7e5e4", paddingBottom: "12px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 900, color: "#1c1917", margin: 0 }}>
                 {isMasterSession ? "⚡ Master Developer Panel" : loggedInAdminShopId ? `🛠️ Admin Panel: ${shops.find(s => s.id === loggedInAdminShopId)?.name}` : "🔐 Enter Admin PIN"}
               </h3>
-              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} className="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
+              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a8a29e", background: "none", border: "none", fontWeight: "bold", fontSize: "16px", cursor: "pointer" }}>✕</button>
             </div>
 
             {!isMasterSession && !loggedInAdminShopId && (
-              <div className="space-y-4 py-4 text-center">
-                <p className="text-xs text-stone-600">Enter your 4-digit shop PIN or Master PIN to access management controls.</p>
+              <div style={{ padding: "20px 0", textAlign: "center" }}>
+                <p style={{ fontSize: "12px", color: "#78716c", marginBottom: "16px" }}>Enter your 4-digit shop PIN or Master PIN to access management controls.</p>
                 <input
                   type="password"
                   maxLength={4}
                   placeholder="••••"
                   value={adminPinInput}
                   onChange={(e) => setAdminPinInput(e.target.value)}
-                  className="w-36 text-center tracking-widest text-xl bg-stone-50 border border-stone-300 rounded-xl py-3 mx-auto outline-none focus:border-stone-500 font-mono"
+                  style={{ width: "120px", textAlign: "center", letterSpacing: "8px", fontSize: "20px", backgroundColor: "#f9f8f6", border: "1px solid #d1d5db", borderRadius: "10px", padding: "10px", margin: "0 auto 16px auto", outline: "none", fontFamily: "monospace", display: "block" }}
                 />
-                <div>
-                  <button
-                    onClick={handleAdminLogin}
-                    className="bg-stone-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm hover:bg-stone-800"
-                  >
-                    Unlock Admin Access
-                  </button>
-                </div>
+                <button
+                  onClick={handleAdminLogin}
+                  style={{ backgroundColor: "#1c1917", color: "#ffffff", fontWeight: "bold", padding: "10px 20px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
+                >
+                  Unlock Admin Access
+                </button>
               </div>
             )}
 
             {isMasterSession && (
-              <div className="space-y-6">
-                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <h4 className="font-bold text-stone-800 text-sm mb-2">⚡ Master Controls & Security</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4" }}>
+                  <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: "0 0 8px 0" }}>⚡ Master Controls & Security</h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Current Master Recovery Password</label>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "bold", color: "#57534e", marginBottom: "4px" }}>Current Master Recovery Password</label>
                       <input
                         type="password"
                         placeholder="Enter recovery password"
                         value={currentMasterPassCheck}
                         onChange={(e) => setCurrentMasterPassCheck(e.target.value)}
-                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                        style={{ width: "100%", backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">New 4-Digit Master PIN</label>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "bold", color: "#57534e", marginBottom: "4px" }}>New 4-Digit Master PIN</label>
                       <input
                         type="text"
                         maxLength={4}
                         placeholder="New PIN"
                         value={newMasterPinInput}
                         onChange={(e) => setNewMasterPinInput(e.target.value)}
-                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
+                        style={{ width: "100%", backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", fontFamily: "monospace", boxSizing: "border-box" }}
                       />
                     </div>
                   </div>
                   <button
                     onClick={changeMasterCredentials}
-                    className="mt-3 bg-stone-800 text-white font-bold px-4 py-2 rounded-lg text-xs hover:bg-stone-900"
+                    style={{ backgroundColor: "#292524", color: "#ffffff", fontWeight: "bold", padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}
                   >
                     Update Master PIN Securely
                   </button>
                 </div>
 
-                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <h4 className="font-bold text-stone-800 text-sm mb-3">➕ Spin Up New Cookshop</h4>
-                  <form onSubmit={createNewShop} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4" }}>
+                  <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: "0 0 12px 0" }}>➕ Spin Up New Cookshop</h4>
+                  <form onSubmit={createNewShop} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                       <input
                         type="text"
                         placeholder="Shop Name (e.g. Babsie's Seafood)"
                         value={newShopName}
                         onChange={(e) => setNewShopName(e.target.value)}
-                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                        style={{ backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none" }}
                       />
                       <input
                         type="text"
                         placeholder="Tagline / Description"
                         value={newShopTagline}
                         onChange={(e) => setNewShopTagline(e.target.value)}
-                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                        style={{ backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none" }}
                       />
                       <input
                         type="text"
-                        placeholder="WhatsApp Number (e.g. 18765550000)"
+                        placeholder="WhatsApp Number (18765550000)"
                         value={newShopWhatsapp}
                         onChange={(e) => setNewShopWhatsapp(e.target.value)}
-                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                        style={{ backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none" }}
                       />
                       <input
                         type="text"
-                        placeholder="Operational PIN (e.g. 4321)"
+                        placeholder="Operational PIN (4321)"
                         maxLength={4}
                         value={newShopPin}
                         onChange={(e) => setNewShopPin(e.target.value)}
-                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
+                        style={{ backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 10px", fontSize: "12px", outline: "none", fontFamily: "monospace" }}
                       />
                     </div>
-                    <button type="submit" className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg text-xs hover:bg-emerald-700">
+                    <button type="submit" style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: "bold", padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer", alignSelf: "flex-start" }}>
                       Launch Shop Instantly
                     </button>
                   </form>
                 </div>
 
-                <div className="text-center pt-2">
-                  <button
-                    onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }}
-                    className="text-xs font-bold text-rose-600 hover:underline"
-                  >
+                <div style={{ textAlign: "center", paddingTop: "8px" }}>
+                  <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ color: "#e11d48", background: "none", border: "none", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     Log Out of Master Panel
                   </button>
                 </div>
@@ -914,7 +891,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
             )}
 
             {loggedInAdminShopId && (
-              <div className="space-y-6">
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {(() => {
                   const shop = shops.find(s => s.id === loggedInAdminShopId);
                   if (!shop) return null;
@@ -922,18 +899,18 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
 
                   return (
-                    <div className="space-y-4">
-                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 flex flex-wrap items-center justify-between gap-4">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
                         <div>
-                          <h4 className="font-bold text-stone-800 text-sm">Operational Status</h4>
-                          <p className="text-xs text-stone-500">Toggle whether your shop is currently accepting orders.</p>
+                          <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: 0 }}>Operational Status</h4>
+                          <p style={{ fontSize: "11px", color: "#78716c", margin: "2px 0 0 0" }}>Toggle whether your shop is currently accepting orders.</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div style={{ display: "flex", gap: "8px" }}>
                           <button
                             onClick={() => {
                               setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpen: !s.isOpen } : s));
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${shop.isOpen ? "bg-emerald-600" : "bg-rose-600"}`}
+                            style={{ padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: "pointer", backgroundColor: shop.isOpen ? "#059669" : "#e11d48", color: "#ffffff" }}
                           >
                             {shop.isOpen ? "🟢 Shop Open" : "🔴 Shop Closed"}
                           </button>
@@ -941,60 +918,55 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                             onClick={() => {
                               setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s));
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${shop.isDeliveryActive ? "bg-blue-600" : "bg-stone-400"}`}
+                            style={{ padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#9ca3af", color: "#ffffff" }}
                           >
                             {shop.isDeliveryActive ? "🚚 Delivery Active" : "🛑 Delivery Off"}
                           </button>
                         </div>
                       </div>
 
-                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 flex items-center gap-4">
-                        <img src={qrCodeUrl} alt="Shop QR Code" className="w-24 h-24 bg-white p-1 rounded border border-stone-300 shrink-0" />
+                      <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4", display: "flex", alignItems: "center", gap: "16px" }}>
+                        <img src={qrCodeUrl} alt="Shop QR Code" style={{ width: "80px", height: "80px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "6px", border: "1px solid #d1d5db", flexShrink: 0 }} />
                         <div>
-                          <h4 className="font-bold text-stone-800 text-sm">Counter & Flyer QR Code</h4>
-                          <p className="text-xs text-stone-600 mt-0.5">Customers can scan this code with their phone camera to open your menu instantly.</p>
-                          <a
-                            href={qrCodeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline"
-                          >
+                          <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: 0 }}>Counter & Flyer QR Code</h4>
+                          <p style={{ fontSize: "11px", color: "#78716c", margin: "2px 0 6px 0" }}>Customers can scan this code with their phone camera to open your menu instantly.</p>
+                          <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "11px", fontWeight: "bold", color: "#2563eb", textDecoration: "none" }}>
                             📥 Download / Print QR Code
                           </a>
                         </div>
                       </div>
 
-                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-3">
-                        <h4 className="font-bold text-stone-800 text-sm">🛵 Driver Logistics & Turnaround</h4>
-                        <div className="flex items-center gap-3">
+                      <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4" }}>
+                        <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: "0 0 10px 0" }}>🛵 Driver Logistics & Turnaround</h4>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                           <button
                             onClick={() => setDriverStatus(prev => prev === "ready" ? "out" : "ready")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${driverStatus === "ready" ? "bg-emerald-600" : "bg-amber-600"}`}
+                            style={{ padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: "pointer", backgroundColor: driverStatus === "ready" ? "#059669" : "#d97706", color: "#ffffff" }}
                           >
                             {driverStatus === "ready" ? "🟢 Driver Ready" : "🛵 Driver Out on Run"}
                           </button>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-stone-600 font-medium">Quick ETA:</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "11px", color: "#57534e", fontWeight: "bold" }}>Quick ETA:</span>
                             {["+15 mins", "+30 mins", "+45 mins"].map(time => (
                               <button
                                 key={time}
                                 onClick={() => setDriverEta(time)}
-                                className={`px-2 py-1 text-[11px] font-bold rounded border ${driverEta === time ? "bg-stone-900 text-white" : "bg-white text-stone-700 border-stone-300"}`}
+                                style={{ padding: "4px 8px", fontSize: "10px", fontWeight: "bold", borderRadius: "4px", border: driverEta === time ? "none" : "1px solid #d1d5db", backgroundColor: driverEta === time ? "#1c1917" : "#ffffff", color: driverEta === time ? "#ffffff" : "#374151", cursor: "pointer" }}
                               >
                                 {time}
                               </button>
                             ))}
                           </div>
                         </div>
-                        {driverEta && <p className="text-xs text-stone-500 font-medium">Estimated Driver Return: <strong className="text-stone-800">{driverEta}</strong></p>}
+                        {driverEta && <p style={{ fontSize: "11px", color: "#57534e", margin: "8px 0 0 0" }}>Estimated Driver Return: <strong style={{ color: "#1c1917" }}>{driverEta}</strong></p>}
                       </div>
                     </div>
                   );
                 })()}
 
-                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-stone-800 text-sm">🍽️ Menu Management</h4>
+                <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
                     <button
                       onClick={() => {
                         setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true });
@@ -1003,29 +975,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                         setDishDescInput("");
                         setDishImageInput("");
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                      style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", border: "none", cursor: "pointer" }}
                     >
                       + Add New Dish
                     </button>
                   </div>
 
                   {editingDish !== null && (
-                    <div className="bg-white p-4 rounded-xl border border-stone-300 mb-4 space-y-3">
-                      <h5 className="font-bold text-xs text-stone-800">{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #d1d5db", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <h5 style={{ fontWeight: "bold", fontSize: "12px", color: "#1c1917", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         <input
                           type="text"
                           placeholder="Dish Name"
                           value={dishNameInput}
                           onChange={(e) => setDishNameInput(e.target.value)}
-                          className="bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
+                          style={{ backgroundColor: "#f9f8f6", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none" }}
                         />
                         <input
                           type="number"
                           placeholder="Price ($ JMD)"
                           value={dishPriceInput}
                           onChange={(e) => setDishPriceInput(e.target.value)}
-                          className="bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
+                          style={{ backgroundColor: "#f9f8f6", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none" }}
                         />
                       </div>
                       <input
@@ -1033,31 +1005,31 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                         placeholder="Description"
                         value={dishDescInput}
                         onChange={(e) => setDishDescInput(e.target.value)}
-                        className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
+                        style={{ width: "100%", backgroundColor: "#f9f8f6", border: "1px solid #d1d5db", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
                       />
-                      <div className="flex items-center gap-3">
-                        <label className="text-xs font-bold text-stone-700">Photo:</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <label style={{ fontSize: "11px", fontWeight: "bold", color: "#374151" }}>Photo:</label>
                         <input
                           type="file"
                           accept="image/*"
                           onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))}
-                          className="text-xs text-stone-500"
+                          style={{ fontSize: "11px", color: "#57534e" }}
                         />
                       </div>
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={saveEditedDish} className="bg-stone-900 text-white font-bold px-3 py-1.5 rounded text-xs">Save Dish</button>
-                        <button onClick={() => setEditingDish(null)} className="bg-stone-200 text-stone-700 font-bold px-3 py-1.5 rounded text-xs">Cancel</button>
+                      <div style={{ display: "flex", gap: "8px", paddingTop: "4px" }}>
+                        <button onClick={saveEditedDish} style={{ backgroundColor: "#1c1917", color: "#ffffff", fontWeight: "bold", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save Dish</button>
+                        <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#e7e5e4", color: "#44403c", fontWeight: "bold", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "180px", overflowY: "auto" }}>
                     {(menus[loggedInAdminShopId] || []).map(dish => (
-                      <div key={dish.id} className="bg-white p-3 rounded-lg border border-stone-200 flex items-center justify-between text-xs">
+                      <div key={dish.id} style={{ backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px solid #e7e5e4", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
                         <div>
-                          <span className="font-bold text-stone-900">{dish.name}</span> - <span className="font-semibold text-emerald-700">${dish.price} JMD</span>
+                          <span style={{ fontWeight: "bold", color: "#1c1917" }}>{dish.name}</span> - <span style={{ fontWeight: 600, color: "#059669" }}>${dish.price} JMD</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <button
                             onClick={() => {
                               setMenus(prev => ({
@@ -1065,7 +1037,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                                 [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d)
                               }));
                             }}
-                            className={`px-2 py-1 rounded font-bold text-[10px] ${dish.inStock ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}
+                            style={{ padding: "2px 6px", borderRadius: "4px", fontWeight: "bold", fontSize: "10px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#d1fae5" : "#ffe4e6", color: dish.inStock ? "#065f46" : "#881337" }}
                           >
                             {dish.inStock ? "In Stock" : "Sold Out"}
                           </button>
@@ -1077,40 +1049,40 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                               setDishDescInput(dish.description);
                               setDishImageInput(dish.image);
                             }}
-                            className="text-blue-600 font-bold hover:underline"
+                            style={{ color: "#2563eb", fontWeight: "bold", background: "none", border: "none", cursor: "pointer" }}
                           >
                             Edit
                           </button>
-                          <button onClick={() => deleteDish(dish.id)} className="text-rose-600 font-bold hover:underline">Delete</button>
+                          <button onClick={() => deleteDish(dish.id)} style={{ color: "#e11d48", fontWeight: "bold", background: "none", border: "none", cursor: "pointer" }}>Delete</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <h4 className="font-bold text-stone-800 text-sm mb-3">📋 Live Order Queue ({currentShopOrders.length})</h4>
-                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                <div style={{ backgroundColor: "#f9f8f6", padding: "16px", borderRadius: "12px", border: "1px solid #e7e5e4" }}>
+                  <h4 style={{ fontWeight: "bold", color: "#1c1917", fontSize: "13px", margin: "0 0 10px 0" }}>📋 Live Order Queue ({currentShopOrders.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto" }}>
                     {currentShopOrders.length === 0 ? (
-                      <p className="text-xs text-stone-500 italic text-center py-4">No active orders in queue.</p>
+                      <p style={{ fontSize: "11px", color: "#78716c", fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>No active orders in queue.</p>
                     ) : (
                       currentShopOrders.map(order => (
-                        <div key={order.id} className="bg-white p-3 rounded-lg border border-stone-200 text-xs space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="font-black text-stone-900">#{order.id} - {order.customerName}</span>
-                            <span className="text-stone-500">{order.timestamp}</span>
+                        <div key={order.id} style={{ backgroundColor: "#ffffff", padding: "10px", borderRadius: "8px", border: "1px solid #e7e5e4", fontSize: "11px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: 900, color: "#1c1917" }}>#{order.id} - {order.customerName}</span>
+                            <span style={{ color: "#78716c" }}>{order.timestamp}</span>
                           </div>
-                          <div className="text-stone-600">
+                          <div style={{ color: "#57534e" }}>
                             {order.items.map((it, idx) => (
                               <div key={idx}>• {it.quantity}x {it.dish.name} ({it.spiceLevel})</div>
                             ))}
                           </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-stone-100">
-                            <span className="font-bold text-emerald-700">${order.total} JMD ({order.type})</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "6px", borderTop: "1px solid #f5f5f4" }}>
+                            <span style={{ fontWeight: "bold", color: "#059669" }}>${order.total} JMD ({order.type})</span>
                             <select
                               value={order.status}
                               onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
-                              className="bg-stone-100 border border-stone-300 rounded px-2 py-1 text-[11px] font-bold outline-none cursor-pointer"
+                              style={{ backgroundColor: "#f5f5f4", border: "1px solid #d1d5db", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: "bold", outline: "none", cursor: "pointer" }}
                             >
                               <option value="Received">Received</option>
                               <option value="Preparing">Preparing 🍳</option>
@@ -1125,11 +1097,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                   </div>
                 </div>
 
-                <div className="text-center pt-2">
-                  <button
-                    onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }}
-                    className="text-xs font-bold text-rose-600 hover:underline"
-                  >
+                <div style={{ textAlign: "center", paddingTop: "8px" }}>
+                  <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ color: "#e11d48", background: "none", border: "none", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     Log Out of Admin Dashboard
                   </button>
                 </div>
