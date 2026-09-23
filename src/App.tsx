@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- TYPES ---
 export interface Dish {
@@ -163,39 +163,36 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
 
 const MASTER_PIN = "9999";
 
-const playChime = () => {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-  } catch (e) {
-    console.log("Audio prevented");
-  }
-};
-
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [shops, setShops] = useState<Record<string, ShopData>>(INITIAL_SHOPS);
+
+  // --- LOCALSTORAGE PERSISTENCE INITIALIZATION ---
+  const [shops, setShops] = useState<Record<string, ShopData>>(() => {
+    const saved = localStorage.getItem('yv_cookshop_shops');
+    return saved ? JSON.parse(saved) : INITIAL_SHOPS;
+  });
+
   const [currentShopId, setCurrentShopId] = useState<string>('shop1');
   const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'wishlist'>('menu');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([
-    { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
-    { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
-  ]);
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('yv_cookshop_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(() => {
+    const saved = localStorage.getItem('yv_cookshop_suggestions');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
+      { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
+    ];
+  });
+
   const [newSuggestion, setNewSuggestion] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
+  const [receiptSearchTerm, setReceiptSearchTerm] = useState('');
 
   // Customizer Modal State
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -216,6 +213,23 @@ export default function App() {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
 
+  // Mobile Web Audio Context Reference
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // --- AUTO-SAVE TO LOCALSTORAGE ON STATE CHANGE ---
+  useEffect(() => {
+    localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
+  }, [shops]);
+
+  useEffect(() => {
+    localStorage.setItem('yv_cookshop_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
+  }, [suggestions]);
+
+  // --- SAFE MOBILE WEB AUDIO INITIALIZATION ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -223,9 +237,49 @@ export default function App() {
       script.src = 'https://cdn.tailwindcss.com';
       document.head.appendChild(script);
     }
-    const timer = setTimeout(() => setIsLoading(false), 1000);
+
+    const initAudio = () => {
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) audioCtxRef.current = new AudioCtx();
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    };
+
+    window.addEventListener('click', initAudio, { once: true });
+    window.addEventListener('touchstart', initAudio, { once: true });
+
+    const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
+
+  const playChime = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx) {
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      }
+    } catch (e) {
+      console.log("Audio prevented");
+    }
+  };
 
   const shop = shops[currentShopId] || shops['shop1'];
   const t = shop.theme;
@@ -269,6 +323,9 @@ export default function App() {
 
   const handlePlaceWhatsAppOrder = () => {
     if (cart.length === 0) return;
+    if (fulfillment === 'delivery' && !deliveryAddress.trim()) return;
+    if (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim()) return;
+
     const newOrder = generateOrderObject();
     setOrders([newOrder, ...orders]);
     setActiveReceipt(newOrder);
@@ -293,6 +350,9 @@ export default function App() {
 
   const handleCopyForSocialDM = () => {
     if (cart.length === 0) return;
+    if (fulfillment === 'delivery' && !deliveryAddress.trim()) return;
+    if (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim()) return;
+
     const newOrder = generateOrderObject();
     setOrders([newOrder, ...orders]);
     setActiveReceipt(newOrder);
@@ -306,7 +366,17 @@ export default function App() {
       `Payment: ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
       `Total: $${grandTotal} JMD`;
 
-    navigator.clipboard.writeText(msg);
+    // FALLBACK SAFE CLIPBOARD COPY
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(msg);
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = msg;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
 
     setCart([]);
     setBankRef('');
@@ -325,6 +395,16 @@ export default function App() {
       setAuthError('Incorrect PIN code.');
     }
   };
+
+  // FILTERED RECEIPTS FOR HISTORY LOG SEARCH
+  const filteredOrders = orders.filter(o => {
+    const term = receiptSearchTerm.toLowerCase();
+    return o.id.toString().includes(term) ||
+      o.shopName.toLowerCase().includes(term) ||
+      (o.deliveryAddress && o.deliveryAddress.toLowerCase().includes(term)) ||
+      (o.bankRef && o.bankRef.toLowerCase().includes(term)) ||
+      o.items.some(i => i.name.toLowerCase().includes(term));
+  });
 
   if (isLoading) {
     return (
@@ -385,7 +465,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT CONTAINER */}
       <main className="p-4 max-w-lg mx-auto">
 
         {/* MENU TAB */}
@@ -539,14 +619,14 @@ export default function App() {
 
                   <div className="grid grid-cols-1 gap-2 pt-1">
                     <button 
-                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
+                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) || (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim())}
                       onClick={handlePlaceWhatsAppOrder}
-                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition shadow ${!shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition shadow ${!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
                       📲 Dispatch Order via WhatsApp
                     </button>
 
                     <button 
-                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
+                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) || (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim())}
                       onClick={handleCopyForSocialDM}
                       className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-bold text-xs transition">
                       📋 Copy Order text for IG / FB DM
@@ -786,32 +866,47 @@ export default function App() {
                     </div>
 
                     <button 
-                      onClick={() => setShops(INITIAL_SHOPS)}
+                      onClick={() => {
+                        localStorage.clear();
+                        setShops(INITIAL_SHOPS);
+                        setOrders([]);
+                      }}
                       className="w-full py-2 bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 rounded-lg text-xs font-bold transition">
                       ⚠️ Reset State to Master Configuration
                     </button>
                   </div>
                 )}
 
-                {/* 2. SHOP OPERATIONAL ADMIN PANEL (ACCESSIBLE BY BOTH ADMIN & DEVELOPER) */}
+                {/* 2. SHOP OPERATIONAL ADMIN PANEL */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Shop Operational Controls</h4>
 
-                  {/* ORDERS QUEUE */}
+                  {/* ORDERS QUEUE & HISTORICAL RECEIPT SEARCH */}
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-slate-300">Incoming Order Queue ({orders.length})</label>
-                    <div className="max-h-36 overflow-y-auto space-y-2">
-                      {orders.length === 0 ? (
-                        <p className="text-xs text-slate-500 text-center py-2 bg-slate-950 rounded-xl border border-slate-800/60">No active orders right now.</p>
+                    <label className="text-[11px] font-bold text-slate-300">Order Queue & Receipt History</label>
+                    <input 
+                      type="text"
+                      placeholder="🔍 Search receipts by ID, dish, address, ref..."
+                      value={receiptSearchTerm}
+                      onChange={(e) => setReceiptSearchTerm(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
+                    />
+
+                    <div className="max-h-40 overflow-y-auto space-y-2 pt-1">
+                      {filteredOrders.length === 0 ? (
+                        <p className="text-xs text-slate-500 text-center py-2 bg-slate-950 rounded-xl border border-slate-800/60">No orders found.</p>
                       ) : (
-                        orders.map(o => (
+                        filteredOrders.map(o => (
                           <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs space-y-1">
                             <div className="flex justify-between font-bold text-emerald-400">
-                              <span>#{o.id} ({o.fulfillment})</span>
+                              <span>#{o.id} ({o.fulfillment}) - {o.time}</span>
                               <span>${o.total} JMD</span>
                             </div>
                             <p className="text-slate-300">{o.items.map(i => `${i.name} [${i.spice}, ${i.gravy}]`).join(', ')}</p>
-                            <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Clear Order</button>
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-900">
+                              <button onClick={() => setActiveReceipt(o)} className="text-[10px] text-amber-400 font-bold underline">📄 View / Print Receipt</button>
+                              <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Delete Log</button>
+                            </div>
                           </div>
                         ))
                       )}
