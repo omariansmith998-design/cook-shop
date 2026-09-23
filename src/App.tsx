@@ -8,6 +8,7 @@ export interface Dish {
   category: string;
   soldOut: boolean;
   desc: string;
+  image?: string; // OPTIONAL DISH IMAGE
 }
 
 export interface ShopTheme {
@@ -29,7 +30,7 @@ export interface ShopData {
   tagline: string;
   whatsapp: string;
   address: string;
-  shopUrl: string; // LIVE SHOP URL
+  shopUrl: string;
   pin: string;
   crossPromoName: string;
   crossPromoId: string;
@@ -169,7 +170,6 @@ const MASTER_PIN = "9999";
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- LOCALSTORAGE PERSISTENCE INITIALIZATION ---
   const [shops, setShops] = useState<Record<string, ShopData>>(() => {
     const saved = localStorage.getItem('yv_cookshop_shops');
     return saved ? JSON.parse(saved) : INITIAL_SHOPS;
@@ -216,6 +216,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
+  const [newDishImg, setNewDishImg] = useState(''); // OPTIONAL IMAGE INPUT
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -500,25 +501,40 @@ export default function App() {
             
             <div className="space-y-3">
               {shop.menu.map(item => (
-                <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 p-4 rounded-2xl flex justify-between items-center shadow-md hover:border-slate-700 transition">
-                  <div className="space-y-1.5 max-w-[68%]">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-extrabold text-sm text-white">{item.name}</h3>
-                      {item.soldOut && <span className="bg-red-950 text-red-400 border border-red-800/60 text-[10px] px-2 py-0.5 rounded font-bold">Sold Out</span>}
+                <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-md hover:border-slate-700 transition">
+                  {/* SAFE OPTIONAL IMAGE WITH ERROR FALLBACK */}
+                  {item.image && (
+                    <div className="h-32 w-full bg-slate-950 overflow-hidden relative">
+                      <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
-                    <p className={`text-xs font-black ${t.accentText}`}>${item.price} JMD</p>
+                  )}
+                  <div className="p-4 flex justify-between items-center">
+                    <div className="space-y-1.5 max-w-[68%]">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-extrabold text-sm text-white">{item.name}</h3>
+                        {item.soldOut && <span className="bg-red-950 text-red-400 border border-red-800/60 text-[10px] px-2 py-0.5 rounded font-bold">Sold Out</span>}
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
+                      <p className={`text-xs font-black ${t.accentText}`}>${item.price} JMD</p>
+                    </div>
+                    <button 
+                      disabled={item.soldOut || !shop.isOpen}
+                      onClick={() => {
+                        setSelectedDish(item);
+                        setSpice(shop.customizerOptions.spiceLevels[1] || "Mild");
+                        setGravy(shop.customizerOptions.gravyOptions[2] || "Normal Gravy");
+                      }}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow transition ${item.soldOut || !shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white shadow-emerald-950/50`}`}>
+                      + Customize
+                    </button>
                   </div>
-                  <button 
-                    disabled={item.soldOut || !shop.isOpen}
-                    onClick={() => {
-                      setSelectedDish(item);
-                      setSpice(shop.customizerOptions.spiceLevels[1] || "Mild");
-                      setGravy(shop.customizerOptions.gravyOptions[2] || "Normal Gravy");
-                    }}
-                    className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow transition ${item.soldOut || !shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white shadow-emerald-950/50`}`}>
-                    + Customize
-                  </button>
                 </div>
               ))}
             </div>
@@ -883,7 +899,6 @@ export default function App() {
                       />
                     </div>
 
-                    {/* NEW: LIVE SHOP URL INPUT */}
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-300 font-bold">Edit Live Shop URL</label>
                       <input 
@@ -1011,7 +1026,7 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* MENU MANAGEMENT */}
+                  {/* MENU MANAGEMENT WITH PICTURE URL INPUT */}
                   <div className="space-y-2 border-t border-slate-800 pt-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory</h4>
                     <div className="max-h-28 overflow-y-auto space-y-1.5">
@@ -1033,12 +1048,13 @@ export default function App() {
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
                       <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
                       <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
+                      <input type="text" placeholder="Optional Image URL (e.g. https://...)" value={newDishImg} onChange={(e) => setNewDishImg(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none font-mono" />
                       <button 
                         onClick={() => {
                           if (!newDishName || !newDishPrice) return;
-                          const newItem: Dish = { id: Date.now(), name: newDishName, price: Number(newDishPrice), category: 'Mains', soldOut: false, desc: 'Freshly prepared daily.' };
+                          const newItem: Dish = { id: Date.now(), name: newDishName, price: Number(newDishPrice), category: 'Mains', soldOut: false, desc: 'Freshly prepared daily.', image: newDishImg || undefined };
                           setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
-                          setNewDishName(''); setNewDishPrice('');
+                          setNewDishName(''); setNewDishPrice(''); setNewDishImg('');
                         }}
                         className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
                         + Add Dish
