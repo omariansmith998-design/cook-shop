@@ -176,6 +176,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Master Developer PIN State (Stored locally so you can customize it)
+  const [masterPin, setMasterPin] = useState<string>(() => {
+    return localStorage.getItem("cookshop_master_pin") || "9999";
+  });
+
   // Category Filtering
   const [activeCategory, setActiveCategory] = useState<string>("All");
 
@@ -209,9 +214,6 @@ export default function App() {
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [newNoteText, setNewNoteText] = useState("");
-
-  // Master Developer PIN
-  const [masterPin] = useState("9999");
   const [masterSearchQuery, setMasterSearchQuery] = useState("");
 
   // Create Shop Fields
@@ -234,6 +236,7 @@ export default function App() {
       localStorage.setItem("cookshop_all_menus", JSON.stringify(menus));
       localStorage.setItem("cookshop_dev_notes", JSON.stringify(devNotes));
       localStorage.setItem("cookshop_user_liked_dishes", JSON.stringify(likedDishes));
+      localStorage.setItem("cookshop_master_pin", masterPin);
       const prunedOrders: Record<string, Order[]> = {};
       Object.keys(orders).forEach(id => {
         prunedOrders[id] = (orders[id] || []).slice(0, 50);
@@ -242,9 +245,8 @@ export default function App() {
     } catch (err) {
       console.warn("Storage warning:", err);
     }
-  }, [shops, menus, orders, devNotes, likedDishes]);
+  }, [shops, menus, orders, devNotes, likedDishes, masterPin]);
 
-  // Inject Custom Google Fonts dynamically
   useEffect(() => {
     const link = document.createElement("link");
     link.href = "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&family=Poppins:wght@400;600;800;900&display=swap";
@@ -427,6 +429,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     }
   };
 
+  // --- SECURE LOGIN HANDLER (NO LEAKED PINS IN ALERTS) ---
   const handleAdminLogin = () => {
     if (adminPinInput === masterPin) {
       setIsMasterSession(true);
@@ -441,7 +444,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       setAdminPinInput("");
       return;
     }
-    alert("Invalid PIN. Enter Master PIN (9999) or valid shop PIN.");
+    // SECURE NEUTRAL ERROR MESSAGE
+    alert("Invalid PIN. Please try again or contact the administrator.");
+    setAdminPinInput("");
   };
 
   const updateOrderStatus = (shopId: string, orderId: string, newStatus: Order["status"]) => {
@@ -534,7 +539,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     }
   };
 
-  // Customer History Lookup Calculations
   const getCustomerStats = (nameQuery: string) => {
     if (!nameQuery.trim()) return null;
     const matchingOrders = currentShopOrders.filter(o => o.customerName.toLowerCase().includes(nameQuery.toLowerCase()));
@@ -543,7 +547,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     const totalSpent = matchingOrders.reduce((sum, o) => sum + o.total, 0);
     const addresses = Array.from(new Set(matchingOrders.map(o => o.address)));
 
-    // Count dish frequencies
     const dishCounts: Record<string, number> = {};
     matchingOrders.forEach(o => {
       o.items.forEach(it => {
@@ -599,7 +602,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 📍 Pin
               </a>
             )}
-            {/* SOLID HIGH-CONTRAST ADMIN BUTTON */}
             <button
               onClick={() => setAdminModalOpen(true)}
               style={{ backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
@@ -690,7 +692,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
                       {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
                     </span>
-                    {/* ANTI-SPAM LIKE BUTTON */}
                     <button
                       onClick={() => toggleLikeDish(dish.id)}
                       style={{ backgroundColor: isLiked ? "#881337" : "#27272a", color: isLiked ? "#fda4af" : "#f43f5e", border: "1px solid #3f3f46", borderRadius: "6px", padding: "3px 8px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
@@ -698,7 +699,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       {isLiked ? "❤️" : "🤍"} {dish.likes || 0}
                     </button>
                   </div>
-                  {/* SOLID HIGH-CONTRAST ADD TO PLATE BUTTON */}
                   {activeShop.isOpen && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
@@ -1146,10 +1146,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
             </div>
 
-            {/* PIN Login Screen */}
+            {/* SECURE PIN LOGIN SCREEN */}
             {!isMasterSession && !loggedInAdminShopId && (
               <div style={{ padding: "20px 0", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit Shop PIN or Master PIN (9999).</p>
+                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit PIN</p>
                 <input
                   type="password"
                   maxLength={4}
@@ -1207,6 +1207,21 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+
+                {/* Custom Master PIN Settings */}
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                  <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: "0 0 6px 0" }}>🔑 Master Developer Security</h4>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={masterPin}
+                      onChange={(e) => setMasterPin(e.target.value)}
+                      style={{ width: "100px", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", textAlign: "center", fontFamily: "monospace" }}
+                    />
+                    <span style={{ fontSize: "11px", color: "#a1a1aa" }}>Update Secret Master PIN (Default: 9999)</span>
                   </div>
                 </div>
 
