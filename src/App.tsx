@@ -74,7 +74,7 @@ export interface Suggestion {
   votes: number;
 }
 
-// --- INITIAL DATA ---
+// --- INITIAL DATA STATE ---
 const INITIAL_SHOPS: Record<string, ShopData> = {
   shop1: {
     id: 'shop1',
@@ -157,15 +157,15 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
 
 const MASTER_PIN = "9999";
 
-// Web Audio Chime Function
+// Audio Chime trigger for new order receipts
 const playChime = () => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // A5
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
     gain.gain.setValueAtTime(0.3, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
     osc.connect(gain);
@@ -173,7 +173,7 @@ const playChime = () => {
     osc.start();
     osc.stop(ctx.currentTime + 0.5);
   } catch (e) {
-    console.log("Audio play prevented");
+    console.log("Audio prevented");
   }
 };
 
@@ -202,12 +202,22 @@ export default function App() {
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery/Pickup');
   const [bankRef, setBankRef] = useState('');
 
-  // Admin Modal Auth State
+  // Admin Auth State
   const [adminRole, setAdminRole] = useState<'master' | 'cousin' | null>(null);
   const [enteredPin, setEnteredPin] = useState('');
   const [authError, setAuthError] = useState('');
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
+
+  // --- AUTO-INJECT TAILWIND STYLESHEET TO FIX PLAIN WHITE UI ---
+  useEffect(() => {
+    if (!document.getElementById('tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(script);
+    }
+  }, []);
 
   const shop = shops[currentShopId] || shops['shop1'];
   const t = shop.theme;
@@ -254,7 +264,6 @@ export default function App() {
     setOrders([newOrder, ...orders]);
     playChime();
 
-    // Prepare WhatsApp Message
     const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
     const msg = `*NEW ORDER #${newOrder.id} - ${shop.name}*\n\n` +
       `*Items:*\n${orderItemsText}\n\n` +
@@ -288,20 +297,20 @@ export default function App() {
     <div className={`min-h-screen ${t.primaryBg} text-slate-100 font-sans pb-24`}>
       
       {/* HEADER */}
-      <header className={`p-4 border-b ${t.primaryBorder} bg-black/30 backdrop-blur sticky top-0 z-30 flex justify-between items-center`}>
+      <header className={`p-4 border-b ${t.primaryBorder} bg-black/40 backdrop-blur sticky top-0 z-30 flex justify-between items-center shadow-lg`}>
         <div>
           <h1 className="text-xl font-black text-white tracking-tight">{shop.name}</h1>
-          <p className="text-xs text-slate-400">{shop.tagline}</p>
+          <p className="text-xs text-slate-400 font-medium">{shop.tagline}</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setCurrentShopId(shop.crossPromoId)}
             className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border ${t.badgeBg} hover:opacity-80 transition`}>
-            🔄 Switch to {shop.crossPromoName}
+            🔄 {shop.crossPromoName}
           </button>
           <button 
             onClick={() => setIsAdminOpen(true)}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold p-2 rounded-lg text-xs">
+            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow">
             ⚙️ Admin
           </button>
         </div>
@@ -309,54 +318,57 @@ export default function App() {
 
       {/* EVENT BANNER */}
       {shop.eventMode && (
-        <div className="bg-amber-600 text-slate-950 px-4 py-2 text-xs font-black flex justify-between items-center">
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-black flex justify-between items-center shadow-md">
           <span>🔥 {shop.eventTitle}: {shop.eventBanner}</span>
         </div>
       )}
 
       {/* NAVIGATION TABS */}
-      <div className="flex border-b border-slate-800 bg-black/20 text-xs font-bold">
+      <div className="flex border-b border-slate-800/80 bg-black/30 text-xs font-bold sticky top-[65px] z-20 backdrop-blur">
         <button 
           onClick={() => setActiveTab('menu')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'menu' ? `${t.accentText} border-b-2 border-current` : 'text-slate-400'}`}>
+          className={`flex-1 py-3 text-center transition ${activeTab === 'menu' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
           🍱 Daily Menu
         </button>
         <button 
           onClick={() => setActiveTab('cart')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'cart' ? `${t.accentText} border-b-2 border-current` : 'text-slate-400'}`}>
+          className={`flex-1 py-3 text-center transition ${activeTab === 'cart' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
           🛒 My Plate ({cart.length})
         </button>
         <button 
           onClick={() => setActiveTab('wishlist')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'wishlist' ? `${t.accentText} border-b-2 border-current` : 'text-slate-400'}`}>
+          className={`flex-1 py-3 text-center transition ${activeTab === 'wishlist' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
           💡 Wishlist Box
         </button>
       </div>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT CONTAINER */}
       <main className="p-4 max-w-lg mx-auto">
 
         {/* MENU TAB */}
         {activeTab === 'menu' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {!shop.isOpen && (
-              <div className="bg-red-950/60 border border-red-800 text-red-300 p-3 rounded-xl text-xs font-bold text-center">
-                ⛔ {shop.name} is currently CLOSED for orders.
+              <div className="bg-red-950/80 border border-red-800/80 text-red-200 p-3.5 rounded-xl text-xs font-bold text-center shadow">
+                ⛔ {shop.name} is currently CLOSED for ordering.
               </div>
             )}
             
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Today's Specials</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Today's Specials</h2>
+              <span className="text-[11px] text-slate-500 font-medium">{shop.address}</span>
+            </div>
             
-            <div className="space-y-2">
+            <div className="space-y-3">
               {shop.menu.map(item => (
-                <div key={item.id} className="bg-slate-900/80 border border-slate-800/80 p-3.5 rounded-xl flex justify-between items-center">
-                  <div className="space-y-1 max-w-[70%]">
+                <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 p-4 rounded-2xl flex justify-between items-center shadow-md hover:border-slate-700 transition">
+                  <div className="space-y-1.5 max-w-[68%]">
                     <div className="flex items-center gap-2">
                       <h3 className="font-extrabold text-sm text-white">{item.name}</h3>
-                      {item.soldOut && <span className="bg-red-900/60 text-red-300 text-[10px] px-2 py-0.5 rounded font-bold">Sold Out</span>}
+                      {item.soldOut && <span className="bg-red-950 text-red-400 border border-red-800/60 text-[10px] px-2 py-0.5 rounded font-bold">Sold Out</span>}
                     </div>
-                    <p className="text-xs text-slate-400">{item.desc}</p>
-                    <p className={`text-xs font-extrabold ${t.accentText}`}>${item.price} JMD</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
+                    <p className={`text-xs font-black ${t.accentText}`}>${item.price} JMD</p>
                   </div>
                   <button 
                     disabled={item.soldOut || !shop.isOpen}
@@ -365,7 +377,7 @@ export default function App() {
                       setSpice(shop.customizerOptions.spiceLevels[1] || "Mild");
                       setGravy(shop.customizerOptions.gravyOptions[2] || "Normal Gravy");
                     }}
-                    className={`px-3 py-2 rounded-lg text-xs font-extrabold transition ${item.soldOut || !shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
+                    className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow transition ${item.soldOut || !shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white shadow-emerald-950/50`}`}>
                     + Customize
                   </button>
                 </div>
@@ -377,44 +389,46 @@ export default function App() {
         {/* CART TAB */}
         {activeTab === 'cart' && (
           <div className="space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Customized Plate</h2>
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Your Customized Plate</h2>
 
             {cart.length === 0 ? (
-              <div className="bg-slate-900/40 border border-slate-800/60 p-8 text-center rounded-2xl space-y-2">
+              <div className="bg-slate-900/50 border border-slate-800/60 p-8 text-center rounded-2xl space-y-3">
                 <p className="text-slate-400 text-xs font-medium">Your plate is currently empty.</p>
-                <button onClick={() => setActiveTab('menu')} className={`text-xs font-bold ${t.accentText}`}>View Menu & Add Items →</button>
+                <button onClick={() => setActiveTab('menu')} className={`text-xs font-bold ${t.accentText} underline underline-offset-4`}>
+                  Browse Today's Menu →
+                </button>
               </div>
             ) : (
               <div className="space-y-3">
                 {cart.map(item => (
-                  <div key={item.cartId} className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-start text-xs">
+                  <div key={item.cartId} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex justify-between items-start text-xs shadow">
                     <div className="space-y-1">
                       <h4 className="font-extrabold text-white text-sm">{item.name}</h4>
-                      <p className="text-slate-400">🌶️ {item.spice} | 🍲 {item.gravy}</p>
-                      {item.note && <p className="text-slate-400 italic">"{item.note}"</p>}
-                      <p className={`font-bold ${t.accentText}`}>${item.price} JMD</p>
+                      <p className="text-slate-300 font-medium">🌶️ {item.spice} | 🍲 {item.gravy}</p>
+                      {item.note && <p className="text-slate-400 italic bg-slate-950/60 p-1.5 rounded border border-slate-800/80 mt-1">"{item.note}"</p>}
+                      <p className={`font-black ${t.accentText} pt-1`}>${item.price} JMD</p>
                     </div>
-                    <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 font-bold p-1">✕</button>
+                    <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 font-bold p-1 text-sm">✕</button>
                   </div>
                 ))}
 
-                {/* FULFILLMENT TOGGLE */}
-                <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
-                  <label className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Fulfillment Method</label>
+                {/* FULFILLMENT SELECTOR */}
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
+                  <label className="font-black text-slate-300 uppercase tracking-wider text-[11px]">Fulfillment Method</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => setFulfillment('pickup')}
-                      className={`p-2 rounded-lg font-bold transition ${fulfillment === 'pickup' ? `${t.accentBg} text-white` : 'bg-slate-950 text-slate-400'}`}>
+                      className={`p-2.5 rounded-xl font-bold transition border ${fulfillment === 'pickup' ? `${t.accentBg} text-white border-transparent shadow` : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
                       🏪 Pickup (Free)
                     </button>
                     <button 
                       disabled={!shop.deliveryEnabled}
                       onClick={() => setFulfillment('delivery')}
-                      className={`p-2 rounded-lg font-bold transition ${!shop.deliveryEnabled ? 'bg-slate-950 text-slate-600 cursor-not-allowed' : fulfillment === 'delivery' ? `${t.accentBg} text-white` : 'bg-slate-950 text-slate-400'}`}>
+                      className={`p-2.5 rounded-xl font-bold transition border ${!shop.deliveryEnabled ? 'bg-slate-950 border-slate-900 text-slate-600 cursor-not-allowed' : fulfillment === 'delivery' ? `${t.accentBg} text-white border-transparent shadow` : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
                       🚚 Delivery (${shop.deliveryFee})
                     </button>
                   </div>
-                  {!shop.deliveryEnabled && <p className="text-[10px] text-red-400">Delivery is currently disabled by shop admin.</p>}
+                  {!shop.deliveryEnabled && <p className="text-[10px] text-red-400 font-bold">Delivery is currently toggled off by shop admin.</p>}
 
                   {fulfillment === 'delivery' && (
                     <input 
@@ -422,18 +436,18 @@ export default function App() {
                       placeholder="Enter Delivery Address / Landmark..." 
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700"
                     />
                   )}
                 </div>
 
-                {/* PAYMENT METHOD */}
-                <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
-                  <label className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Payment Method</label>
+                {/* PAYMENT SELECTOR */}
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
+                  <label className="font-black text-slate-300 uppercase tracking-wider text-[11px]">Payment Method</label>
                   <select 
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:outline-none">
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700">
                     {shop.paymentMethods.map(pm => (
                       <option key={pm} value={pm}>{pm}</option>
                     ))}
@@ -442,16 +456,16 @@ export default function App() {
                   {paymentMethod !== 'Cash on Delivery/Pickup' && (
                     <input 
                       type="text" 
-                      placeholder="Enter Lynk / Bank Reference Code..." 
+                      placeholder="Enter Lynk / Bank Transfer Reference..." 
                       value={bankRef}
                       onChange={(e) => setBankRef(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:outline-none font-mono"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700 font-mono"
                     />
                   )}
                 </div>
 
-                {/* TOTAL & SUBMIT */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                {/* TOTAL & WHATSAPP DISPATCH */}
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 shadow-lg">
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Subtotal</span>
                     <span>${subtotal} JMD</span>
@@ -462,7 +476,7 @@ export default function App() {
                       <span>${shop.deliveryFee} JMD</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-black text-sm text-white border-t border-slate-800 pt-2">
+                  <div className="flex justify-between font-black text-sm text-white border-t border-slate-800/80 pt-2.5">
                     <span>Total</span>
                     <span className={t.accentText}>${grandTotal} JMD</span>
                   </div>
@@ -470,7 +484,7 @@ export default function App() {
                   <button 
                     disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
                     onClick={handlePlaceOrder}
-                    className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition ${!shop.isOpen ? 'bg-slate-800 text-slate-500' : `${t.accentBg} text-white`}`}>
+                    className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-lg ${!shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
                     📲 Dispatch Order via WhatsApp
                   </button>
                 </div>
@@ -482,16 +496,16 @@ export default function App() {
         {/* WISHLIST TAB */}
         {activeTab === 'wishlist' && (
           <div className="space-y-4">
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2 text-xs">
-              <h3 className="font-extrabold text-white text-sm">💡 Request a Menu Dish</h3>
-              <p className="text-slate-400">Want us to cook something special tomorrow? Drop a suggestion or vote!</p>
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
+              <h3 className="font-extrabold text-white text-sm">💡 Suggest a Daily Special</h3>
+              <p className="text-slate-400">Have a favorite meal you want added to the menu? Submit a suggestion below:</p>
               <div className="flex gap-2">
                 <input 
                   type="text" 
-                  placeholder="e.g., Oxtail with Butter Beans..." 
+                  placeholder="e.g., Oxtail with Broad Beans..." 
                   value={newSuggestion}
                   onChange={(e) => setNewSuggestion(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:outline-none"
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700"
                 />
                 <button 
                   onClick={() => {
@@ -499,7 +513,7 @@ export default function App() {
                     setSuggestions([...suggestions, { id: Date.now(), text: newSuggestion, votes: 1 }]);
                     setNewSuggestion('');
                   }}
-                  className={`${t.accentBg} text-white font-bold px-3 py-2 rounded-lg text-xs`}>
+                  className={`${t.accentBg} text-white font-black px-4 py-2.5 rounded-xl text-xs shadow`}>
                   Add
                 </button>
               </div>
@@ -507,13 +521,13 @@ export default function App() {
 
             <div className="space-y-2">
               {suggestions.map(s => (
-                <div key={s.id} className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center text-xs">
+                <div key={s.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center text-xs shadow">
                   <span className="font-bold text-slate-200">{s.text}</span>
                   <button 
                     onClick={() => {
                       setSuggestions(suggestions.map(item => item.id === s.id ? { ...item, votes: item.votes + 1 } : item));
                     }}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg border border-slate-700">
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-black px-3 py-1.5 rounded-lg border border-slate-700 shadow">
                     👍 {s.votes}
                   </button>
                 </div>
@@ -524,68 +538,71 @@ export default function App() {
 
       </main>
 
-      {/* CUSTOMIZER MODAL */}
+      {/* PLATE CUSTOMIZER MODAL */}
       {selectedDish && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h3 className="font-black text-white text-base">{selectedDish.name}</h3>
-              <button onClick={() => setSelectedDish(null)} className="text-slate-400 font-bold">✕</button>
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-white text-base">{selectedDish.name}</h3>
+                <p className="text-[11px] text-slate-400">${selectedDish.price} JMD</p>
+              </div>
+              <button onClick={() => setSelectedDish(null)} className="text-slate-400 hover:text-white font-black text-sm p-1">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="space-y-1">
                 <label className="font-bold text-slate-300">Spice Level</label>
-                <select value={spice} onChange={(e) => setSpice(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+                <select value={spice} onChange={(e) => setSpice(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none">
                   {shop.customizerOptions.spiceLevels.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1">
                 <label className="font-bold text-slate-300">Gravy Option</label>
-                <select value={gravy} onChange={(e) => setGravy(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+                <select value={gravy} onChange={(e) => setGravy(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none">
                   {shop.customizerOptions.gravyOptions.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-300">Special Instructions / Note</label>
-                <input type="text" placeholder="e.g. Extra cabbage, no rice..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" />
+                <label className="font-bold text-slate-300">Special Instructions</label>
+                <input type="text" placeholder="e.g., No salad, extra plantain..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none" />
               </div>
             </div>
 
-            <button onClick={addToCart} className={`w-full ${t.accentBg} text-white font-bold py-2.5 rounded-xl text-xs`}>
+            <button onClick={addToCart} className={`w-full ${t.accentBg} text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg`}>
               Add to Plate (${selectedDish.price} JMD)
             </button>
           </div>
         </div>
       )}
 
-      {/* ADMIN DASHBOARD MODAL */}
+      {/* FULL ADMIN DASHBOARD MODAL */}
       {isAdminOpen && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 my-auto">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 my-auto shadow-2xl">
             
             {!adminRole ? (
               <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-extrabold text-base text-white">Enter Admin or Master PIN</h3>
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                  <h3 className="font-extrabold text-base text-white">Admin Authentication</h3>
                   <button type="button" onClick={() => setIsAdminOpen(false)} className="text-slate-400 font-bold">✕</button>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Cousin PIN accesses active shop shift controls. Master PIN (9999) accesses developer controls & shop name editing.
+                  Enter Cousin PIN for shift controls or Master PIN (9999) to edit shop names and global config.
                 </p>
                 <input 
                   type="password" 
                   maxLength={4}
-                  placeholder="Enter 4-digit PIN"
+                  placeholder="Enter 4-Digit PIN"
                   value={enteredPin}
                   onChange={(e) => setEnteredPin(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-center text-lg text-white focus:outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-center text-xl text-white tracking-widest focus:outline-none focus:border-slate-700"
                   autoFocus
                 />
                 {authError && <p className="text-xs text-red-400 text-center font-bold">{authError}</p>}
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition">
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl transition text-xs uppercase tracking-wider shadow">
                   Unlock Dashboard
                 </button>
               </form>
@@ -593,22 +610,22 @@ export default function App() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                   <div>
-                    <h3 className="font-extrabold text-sm text-white">
+                    <h3 className="font-black text-sm text-white">
                       {adminRole === 'master' ? '👑 Master Developer Dashboard' : `🔒 ${shop.name} Admin`}
                     </h3>
                   </div>
-                  <button onClick={() => { setAdminRole(null); setEnteredPin(''); setIsAdminOpen(false); }} className="text-slate-400 font-bold text-xs bg-slate-800 px-2.5 py-1 rounded-lg">
+                  <button onClick={() => { setAdminRole(null); setEnteredPin(''); setIsAdminOpen(false); }} className="text-slate-400 hover:text-white font-bold text-xs bg-slate-800 px-2.5 py-1 rounded-lg">
                     Logout
                   </button>
                 </div>
 
-                {/* MASTER DEVELOPER ONLY */}
+                {/* MASTER DEVELOPER PANEL */}
                 {adminRole === 'master' && (
-                  <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-3 shadow-inner">
-                    <h4 className="text-xs font-extrabold text-amber-400 uppercase">Shop Name & Cloud Config</h4>
+                  <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
+                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Master Config & Shop Renaming</h4>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-medium">Edit Active Shop Name</label>
+                      <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Name</label>
                       <input 
                         type="text" 
                         value={shop.name}
@@ -616,12 +633,12 @@ export default function App() {
                           const val = e.target.value;
                           setShops({ ...shops, [currentShopId]: { ...shop, name: val } });
                         }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-medium">Supabase Project URL</label>
+                      <label className="text-[11px] text-slate-300 font-bold">Supabase Project URL</label>
                       <input 
                         type="text" 
                         placeholder="https://xxxxxx.supabase.co"
@@ -630,12 +647,12 @@ export default function App() {
                           const val = e.target.value;
                           setShops({ ...shops, [currentShopId]: { ...shop, supabaseUrl: val } });
                         }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-medium">Supabase Anon Key</label>
+                      <label className="text-[11px] text-slate-300 font-bold">Supabase Anon Key</label>
                       <input 
                         type="password" 
                         placeholder="eyJhGciOi..."
@@ -644,72 +661,72 @@ export default function App() {
                           const val = e.target.value;
                           setShops({ ...shops, [currentShopId]: { ...shop, supabaseKey: val } });
                         }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
                       />
                     </div>
                   </div>
                 )}
 
-                {/* INCOMING ORDERS QUEUE */}
+                {/* ORDERS QUEUE */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase">Incoming Orders ({orders.length})</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Incoming Orders ({orders.length})</h4>
                   <div className="max-h-36 overflow-y-auto space-y-2">
                     {orders.length === 0 ? (
                       <p className="text-xs text-slate-500 text-center py-2">No active orders yet.</p>
                     ) : (
                       orders.map(o => (
-                        <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded text-xs space-y-1">
+                        <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs space-y-1">
                           <div className="flex justify-between font-bold text-emerald-400">
                             <span>#{o.id} ({o.fulfillment})</span>
                             <span>${o.total} JMD</span>
                           </div>
                           <p className="text-slate-300">{o.items.map(i => `${i.name} [${i.spice}, ${i.gravy}]`).join(', ')}</p>
-                          <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold">Clear Order</button>
+                          <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Clear Order</button>
                         </div>
                       ))
                     )}
                   </div>
                 </div>
 
-                {/* SHIFT CONTROLS */}
+                {/* SHIFT & DELIVERY CONTROLS */}
                 <div className="space-y-2 border-t border-slate-800 pt-3">
-                  <div className="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
-                    <span className="text-xs font-medium text-slate-300">Shop Open Status</span>
-                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, isOpen: !shop.isOpen } })} className={`px-3 py-1 rounded text-xs font-bold ${shop.isOpen ? 'bg-emerald-600' : 'bg-red-600'}`}>
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-xs font-bold text-slate-300">Shop Open Status</span>
+                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, isOpen: !shop.isOpen } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.isOpen ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
                       {shop.isOpen ? 'OPEN' : 'CLOSED'}
                     </button>
                   </div>
 
-                  <div className="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
-                    <span className="text-xs font-medium text-slate-300">Delivery Toggle</span>
-                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, deliveryEnabled: !shop.deliveryEnabled } })} className={`px-3 py-1 rounded text-xs font-bold ${shop.deliveryEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}>
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-xs font-bold text-slate-300">Delivery Toggle</span>
+                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, deliveryEnabled: !shop.deliveryEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.deliveryEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
                       {shop.deliveryEnabled ? 'ENABLED' : 'DISABLED'}
                     </button>
                   </div>
                 </div>
 
-                {/* MENU EDITING */}
+                {/* MENU MANAGEMENT */}
                 <div className="space-y-2 border-t border-slate-800 pt-3">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase">Menu Items</h4>
-                  <div className="max-h-28 overflow-y-auto space-y-1">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory</h4>
+                  <div className="max-h-28 overflow-y-auto space-y-1.5">
                     {shop.menu.map(m => (
-                      <div key={m.id} className="flex justify-between items-center bg-slate-950 p-1.5 rounded border border-slate-800 text-xs">
-                        <span className="text-slate-200">{m.name}</span>
+                      <div key={m.id} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
+                        <span className="text-slate-200 font-medium">{m.name}</span>
                         <button 
                           onClick={() => {
                             const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
                             setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
                           }}
-                          className={`px-2 py-0.5 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-900 text-red-300' : 'bg-emerald-900 text-emerald-300'}`}>
+                          className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
                           {m.soldOut ? 'Sold Out' : 'In Stock'}
                         </button>
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-slate-950 p-2 rounded border border-slate-800 space-y-1">
-                    <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded p-1 text-xs text-white" />
-                    <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded p-1 text-xs text-white" />
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                    <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
+                    <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
                     <button 
                       onClick={() => {
                         if (!newDishName || !newDishPrice) return;
@@ -717,7 +734,7 @@ export default function App() {
                         setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
                         setNewDishName(''); setNewDishPrice('');
                       }}
-                      className={`w-full ${t.accentBg} text-white font-bold py-1 rounded text-xs`}>
+                      className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
                       + Add Dish
                     </button>
                   </div>
