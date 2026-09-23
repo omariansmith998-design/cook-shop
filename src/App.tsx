@@ -28,6 +28,11 @@
         "accentBg": "bg-emerald-600 hover:bg-emerald-500",
         "badgeBg": "bg-emerald-900/40 text-emerald-200 border-emerald-700/40"
       },
+      "customizerOptions": {
+        "spiceLevels": ["No Pepper", "Mild", "Medium Pepper", "Extra Hot / Scotch Bonnet"],
+        "gravyOptions": ["No Gravy", "Light Gravy", "Normal Gravy", "Extra Gravy / Drowned"]
+      },
+      "paymentMethods": ["Cash on Delivery/Pickup", "Lynk Transfer", "Bank Transfer"],
       "menu": [
         { "id": 1, "name": "Brown Stew Chicken", "price": 900, "category": "Mains", "soldOut": false, "desc": "Tender chicken simmered in rich gravy with carrots & butter beans." },
         { "id": 2, "name": "Curry Goat", "price": 1200, "category": "Mains", "soldOut": false, "desc": "Slow-cooked tender goat meat packed with authentic curry spices." },
@@ -63,6 +68,11 @@
         "accentBg": "bg-amber-600 hover:bg-amber-500",
         "badgeBg": "bg-amber-900/40 text-amber-200 border-amber-700/40"
       },
+      "customizerOptions": {
+        "spiceLevels": ["No Pepper", "Mild", "Medium Pepper", "Extra Hot / Scotch Bonnet"],
+        "gravyOptions": ["No Gravy", "Light Gravy", "Normal Gravy", "Extra Gravy / Drowned"]
+      },
+      "paymentMethods": ["Cash on Delivery/Pickup", "Lynk Transfer", "Bank Transfer"],
       "menu": [
         { "id": 201, "name": "Ital Coconut Stew", "price": 800, "category": "Mains", "soldOut": false, "desc": "Fresh vegetables simmered in pure coconut cream." },
         { "id": 202, "name": "Roasted Breadfruit & Callaloo", "price": 700, "category": "Mains", "soldOut": false, "desc": "Flame-roasted breadfruit loaded with steamed seasoned callaloo." },
