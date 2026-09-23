@@ -36,8 +36,8 @@ export interface ShopData {
   autoCloseEnabled: boolean;
   closeHour: number;
   deliveryEnabled: boolean;
-  onlinePaymentEnabled: boolean; // TOGGLE FOR ONLINE PAYMENTS
-  paymentDetailsNote: string; // INSTRUCTIONS FOR LYNK/BANK
+  onlinePaymentEnabled: boolean;
+  paymentDetailsNote: string;
   eventMode: boolean;
   eventTitle: string;
   eventBanner: string;
@@ -59,7 +59,7 @@ export interface CartItem extends Dish {
 
 export interface Order {
   id: number;
-  shopId: string;
+  shopName: string;
   items: CartItem[];
   fulfillment: 'pickup' | 'delivery';
   deliveryAddress?: string;
@@ -91,7 +91,7 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
     autoCloseEnabled: true,
     closeHour: 21,
     deliveryEnabled: true,
-    onlinePaymentEnabled: false, // OFF BY DEFAULT UNTIL ADMIN TOGGLES ON
+    onlinePaymentEnabled: false,
     paymentDetailsNote: "Lynk ID: @MamasYard | NCB Acc: 123456789",
     eventMode: false,
     eventTitle: "Weekend Fish Fry & Soup Special!",
@@ -163,7 +163,6 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
 
 const MASTER_PIN = "9999";
 
-// Audio Chime trigger for new order receipts
 const playChime = () => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -196,7 +195,7 @@ export default function App() {
   ]);
   const [newSuggestion, setNewSuggestion] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [copiedNotice, setCopiedNotice] = useState(false);
+  const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
 
   // Customizer Modal State
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -217,7 +216,6 @@ export default function App() {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
 
-  // --- LOADING SCREEN DISMISSAL & TAILWIND INJECTION ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -225,7 +223,7 @@ export default function App() {
       script.src = 'https://cdn.tailwindcss.com';
       document.head.appendChild(script);
     }
-    const timer = setTimeout(() => setIsLoading(false), 1200);
+    const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -256,35 +254,34 @@ export default function App() {
   const deliveryFee = fulfillment === 'delivery' && shop.deliveryEnabled ? shop.deliveryFee : 0;
   const grandTotal = subtotal + deliveryFee;
 
-  const formatOrderMessage = () => {
+  const generateOrderObject = (): Order => ({
+    id: Math.floor(1000 + Math.random() * 9000),
+    shopName: shop.name,
+    items: [...cart],
+    fulfillment,
+    deliveryAddress: fulfillment === 'delivery' ? deliveryAddress : undefined,
+    paymentMethod,
+    bankRef: paymentMethod !== 'Cash on Delivery/Pickup' ? bankRef : undefined,
+    total: grandTotal,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    status: 'Received'
+  });
+
+  const handlePlaceWhatsAppOrder = () => {
+    if (cart.length === 0) return;
+    const newOrder = generateOrderObject();
+    setOrders([newOrder, ...orders]);
+    setActiveReceipt(newOrder);
+    playChime();
+
     const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
-    return `*NEW ORDER - ${shop.name}*\n\n` +
+    const msg = `*NEW ORDER #${newOrder.id} - ${shop.name}*\n\n` +
       `*Items:*\n${orderItemsText}\n\n` +
       `*Fulfillment:* ${fulfillment.toUpperCase()}\n` +
       (fulfillment === 'delivery' ? `*Address:* ${deliveryAddress}\n` : '') +
       `*Payment:* ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
       `*Total:* $${grandTotal} JMD`;
-  };
 
-  const handlePlaceWhatsAppOrder = () => {
-    if (cart.length === 0) return;
-    const newOrder: Order = {
-      id: Math.floor(1000 + Math.random() * 9000),
-      shopId: currentShopId,
-      items: cart,
-      fulfillment,
-      deliveryAddress: fulfillment === 'delivery' ? deliveryAddress : undefined,
-      paymentMethod,
-      bankRef: paymentMethod !== 'Cash on Delivery/Pickup' ? bankRef : undefined,
-      total: grandTotal,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'Received'
-    };
-
-    setOrders([newOrder, ...orders]);
-    playChime();
-
-    const msg = formatOrderMessage();
     const waUrl = `https://wa.me/${shop.whatsapp}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
 
@@ -296,11 +293,25 @@ export default function App() {
 
   const handleCopyForSocialDM = () => {
     if (cart.length === 0) return;
-    const msg = formatOrderMessage();
-    navigator.clipboard.writeText(msg);
-    setCopiedNotice(true);
+    const newOrder = generateOrderObject();
+    setOrders([newOrder, ...orders]);
+    setActiveReceipt(newOrder);
     playChime();
-    setTimeout(() => setCopiedNotice(false), 3000);
+
+    const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
+    const msg = `NEW ORDER #${newOrder.id} - ${shop.name}\n\n` +
+      `Items:\n${orderItemsText}\n\n` +
+      `Fulfillment: ${fulfillment.toUpperCase()}\n` +
+      (fulfillment === 'delivery' ? `Address: ${deliveryAddress}\n` : '') +
+      `Payment: ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
+      `Total: $${grandTotal} JMD`;
+
+    navigator.clipboard.writeText(msg);
+
+    setCart([]);
+    setBankRef('');
+    setDeliveryAddress('');
+    setActiveTab('menu');
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -315,7 +326,6 @@ export default function App() {
     }
   };
 
-  // --- INITIAL LOADING SCREEN ---
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center space-y-4">
@@ -424,12 +434,6 @@ export default function App() {
           <div className="space-y-4">
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Your Customized Plate</h2>
 
-            {copiedNotice && (
-              <div className="bg-emerald-900 border border-emerald-600 text-emerald-200 p-3 rounded-xl text-xs font-bold text-center animate-bounce">
-                📋 Order copied to clipboard! Ready to paste in Instagram or Facebook DM.
-              </div>
-            )}
-
             {cart.length === 0 ? (
               <div className="bg-slate-900/50 border border-slate-800/60 p-8 text-center rounded-2xl space-y-3">
                 <p className="text-slate-400 text-xs font-medium">Your plate is currently empty.</p>
@@ -497,7 +501,7 @@ export default function App() {
                   </select>
 
                   {!shop.onlinePaymentEnabled && (
-                    <p className="text-[10px] text-slate-400 italic">Online transfers (Lynk/Bank) are currently turned off. Pay with cash upon receipt.</p>
+                    <p className="text-[10px] text-slate-400 italic">Online transfers (Lynk/Bank) are turned off. Pay with cash upon receipt.</p>
                   )}
 
                   {shop.onlinePaymentEnabled && paymentMethod !== 'Cash on Delivery/Pickup' && (
@@ -599,6 +603,61 @@ export default function App() {
 
       </main>
 
+      {/* CUSTOMER DIGITAL RECEIPT MODAL */}
+      {activeReceipt && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-white text-base">🧾 Order Receipt #{activeReceipt.id}</h3>
+                <p className="text-[11px] text-slate-400">{activeReceipt.shopName} • {activeReceipt.time}</p>
+              </div>
+              <button onClick={() => setActiveReceipt(null)} className="text-slate-400 hover:text-white font-black text-sm p-1">✕</button>
+            </div>
+
+            <div className="space-y-2 text-xs max-h-48 overflow-y-auto">
+              {activeReceipt.items.map((item, idx) => (
+                <div key={idx} className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg space-y-0.5">
+                  <div className="flex justify-between font-bold text-slate-200">
+                    <span>{item.name}</span>
+                    <span>${item.price} JMD</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Spice: {item.spice} | Gravy: {item.gravy}</p>
+                  {item.note && <p className="text-[10px] text-slate-400 italic">Note: "{item.note}"</p>}
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Fulfillment</span>
+                <span className="font-bold text-slate-200 uppercase">{activeReceipt.fulfillment}</span>
+              </div>
+              {activeReceipt.deliveryAddress && (
+                <div className="text-[10px] text-slate-400">Address: {activeReceipt.deliveryAddress}</div>
+              )}
+              <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-900">
+                <span>Payment</span>
+                <span className="font-bold text-slate-200">{activeReceipt.paymentMethod}</span>
+              </div>
+              {activeReceipt.bankRef && (
+                <div className="text-[10px] text-slate-400 font-mono">Ref: {activeReceipt.bankRef}</div>
+              )}
+              <div className="flex justify-between font-black text-sm text-white pt-2 border-t border-slate-800">
+                <span>Grand Total</span>
+                <span className={t.accentText}>${activeReceipt.total} JMD</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => window.print()}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-700">
+              🖨️ Save / Print Receipt
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* PLATE CUSTOMIZER MODAL */}
       {selectedDish && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -639,7 +698,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ADMIN DASHBOARD MODAL */}
+      {/* DUAL-TIER ADMIN & DEVELOPER DASHBOARD MODAL */}
       {isAdminOpen && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 my-auto shadow-2xl">
@@ -650,8 +709,8 @@ export default function App() {
                   <h3 className="font-extrabold text-base text-white">Admin Authentication</h3>
                   <button type="button" onClick={() => setIsAdminOpen(false)} className="text-slate-400 font-bold">✕</button>
                 </div>
-                <p className="text-xs text-slate-400">
-                  Enter Cousin PIN for shift controls or Master PIN (9999) to edit shop names and global config.
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Enter Shop PIN (e.g. 1234) for shift & order management, or Master PIN (9999) for developer settings.
                 </p>
                 <input 
                   type="password" 
@@ -672,7 +731,7 @@ export default function App() {
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                   <div>
                     <h3 className="font-black text-sm text-white">
-                      {adminRole === 'master' ? '👑 Master Developer Dashboard' : `🔒 ${shop.name} Admin`}
+                      {adminRole === 'master' ? '👑 Master Developer Panel' : `🔒 ${shop.name} Admin Panel`}
                     </h3>
                   </div>
                   <button onClick={() => { setAdminRole(null); setEnteredPin(''); setIsAdminOpen(false); }} className="text-slate-400 hover:text-white font-bold text-xs bg-slate-800 px-2.5 py-1 rounded-lg">
@@ -680,10 +739,10 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* MASTER DEVELOPER PANEL */}
+                {/* 1. MASTER DEVELOPER EXCLUSIVE PANEL */}
                 {adminRole === 'master' && (
                   <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
-                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Master Config & Shop Renaming</h4>
+                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Name Editor</h4>
 
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Name</label>
@@ -699,7 +758,7 @@ export default function App() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Supabase Project URL</label>
+                      <label className="text-[11px] text-slate-300 font-bold">Supabase Database URL</label>
                       <input 
                         type="text" 
                         placeholder="https://xxxxxx.supabase.co"
@@ -725,100 +784,112 @@ export default function App() {
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
                       />
                     </div>
+
+                    <button 
+                      onClick={() => setShops(INITIAL_SHOPS)}
+                      className="w-full py-2 bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 rounded-lg text-xs font-bold transition">
+                      ⚠️ Reset State to Master Configuration
+                    </button>
                   </div>
                 )}
 
-                {/* ORDERS QUEUE */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Incoming Orders ({orders.length})</h4>
-                  <div className="max-h-36 overflow-y-auto space-y-2">
-                    {orders.length === 0 ? (
-                      <p className="text-xs text-slate-500 text-center py-2">No active orders yet.</p>
-                    ) : (
-                      orders.map(o => (
-                        <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs space-y-1">
-                          <div className="flex justify-between font-bold text-emerald-400">
-                            <span>#{o.id} ({o.fulfillment})</span>
-                            <span>${o.total} JMD</span>
+                {/* 2. SHOP OPERATIONAL ADMIN PANEL (ACCESSIBLE BY BOTH ADMIN & DEVELOPER) */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Shop Operational Controls</h4>
+
+                  {/* ORDERS QUEUE */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-300">Incoming Order Queue ({orders.length})</label>
+                    <div className="max-h-36 overflow-y-auto space-y-2">
+                      {orders.length === 0 ? (
+                        <p className="text-xs text-slate-500 text-center py-2 bg-slate-950 rounded-xl border border-slate-800/60">No active orders right now.</p>
+                      ) : (
+                        orders.map(o => (
+                          <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs space-y-1">
+                            <div className="flex justify-between font-bold text-emerald-400">
+                              <span>#{o.id} ({o.fulfillment})</span>
+                              <span>${o.total} JMD</span>
+                            </div>
+                            <p className="text-slate-300">{o.items.map(i => `${i.name} [${i.spice}, ${i.gravy}]`).join(', ')}</p>
+                            <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Clear Order</button>
                           </div>
-                          <p className="text-slate-300">{o.items.map(i => `${i.name} [${i.spice}, ${i.gravy}]`).join(', ')}</p>
-                          <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Clear Order</button>
-                        </div>
-                      ))
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SHIFT & PAYMENT TOGGLES */}
+                  <div className="space-y-2 border-t border-slate-800 pt-3">
+                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-xs font-bold text-slate-300">Shop Open Status</span>
+                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, isOpen: !shop.isOpen } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.isOpen ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                        {shop.isOpen ? 'OPEN' : 'CLOSED'}
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-xs font-bold text-slate-300">Delivery Toggle</span>
+                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, deliveryEnabled: !shop.deliveryEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.deliveryEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                        {shop.deliveryEnabled ? 'ENABLED' : 'DISABLED'}
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-xs font-bold text-slate-300">Online Payment (Lynk/Bank)</span>
+                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, onlinePaymentEnabled: !shop.onlinePaymentEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.onlinePaymentEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                        {shop.onlinePaymentEnabled ? 'ACTIVE' : 'OFF'}
+                      </button>
+                    </div>
+
+                    {shop.onlinePaymentEnabled && (
+                      <div className="space-y-1 bg-slate-950 p-2 rounded-xl border border-slate-800">
+                        <label className="text-[10px] text-slate-400 font-bold">Payment Details Note for Customers</label>
+                        <input 
+                          type="text" 
+                          value={shop.paymentDetailsNote} 
+                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, paymentDetailsNote: e.target.value } })}
+                          placeholder="e.g. Lynk handle or account #"
+                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
                     )}
                   </div>
-                </div>
 
-                {/* SHIFT & ONLINE PAYMENT TOGGLES */}
-                <div className="space-y-2 border-t border-slate-800 pt-3">
-                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Shop Open Status</span>
-                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, isOpen: !shop.isOpen } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.isOpen ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-                      {shop.isOpen ? 'OPEN' : 'CLOSED'}
-                    </button>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Delivery Toggle</span>
-                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, deliveryEnabled: !shop.deliveryEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.deliveryEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                      {shop.deliveryEnabled ? 'ENABLED' : 'DISABLED'}
-                    </button>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Online Transfers (Lynk/Bank)</span>
-                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, onlinePaymentEnabled: !shop.onlinePaymentEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.onlinePaymentEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                      {shop.onlinePaymentEnabled ? 'ACTIVE' : 'OFF'}
-                    </button>
-                  </div>
-
-                  {shop.onlinePaymentEnabled && (
-                    <div className="space-y-1 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                      <label className="text-[10px] text-slate-400 font-bold">Payment Details Note for Customers</label>
-                      <input 
-                        type="text" 
-                        value={shop.paymentDetailsNote} 
-                        onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, paymentDetailsNote: e.target.value } })}
-                        placeholder="e.g. Lynk handle or account #"
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
-                      />
+                  {/* MENU MANAGEMENT */}
+                  <div className="space-y-2 border-t border-slate-800 pt-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory</h4>
+                    <div className="max-h-28 overflow-y-auto space-y-1.5">
+                      {shop.menu.map(m => (
+                        <div key={m.id} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
+                          <span className="text-slate-200 font-medium">{m.name}</span>
+                          <button 
+                            onClick={() => {
+                              const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
+                              setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
+                            }}
+                            className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
+                            {m.soldOut ? 'Sold Out' : 'In Stock'}
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
 
-                {/* MENU MANAGEMENT */}
-                <div className="space-y-2 border-t border-slate-800 pt-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory</h4>
-                  <div className="max-h-28 overflow-y-auto space-y-1.5">
-                    {shop.menu.map(m => (
-                      <div key={m.id} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
-                        <span className="text-slate-200 font-medium">{m.name}</span>
-                        <button 
-                          onClick={() => {
-                            const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
-                            setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
-                          }}
-                          className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
-                          {m.soldOut ? 'Sold Out' : 'In Stock'}
-                        </button>
-                      </div>
-                    ))}
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                      <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
+                      <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
+                      <button 
+                        onClick={() => {
+                          if (!newDishName || !newDishPrice) return;
+                          const newItem: Dish = { id: Date.now(), name: newDishName, price: Number(newDishPrice), category: 'Mains', soldOut: false, desc: 'Freshly prepared daily.' };
+                          setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
+                          setNewDishName(''); setNewDishPrice('');
+                        }}
+                        className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
+                        + Add Dish
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-                    <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
-                    <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
-                    <button 
-                      onClick={() => {
-                        if (!newDishName || !newDishPrice) return;
-                        const newItem: Dish = { id: Date.now(), name: newDishName, price: Number(newDishPrice), category: 'Mains', soldOut: false, desc: 'Freshly prepared daily.' };
-                        setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
-                        setNewDishName(''); setNewDishPrice('');
-                      }}
-                      className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
-                      + Add Dish
-                    </button>
-                  </div>
                 </div>
 
               </div>
