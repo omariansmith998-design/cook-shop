@@ -116,6 +116,7 @@ export default function App() {
   // Cart & UI Modals
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [spiceLevel, setSpiceLevel] = useState("Medium");
   const [gravyLevel, setGravyLevel] = useState("Normal");
   const [itemNotes, setItemNotes] = useState("");
@@ -137,27 +138,19 @@ export default function App() {
   const [newMasterRecoveryInput, setNewMasterRecoveryInput] = useState("");
   const [currentMasterPassCheck, setCurrentMasterPassCheck] = useState("");
 
-  // Master Developer Panel Search Query for Orders
   const [masterSearchQuery, setMasterSearchQuery] = useState("");
-
-  // New Shop Creator Form State
   const [newShopName, setNewShopName] = useState("");
   const [newShopTagline, setNewShopTagline] = useState("");
   const [newShopWhatsapp, setNewShopWhatsapp] = useState("");
   const [newShopAddress, setNewShopAddress] = useState("");
   const [newShopPin, setNewShopPin] = useState("1234");
 
-  // Dish Editor Modal
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
   const [dishNameInput, setDishNameInput] = useState("");
   const [dishPriceInput, setDishPriceInput] = useState("");
   const [dishDescInput, setDishDescInput] = useState("");
   const [dishCatInput, setDishCatInput] = useState("Mains");
   const [dishImageInput, setDishImageInput] = useState("");
-
-  // Driver Status & Return Timer
-  const [driverStatus, setDriverStatus] = useState<"ready" | "out">("ready");
-  const [driverEta, setDriverEta] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -370,9 +363,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f4f4f5", color: "#18181b", fontFamily: "system-ui, -apple-system, sans-serif", paddingBottom: "120px" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: "system-ui, -apple-system, sans-serif", paddingBottom: "120px" }}>
       {/* --- HEADER BAR --- */}
-      <header style={{ backgroundColor: "#18181b", color: "#ffffff", borderBottom: `4px solid ${activeShop.themeColor}`, boxShadow: "0 4px 6px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 40 }}>
+      <header style={{ backgroundColor: "#18181b", color: "#ffffff", borderBottom: `4px solid ${activeShop.themeColor}`, boxShadow: "0 4px 6px rgba(0,0,0,0.3)", position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ maxWidth: "800px", margin: "0 auto", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -400,7 +393,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
             <button
               onClick={() => setAdminModalOpen(true)}
-              style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}
+              style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
             >
               🔐 Admin
             </button>
@@ -411,54 +404,56 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
       {/* --- MAIN BODY --- */}
       <main style={{ maxWidth: "800px", margin: "0 auto", padding: "16px" }}>
         {!activeShop.isOpen && (
-          <div style={{ backgroundColor: "#ffe4e6", border: "1px solid #fda4af", color: "#881337", padding: "12px", borderRadius: "10px", marginBottom: "16px", textAlign: "center", fontWeight: "bold", fontSize: "13px" }}>
+          <div style={{ backgroundColor: "#7f1d1d", border: "1px solid #991b1b", color: "#fca5a5", padding: "12px", borderRadius: "10px", marginBottom: "16px", textAlign: "center", fontWeight: "bold", fontSize: "13px" }}>
             🔴 This cookshop is currently closed for new orders. Check back later!
           </div>
         )}
 
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#18181b", margin: 0 }}>Today's Menu</h2>
-            <span style={{ fontSize: "12px", backgroundColor: "#e4e4e7", color: "#27272a", padding: "4px 12px", borderRadius: "999px", fontWeight: 700 }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#ffffff", margin: 0 }}>Today's Menu</h2>
+            <span style={{ fontSize: "12px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "4px 12px", borderRadius: "999px", fontWeight: 700, border: "1px solid #3f3f46" }}>
               {currentShopMenu.filter(d => d.inStock).length} Available Items
             </span>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
             {currentShopMenu.map(dish => (
-              <div key={dish.id} style={{ backgroundColor: "#ffffff", borderRadius: "14px", boxShadow: "0 2px 6px rgba(0,0,0,0.06)", border: "1px solid #e4e4e7", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div key={dish.id} style={{ backgroundColor: "#18181b", borderRadius: "14px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)", border: "1px solid #27272a", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ padding: "16px", display: "flex", gap: "14px", alignItems: "flex-start" }}>
                   {dish.image ? (
                     <img 
                       src={dish.image} 
                       alt={dish.name} 
-                      style={{ width: "84px", height: "84px", objectFit: "cover", borderRadius: "10px", border: "1px solid #f4f4f5", backgroundColor: "#f4f4f5", flexShrink: 0 }} 
+                      onClick={() => setZoomedImageUrl(dish.image)}
+                      style={{ width: "84px", height: "84px", objectFit: "cover", borderRadius: "10px", border: "1px solid #3f3f46", backgroundColor: "#27272a", flexShrink: 0, cursor: "pointer", transition: "transform 0.2s" }} 
+                      title="Tap to view photo"
                     />
                   ) : (
-                    <div style={{ width: "84px", height: "84px", backgroundColor: "#f4f4f5", borderRadius: "10px", border: "1px solid #e4e4e7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", flexShrink: 0 }}>
+                    <div style={{ width: "84px", height: "84px", backgroundColor: "#27272a", borderRadius: "10px", border: "1px solid #3f3f46", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", flexShrink: 0 }}>
                       🍲
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-                      <h3 style={{ fontSize: "15px", fontWeight: 900, color: "#18181b", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dish.name}</h3>
-                      <span style={{ fontSize: "14px", fontWeight: 900, color: activeShop.themeColor, whiteSpace: "nowrap" }}>${dish.price} JMD</span>
+                      <h3 style={{ fontSize: "15px", fontWeight: 900, color: "#ffffff", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dish.name}</h3>
+                      <span style={{ fontSize: "14px", fontWeight: 900, color: "#34d399", whiteSpace: "nowrap" }}>${dish.price} JMD</span>
                     </div>
-                    <p style={{ fontSize: "12px", color: "#52525b", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.4" }}>{dish.description}</p>
-                    <span style={{ fontSize: "10px", backgroundColor: "#f4f4f5", color: "#3f3f46", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, textTransform: "uppercase" }}>
+                    <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.4" }}>{dish.description}</p>
+                    <span style={{ fontSize: "10px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, textTransform: "uppercase", border: "1px solid #3f3f46" }}>
                       {dish.category}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: "#fafafa", padding: "12px 16px", borderTop: "1px solid #f4f4f5", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#059669" : "#e11d48" }}>
+                <div style={{ backgroundColor: "#121215", padding: "12px 16px", borderTop: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
                     {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
                   </span>
                   {activeShop.isOpen && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
-                      style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}
+                      style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
                     >
                       + Add to Plate
                     </button>
@@ -471,72 +466,72 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
         {/* --- CART SECTION --- */}
         {cart.length > 0 && (
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e4e4e7", padding: "20px", marginTop: "32px", marginBottom: "40px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#18181b", margin: "0 0 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ backgroundColor: "#18181b", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.4)", border: "1px solid #27272a", padding: "20px", marginTop: "32px", marginBottom: "40px" }}>
+            <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "0 0 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span>🛒 Your Order Plate</span>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "#71717a" }}>{cart.length} items</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "#a1a1aa" }}>{cart.length} items</span>
             </h3>
 
-            <div style={{ borderTop: "1px solid #f4f4f5", borderBottom: "1px solid #f4f4f5", marginBottom: "16px" }}>
+            <div style={{ borderTop: "1px solid #27272a", borderBottom: "1px solid #27272a", marginBottom: "16px" }}>
               {cart.map((item, idx) => (
-                <div key={idx} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", borderBottom: idx < cart.length - 1 ? "1px solid #f4f4f5" : "none" }}>
+                <div key={idx} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", borderBottom: idx < cart.length - 1 ? "1px solid #27272a" : "none" }}>
                   <div>
-                    <span style={{ fontWeight: 800, color: "#18181b" }}>{item.quantity}x {item.dish.name}</span>
-                    <div style={{ fontSize: "11px", color: "#52525b", marginTop: "2px" }}>Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
-                    {item.notes && <div style={{ fontSize: "11px", fontStyle: "italic", color: "#71717a" }}>Note: "{item.notes}"</div>}
+                    <span style={{ fontWeight: 800, color: "#ffffff" }}>{item.quantity}x {item.dish.name}</span>
+                    <div style={{ fontSize: "11px", color: "#a1a1aa", marginTop: "2px" }}>Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
+                    {item.notes && <div style={{ fontSize: "11px", fontStyle: "italic", color: "#a1a1aa" }}>Note: "{item.notes}"</div>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontWeight: 900, color: "#18181b" }}>${item.dish.price * item.quantity} JMD</span>
-                    <button onClick={() => removeFromCart(idx)} style={{ color: "#e11d48", background: "none", border: "none", fontWeight: 900, fontSize: "16px", cursor: "pointer" }}>✕</button>
+                    <span style={{ fontWeight: 900, color: "#ffffff" }}>${item.dish.price * item.quantity} JMD</span>
+                    <button onClick={() => removeFromCart(idx)} style={{ color: "#f87171", background: "none", border: "none", fontWeight: 900, fontSize: "16px", cursor: "pointer" }}>✕</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ backgroundColor: "#fafafa", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7", marginBottom: "16px" }}>
+            <div style={{ backgroundColor: "#121215", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", marginBottom: "16px" }}>
               <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <button
                   type="button"
                   onClick={() => setOrderType("delivery")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #d4d4d8", backgroundColor: orderType === "delivery" ? activeShop.themeColor : "#ffffff", color: orderType === "delivery" ? "#ffffff" : "#27272a", cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
                 >
                   🚚 Delivery (${activeShop.deliveryFee} JMD)
                 </button>
                 <button
                   type="button"
                   onClick={() => setOrderType("pickup")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #d4d4d8", backgroundColor: orderType === "pickup" ? activeShop.themeColor : "#ffffff", color: orderType === "pickup" ? "#ffffff" : "#27272a", cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
                 >
                   🏪 Store Pickup
                 </button>
               </div>
 
               {orderType === "delivery" && activeShop.deliveryZoneNote && (
-                <p style={{ fontSize: "11px", color: "#92400e", backgroundColor: "#fef3c7", padding: "10px", borderRadius: "8px", border: "1px solid #fde68a", margin: "0 0 12px 0", lineHeight: "1.4" }}>
+                <p style={{ fontSize: "11px", color: "#fcd34d", backgroundColor: "#451a03", padding: "10px", borderRadius: "8px", border: "1px solid #78350f", margin: "0 0 12px 0", lineHeight: "1.4" }}>
                   ⚠️ <strong>Delivery Notice:</strong> {activeShop.deliveryZoneNote}
                 </p>
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#27272a", marginBottom: "4px" }}>Your Name / Nickname *</label>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Your Name / Nickname *</label>
                   <input
                     type="text"
                     placeholder="e.g. Omarian"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#ffffff", color: "#18181b", border: "1px solid #d4d4d8", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
 
                 {orderType === "delivery" && (
                   <div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: 800, color: "#27272a" }}>Delivery Address / Landmark *</label>
+                      <label style={{ fontSize: "12px", fontWeight: 800, color: "#d4d4d8" }}>Delivery Address / Landmark *</label>
                       <button
                         type="button"
                         onClick={handlePinLocation}
-                        style={{ fontSize: "11px", fontWeight: 800, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        style={{ fontSize: "11px", fontWeight: 800, color: "#60a5fa", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                       >
                         📍 Pin My GPS Location
                       </button>
@@ -546,25 +541,25 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       placeholder="e.g. Near Hip Strip / Paste Google Maps link"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      style={{ width: "100%", backgroundColor: "#ffffff", color: "#18181b", border: "1px solid #d4d4d8", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
+                      style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
                 )}
               </div>
             </div>
 
-            <div style={{ borderTop: "1px solid #e4e4e7", paddingTop: "12px", marginBottom: "16px", fontSize: "13px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#52525b", marginBottom: "4px" }}>
+            <div style={{ borderTop: "1px solid #27272a", paddingTop: "12px", marginBottom: "16px", fontSize: "13px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
                 <span>Subtotal</span>
                 <span>${cartSubtotal} JMD</span>
               </div>
               {orderType === "delivery" && activeShop.isDeliveryActive && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#52525b", marginBottom: "4px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
                   <span>Delivery Fee</span>
                   <span>${deliveryCost} JMD</span>
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#18181b", fontWeight: 900, fontSize: "16px", paddingTop: "8px", borderTop: "1px dashed #e4e4e7" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#ffffff", fontWeight: 900, fontSize: "16px", paddingTop: "8px", borderTop: "1px dashed #27272a" }}>
                 <span>Total Due</span>
                 <span>${cartTotal} JMD</span>
               </div>
@@ -573,13 +568,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <button
                 onClick={() => dispatchOrder("whatsapp")}
-                style={{ width: "100%", backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}
+                style={{ width: "100%", backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
               >
                 📲 Dispatch via WhatsApp
               </button>
               <button
                 onClick={() => dispatchOrder("social")}
-                style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}
+                style={{ width: "100%", backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)", border: "1px solid #3f3f46" }}
               >
                 📋 Copy for IG / FB DM
               </button>
@@ -588,30 +583,45 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
         )}
       </main>
 
+      {/* --- IMAGE ZOOM / PREVIEW MODAL --- */}
+      {zoomedImageUrl && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }} onClick={() => setZoomedImageUrl(null)}>
+          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }} onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setZoomedImageUrl(null)} 
+              style={{ position: "absolute", top: "-40px", right: "0", background: "none", border: "none", color: "#ffffff", fontSize: "24px", fontWeight: 900, cursor: "pointer" }}
+            >
+              ✕ Close
+            </button>
+            <img src={zoomedImageUrl} alt="Full Dish View" style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: "12px", border: "2px solid #3f3f46", backgroundColor: "#000000" }} />
+          </div>
+        </div>
+      )}
+
       {/* --- DISH CUSTOMIZER MODAL --- */}
       {selectedDish && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
               <div>
-                <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#18181b", margin: 0 }}>{selectedDish.name}</h3>
-                <p style={{ color: activeShop.themeColor, fontWeight: 900, fontSize: "15px", margin: "2px 0 0 0" }}>${selectedDish.price} JMD</p>
+                <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>{selectedDish.name}</h3>
+                <p style={{ color: "#34d399", fontWeight: 900, fontSize: "15px", margin: "2px 0 0 0" }}>${selectedDish.price} JMD</p>
               </div>
-              <button onClick={() => setSelectedDish(null)} style={{ color: "#71717a", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelectedDish(null)} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
             </div>
 
-            <p style={{ fontSize: "12px", color: "#52525b", margin: "0 0 16px 0", lineHeight: "1.4" }}>{selectedDish.description}</p>
+            <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "0 0 16px 0", lineHeight: "1.4" }}>{selectedDish.description}</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#27272a", marginBottom: "6px" }}>🌶️ Pepper / Spice Level</label>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "6px" }}>🌶️ Pepper / Spice Level</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                   {["No Pepper", "Medium", "Extra Scotch Bonnet"].map(lvl => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setSpiceLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #d4d4d8", backgroundColor: spiceLevel === lvl ? activeShop.themeColor : "#f4f4f5", color: spiceLevel === lvl ? "#ffffff" : "#27272a", cursor: "pointer" }}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor : "#27272a", color: "#ffffff", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -620,14 +630,14 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#27272a", marginBottom: "6px" }}>🍲 Gravy Preference</label>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "6px" }}>🍲 Gravy Preference</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                   {["No Gravy", "Normal", "Extra Drowned"].map(lvl => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setGravyLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #d4d4d8", backgroundColor: gravyLevel === lvl ? activeShop.themeColor : "#f4f4f5", color: gravyLevel === lvl ? "#ffffff" : "#27272a", cursor: "pointer" }}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor : "#27272a", color: "#ffffff", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -636,13 +646,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#27272a", marginBottom: "4px" }}>Special Cooking Instructions</label>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Special Cooking Instructions</label>
                 <input
                   type="text"
                   placeholder="e.g. Separate gravy, extra fork please"
                   value={itemNotes}
                   onChange={(e) => setItemNotes(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
                 />
               </div>
             </div>
@@ -650,13 +660,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button
                 onClick={() => setSelectedDish(null)}
-                style={{ flex: 1, backgroundColor: "#e4e4e7", color: "#27272a", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
+                style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => addToCart(selectedDish)}
-                style={{ flex: 1, backgroundColor: activeShop.themeColor, color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
+                style={{ flex: 1, backgroundColor: activeShop.themeColor, color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
               >
                 Add (${selectedDish.price} JMD)
               </button>
@@ -667,29 +677,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
       {/* --- RECEIPT & TRACKING MODAL --- */}
       {activeReceipt && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
             <div style={{ textAlign: "center", marginBottom: "16px" }}>
               <span style={{ fontSize: "32px" }}>✅</span>
-              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#18181b", margin: "4px 0 2px 0" }}>Order Dispatched!</h3>
-              <p style={{ fontSize: "11px", color: "#71717a", margin: 0 }}>Order ID: {activeReceipt.id}</p>
+              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "4px 0 2px 0" }}>Order Dispatched!</h3>
+              <p style={{ fontSize: "11px", color: "#a1a1aa", margin: 0 }}>Order ID: {activeReceipt.id}</p>
             </div>
 
-            <div style={{ backgroundColor: "#f4f4f5", padding: "12px", borderRadius: "10px", border: "1px solid #e4e4e7", fontSize: "12px", marginBottom: "16px" }}>
+            <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "10px", border: "1px solid #27272a", fontSize: "12px", marginBottom: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: 800 }}>Customer:</span><span>{activeReceipt.customerName}</span></div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: 800 }}>Fulfillment:</span><span style={{ textTransform: "capitalize" }}>{activeReceipt.type}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 800 }}>Total:</span><span style={{ fontWeight: 900, color: "#059669" }}>${activeReceipt.total} JMD</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 800 }}>Total:</span><span style={{ fontWeight: 900, color: "#34d399" }}>${activeReceipt.total} JMD</span></div>
             </div>
 
             <div style={{ marginBottom: "20px" }}>
-              <p style={{ fontSize: "12px", fontWeight: 800, color: "#27272a", marginBottom: "8px" }}>Need to make a change? Choose an option below:</p>
+              <p style={{ fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "8px" }}>Need to make a change? Choose an option below:</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                 <button
                   onClick={() => {
                     alert("Acknowledged. Waiting for delivery time.");
                     setActiveReceipt(null);
                   }}
-                  style={{ backgroundColor: "#f4f4f5", color: "#18181b", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #d4d4d8", cursor: "pointer", textAlign: "center" }}
+                  style={{ backgroundColor: "#27272a", color: "#ffffff", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #3f3f46", cursor: "pointer", textAlign: "center" }}
                 >
                   ⏱️ Wait
                 </button>
@@ -699,7 +709,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20would%20like%20to%20switch%20my%20order%20%23${activeReceipt.id}%20to%20Store%20Pickup.`, "_blank");
                     setActiveReceipt(null);
                   }}
-                  style={{ backgroundColor: "#fef3c7", color: "#92400e", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #fde68a", cursor: "pointer", textAlign: "center" }}
+                  style={{ backgroundColor: "#451a03", color: "#fcd34d", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #78350f", cursor: "pointer", textAlign: "center" }}
                 >
                   🏪 Pickup
                 </button>
@@ -709,7 +719,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20CANCEL%20my%20order%20%23${activeReceipt.id}.`, "_blank");
                     setActiveReceipt(null);
                   }}
-                  style={{ backgroundColor: "#ffe4e6", color: "#881337", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #fda4af", cursor: "pointer", textAlign: "center" }}
+                  style={{ backgroundColor: "#7f1d1d", color: "#fca5a5", fontSize: "10px", fontWeight: 800, padding: "10px 4px", borderRadius: "6px", border: "1px solid #991b1b", cursor: "pointer", textAlign: "center" }}
                 >
                   ❌ Cancel
                 </button>
@@ -718,7 +728,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
             <button
               onClick={() => setActiveReceipt(null)}
-              style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}
+              style={{ width: "100%", backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}
             >
               Close Window
             </button>
@@ -726,9 +736,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
         </div>
       )}
 
-      {/* --- RESTORED MASTER DEVELOPER PANEL & ADMIN MODAL --- */}
+      {/* --- MASTER & SHOP ADMIN MODAL --- */}
       {adminModalOpen && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
           <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "620px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a", margin: "32px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #27272a", paddingBottom: "12px" }}>
               <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
@@ -739,7 +749,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
             {!isMasterSession && !loggedInAdminShopId && (
               <div style={{ padding: "20px 0", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter your 4-digit shop PIN or Master PIN ($9999$).</p>
+                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter your 4-digit shop PIN or Master PIN (9999).</p>
                 <input
                   type="password"
                   maxLength={4}
@@ -757,7 +767,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
             )}
 
-            {/* --- RESTORED EXACT MASTER DEVELOPER PORTAL LAYOUT --- */}
             {isMasterSession && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#18181b", padding: "12px 16px", borderRadius: "10px", border: "1px solid #27272a" }}>
@@ -770,13 +779,12 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       navigator.clipboard.writeText(`${window.location.origin}?shop=${activeShop.id}`);
                       alert("Shop URL copied!");
                     }}
-                    style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}
+                    style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "1px solid #3f3f46", cursor: "pointer" }}
                   >
                     Copy Link
                   </button>
                 </div>
 
-                {/* Developer & Shop Info Editor Box */}
                 <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "12px" }}>
                   <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>DEVELOPER & SHOP INFO EDITOR</h4>
                   
@@ -792,7 +800,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       }}
                       style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
                     />
-                    <span style={{ fontSize: "10px", color: "#71717a", marginTop: "2px", display: "block" }}>This controls the 4-digit PIN the shop admins/cousins use to log in.</span>
                   </div>
 
                   <div>
@@ -862,7 +869,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                   </button>
                 </div>
 
-                {/* Master Search Queue & Receipt History Bar */}
                 <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
                   <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>Shop Operational Controls & Order Queue</h4>
                   <input
@@ -879,7 +885,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       .map(o => (
                         <div key={o.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span>#{o.id} - {o.customerName} (${o.total})</span>
-                          <span style={{ color: "#10b981", fontWeight: 800 }}>{o.status}</span>
+                          <span style={{ color: "#34d399", fontWeight: 800 }}>{o.status}</span>
                         </div>
                       ))}
                   </div>
@@ -893,7 +899,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
               </div>
             )}
 
-            {/* SHOP OWNER ADMIN PANEL */}
             {loggedInAdminShopId && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {(() => {
@@ -925,7 +930,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                         </div>
                       </div>
 
-                      {/* QR Code & Copy Direct URL Section */}
                       <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
                         <img src={qrCodeUrl} alt="QR Code" style={{ width: "90px", height: "90px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #3f3f46", flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: "180px" }}>
