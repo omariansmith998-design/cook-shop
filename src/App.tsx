@@ -229,10 +229,6 @@ export default function App() {
   const [adminPinInput, setAdminPinInput] = useState("");
   const [loggedInAdminShopId, setLoggedInAdminShopId] = useState<string | null>(null);
   const [isMasterSession, setIsMasterSession] = useState(false);
-  const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
-  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [newNoteText, setNewNoteText] = useState("");
-  const [masterSearchQuery, setMasterSearchQuery] = useState("");
 
   // Menu Management
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
@@ -376,24 +372,8 @@ export default function App() {
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const sendNoteToDeveloper = () => {
-    if (!newNoteText.trim()) return;
-    const now = new Date();
-    const note: DevNote = {
-      id: "note_" + Date.now(),
-      shopName: activeShop.name,
-      shopId: activeShop.id,
-      message: newNoteText,
-      timestamp: `${now.toLocaleDateString()} at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-    };
-    setDevNotes(prev => [note, ...prev]);
-    setNewNoteText("");
-    alert("Note dispatched directly to Developer Inbox!");
-  };
-
   const currentShopMenu = menus[activeShop.id] || [];
   const filteredMenu = activeCategory === "All" ? currentShopMenu : currentShopMenu.filter(d => d.category === activeCategory);
-  const currentShopOrders = orders[activeShop.id] || [];
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.dish.price * item.quantity, 0);
   const deliveryCost = orderType === "delivery" && activeShop.isDeliveryActive ? activeShop.deliveryFee : 0;
@@ -472,14 +452,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       setAdminPinInput("");
       return;
     }
-    const foundShop = shops.find(s => s.pin === trimmedInput || s.id === activeShop.id && (s.pin === trimmedInput || trimmedInput === "1234" || trimmedInput === "5678"));
+    const foundShop = shops.find(s => s.pin === trimmedInput || (s.id === activeShop.id && (trimmedInput === "1234" || trimmedInput === "5678")));
     if (foundShop) {
       setIsMasterSession(false);
       setLoggedInAdminShopId(foundShop.id);
       setAdminPinInput("");
       return;
     }
-    // Fallback check against current active shop defaults
     if (trimmedInput === activeShop.pin || (activeShop.id === "shop1" && trimmedInput === "1234") || (activeShop.id === "shop2" && trimmedInput === "5678")) {
       setIsMasterSession(false);
       setLoggedInAdminShopId(activeShop.id);
@@ -489,13 +468,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
     alert("Invalid PIN. Please try again or contact the administrator.");
     setAdminPinInput("");
-  };
-
-  const updateOrderStatus = (shopId: string, orderId: string, newStatus: Order["status"]) => {
-    setOrders(prev => ({
-      ...prev,
-      [shopId]: (prev[shopId] || []).map(o => o.id === orderId ? { ...o, status: newStatus } : o)
-    }));
   };
 
   const saveEditedDish = () => {
@@ -700,7 +672,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           })}
         </div>
 
-        {/* --- FULL RESTORED CHECKOUT PLATE --- */}
+        {/* --- FULL CHECKOUT PLATE --- */}
         {cart.length > 0 && (
           <div style={{ backgroundColor: "#18181b", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", border: "1px solid #27272a", padding: "20px", marginTop: "32px", marginBottom: "40px" }}>
             <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "0 0 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -727,7 +699,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
             </div>
 
             <div style={{ backgroundColor: "#121215", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", marginBottom: "16px" }}>
-              {/* Delivery vs Pickup Toggle */}
               <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <button
                   type="button"
@@ -770,7 +741,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
               {/* Payment Method Selector */}
               <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "11px", fontWeight 800, color: "#d4d4d8", marginBottom: "4px" }}>💳 Select Payment Method</label>
+                <label style={{ display: "block", fontSize: 800, color: "#d4d4d8", marginBottom: "4px" }}>💳 Select Payment Method</label>
                 <div style={{ display: "flex", gap: "6px" }}>
                   {activeShop.acceptCash && (
                     <button
@@ -803,17 +774,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     </button>
                   )}
                 </div>
-
-                {paymentMethod === "Bank Transfer" && activeShop.bankDetails && (
-                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#60a5fa", backgroundColor: "#1e3a8a", padding: "8px 10px", borderRadius: "6px", border: "1px solid #3b82f6" }}>
-                    🏦 <strong>Transfer Details:</strong> {activeShop.bankDetails}
-                  </div>
-                )}
-                {paymentMethod === "Lynk" && activeShop.lynkDetails && (
-                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#34d399", backgroundColor: "#064e3b", padding: "8px 10px", borderRadius: "6px", border: "1px solid #059669" }}>
-                    📲 <strong>Lynk Handle:</strong> {activeShop.lynkDetails}
-                  </div>
-                )}
               </div>
 
               {/* Driver Tip */}
@@ -895,7 +855,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               </div>
             </div>
 
-            {/* RESTORED DISPATCH BUTTONS */}
+            {/* DISPATCH BUTTONS */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <button
                 onClick={() => dispatchOrder("whatsapp")}
@@ -936,6 +896,16 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           <p style={{ fontSize: "11px", margin: 0 }}>📍 Address: {activeShop.address}</p>
         </footer>
       </main>
+
+      {/* --- IMAGE ZOOM MODAL --- */}
+      {zoomedImageUrl && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }} onClick={() => setZoomedImageUrl(null)}>
+          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setZoomedImageUrl(null)} style={{ position: "absolute", top: "-40px", right: "0", background: "none", border: "none", color: "#ffffff", fontSize: "24px", fontWeight: 900, cursor: "pointer" }}>✕ Close</button>
+            <img src={zoomedImageUrl} alt="Full View" style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: "12px", border: "2px solid #3f3f46", backgroundColor: "#000000" }} />
+          </div>
+        </div>
+      )}
 
       {/* --- DISH CUSTOMIZER MODAL --- */}
       {selectedDish && (
@@ -1035,7 +1005,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "650px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
             
-            {/* STICKY ADMIN HEADER */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #27272a", backgroundColor: "#18181b", borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
               <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
                 {isMasterSession ? "👑 Master Developer Panel" : loggedInAdminShopId ? `🛠️ ${shops.find(s => s.id === loggedInAdminShopId)?.name} Admin` : "🔐 Enter Admin PIN"}
@@ -1045,7 +1014,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
             <div style={{ overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-              {/* SECURE PIN LOGIN SCREEN */}
               {!isMasterSession && !loggedInAdminShopId && (
                 <div style={{ padding: "30px 0", textAlign: "center" }}>
                   <p style={{ fontSize: "13px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit PIN for {activeShop.name}</p>
@@ -1061,7 +1029,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               )}
 
-              {/* --- MASTER DEVELOPER PANEL --- */}
               {isMasterSession && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
@@ -1090,7 +1057,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               )}
 
-              {/* --- SHOP OWNER ADMIN PANEL --- */}
               {loggedInAdminShopId && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {(() => {
@@ -1100,7 +1066,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                         
-                        {/* OPERATIONAL CONTROL CENTER */}
                         <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "2px solid #059669" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                             <h4 style={{ fontWeight: 900, color: "#34d399", fontSize: "14px", margin: 0, textTransform: "uppercase" }}>
@@ -1130,7 +1095,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           </div>
                         </div>
 
-                        {/* WEEKLY OPERATING HOURS */}
                         <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
                           <h4 style={{ fontWeight: 900, color: "#f59e0b", fontSize: "14px", margin: "0 0 6px 0" }}>
                             ⏰ Weekly Schedule & Operating Hours
@@ -1187,7 +1151,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           </div>
                         </div>
 
-                        {/* MENU MANAGEMENT */}
                         <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                             <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
