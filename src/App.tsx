@@ -29,6 +29,7 @@ export interface ShopData {
   tagline: string;
   whatsapp: string;
   address: string;
+  shopUrl: string; // LIVE SHOP URL
   pin: string;
   crossPromoName: string;
   crossPromoId: string;
@@ -84,6 +85,7 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
     tagline: "Authentic Jamaican Flame & Pot",
     whatsapp: "8765550192",
     address: "Main Street, Montego Bay",
+    shopUrl: "https://cook-shop.vercel.app",
     pin: "1234",
     crossPromoName: "Auntie's Ital Corner",
     crossPromoId: "shop2",
@@ -126,6 +128,7 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
     tagline: "Pure Natural Livity & Plant-Based Meals",
     whatsapp: "8765550999",
     address: "Market Square, Montego Bay",
+    shopUrl: "https://cook-shop.vercel.app",
     pin: "5678",
     crossPromoName: "Mama's Yard Cookshop",
     crossPromoId: "shop1",
@@ -193,6 +196,7 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
   const [receiptSearchTerm, setReceiptSearchTerm] = useState('');
+  const [linkCopiedNotice, setLinkCopiedNotice] = useState(false);
 
   // Customizer Modal State
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -213,10 +217,8 @@ export default function App() {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
 
-  // Mobile Web Audio Context Reference
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // --- AUTO-SAVE TO LOCALSTORAGE ON STATE CHANGE ---
   useEffect(() => {
     localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
   }, [shops]);
@@ -229,7 +231,6 @@ export default function App() {
     localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
   }, [suggestions]);
 
-  // --- SAFE MOBILE WEB AUDIO INITIALIZATION & TAILWIND CDN INJECTION ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -283,6 +284,23 @@ export default function App() {
 
   const shop = shops[currentShopId] || shops['shop1'];
   const t = shop.theme;
+
+  const copyUrlToClipboard = (urlToCopy: string) => {
+    const finalUrl = urlToCopy || window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(finalUrl);
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = finalUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    setLinkCopiedNotice(true);
+    playChime();
+    setTimeout(() => setLinkCopiedNotice(false), 2500);
+  };
 
   const addToCart = () => {
     if (!selectedDish) return;
@@ -395,7 +413,6 @@ export default function App() {
     }
   };
 
-  // FILTERED RECEIPTS FOR HISTORY LOG SEARCH
   const filteredOrders = orders.filter(o => {
     const term = receiptSearchTerm.toLowerCase();
     return o.id.toString().includes(term) ||
@@ -818,6 +835,22 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* QUICK COPY LINK BADGE FOR ADMINS */}
+                {linkCopiedNotice && (
+                  <div className="bg-emerald-900 border border-emerald-600 text-emerald-200 p-2.5 rounded-xl text-xs font-bold text-center animate-bounce">
+                    🔗 Live Shop URL copied to clipboard!
+                  </div>
+                )}
+
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium truncate max-w-[70%]">🔗 {shop.shopUrl || window.location.href}</span>
+                  <button 
+                    onClick={() => copyUrlToClipboard(shop.shopUrl)}
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold px-3 py-1.5 rounded-lg border border-slate-700">
+                    Copy Link
+                  </button>
+                </div>
+
                 {/* 1. MASTER DEVELOPER EXCLUSIVE PANEL */}
                 {adminRole === 'master' && (
                   <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
@@ -836,7 +869,6 @@ export default function App() {
                       />
                     </div>
 
-                    {/* NEW: EDIT SHOP LOCATION FIELD */}
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Location / Address</label>
                       <input 
@@ -848,6 +880,21 @@ export default function App() {
                         }}
                         placeholder="e.g. Main Street, Montego Bay"
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
+                      />
+                    </div>
+
+                    {/* NEW: LIVE SHOP URL INPUT */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-300 font-bold">Edit Live Shop URL</label>
+                      <input 
+                        type="text" 
+                        value={shop.shopUrl}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setShops({ ...shops, [currentShopId]: { ...shop, shopUrl: val } });
+                        }}
+                        placeholder="https://cook-shop.vercel.app"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
                       />
                     </div>
 
