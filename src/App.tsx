@@ -419,7 +419,8 @@ export default function App() {
       `*Payment:* ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
       `*Total:* $${grandTotal} JMD`;
 
-    const waUrl = `https://wa.me/${shop.whatsapp}?text=${encodeURIComponent(msg)}`;
+    const cleanNumber = shop.whatsapp.replace(/[^0-9]/g, '');
+    const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
 
     setCart([]);
@@ -980,7 +981,6 @@ export default function App() {
                   <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
                     <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Info Editor</h4>
 
-                    {/* NEW: DEVELOPER PIN CHANGER */}
                     <div className="space-y-1 bg-amber-950/30 p-2 rounded-lg border border-amber-800/50">
                       <label className="text-[11px] text-amber-300 font-bold block">🔐 Update Active Shop PIN (Operational PIN)</label>
                       <input 
@@ -994,7 +994,20 @@ export default function App() {
                         className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-amber-500"
                         placeholder="e.g. 1234"
                       />
-                      <p className="text-[10px] text-slate-400">This controls the 4-digit PIN the shop admins/cousins use to log in.</p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-300 font-bold">Edit Shop WhatsApp Number / Contact</label>
+                      <input 
+                        type="text" 
+                        value={shop.whatsapp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setShops({ ...shops, [currentShopId]: { ...shop, whatsapp: val } });
+                        }}
+                        placeholder="8765550192"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -1081,6 +1094,33 @@ export default function App() {
                 {/* 2. SHOP OPERATIONAL ADMIN PANEL */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Shop Operational Controls</h4>
+
+                  {/* SHOP OWNER CONTACT INFO EDITOR */}
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <label className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">📞 Shop Contact Information</label>
+                    <div className="space-y-1.5">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block font-medium">WhatsApp Number for Orders</label>
+                        <input 
+                          type="text" 
+                          value={shop.whatsapp} 
+                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, whatsapp: e.target.value } })}
+                          placeholder="8765550192"
+                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block font-medium">Shop Location / Address</label>
+                        <input 
+                          type="text" 
+                          value={shop.address} 
+                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, address: e.target.value } })}
+                          placeholder="Main Street, Montego Bay"
+                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* ORDERS QUEUE & HISTORICAL RECEIPT SEARCH */}
                   <div className="space-y-2">
