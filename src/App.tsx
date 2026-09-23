@@ -478,7 +478,7 @@ export default function App() {
             
             <div className="flex justify-between items-center">
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Today's Specials</h2>
-              <span className="text-[11px] text-slate-500 font-medium">{shop.address}</span>
+              <span className="text-[11px] text-slate-500 font-medium">📍 {shop.address}</span>
             </div>
             
             <div className="space-y-3">
@@ -821,7 +821,7 @@ export default function App() {
                 {/* 1. MASTER DEVELOPER EXCLUSIVE PANEL */}
                 {adminRole === 'master' && (
                   <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
-                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Name Editor</h4>
+                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Info Editor</h4>
 
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Name</label>
@@ -832,6 +832,21 @@ export default function App() {
                           const val = e.target.value;
                           setShops({ ...shops, [currentShopId]: { ...shop, name: val } });
                         }}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
+                      />
+                    </div>
+
+                    {/* NEW: EDIT SHOP LOCATION FIELD */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Location / Address</label>
+                      <input 
+                        type="text" 
+                        value={shop.address}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setShops({ ...shops, [currentShopId]: { ...shop, address: val } });
+                        }}
+                        placeholder="e.g. Main Street, Montego Bay"
                         className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
                       />
                     </div>
