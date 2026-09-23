@@ -6,7 +6,7 @@ interface Dish {
   name: string;
   price: number;
   description: string;
-  category: string;
+  category: "Mains" | "Drinks" | "Snacks" | "Sides" | "Soups";
   image: string;
   inStock: boolean;
   isSuggested?: boolean;
@@ -36,6 +36,14 @@ interface Order {
   deliveryTime: string;
   status: "Received" | "Preparing" | "Out for Delivery" | "Completed" | "Cancelled";
   date: string;
+  timestamp: string;
+}
+
+interface DevNote {
+  id: string;
+  shopName: string;
+  shopId: string;
+  message: string;
   timestamp: string;
 }
 
@@ -87,7 +95,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
     operatingHours: "10:00 AM - 9:00 PM",
     headerPhoto: "",
-    fontFamily: "system-ui",
+    fontFamily: "Poppins, sans-serif",
     acceptCash: true,
     acceptBank: true,
     acceptLynk: true,
@@ -112,7 +120,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZoneNote: "Delivery available across Falmouth coastal strip.",
     operatingHours: "11:00 AM - 8:00 PM",
     headerPhoto: "",
-    fontFamily: "system-ui",
+    fontFamily: "Poppins, sans-serif",
     acceptCash: true,
     acceptBank: false,
     acceptLynk: true,
@@ -143,12 +151,12 @@ export default function App() {
       shop1: [
         { id: "d1", name: "Brown Stew Chicken", price: 1200, description: "Slow-braised chicken in rich savory spices with carrots and butter beans.", category: "Mains", image: "", inStock: true, isSuggested: true, likes: 12 },
         { id: "d2", name: "Curry Goat & Rice", price: 1600, description: "Tender seasoned goat meat simmered with authentic Jamaican curry and potatoes.", category: "Mains", image: "", inStock: true, isSuggested: true, likes: 24 },
-        { id: "d3", name: "Ackee & Saltfish", price: 1400, description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.", category: "Breakfast", image: "", inStock: true, likes: 8 },
+        { id: "d3", name: "Fresh Soursop Juice", price: 500, description: "Creamy soursop blended with nutmeg and condensed milk.", category: "Drinks", image: "", inStock: true, likes: 18 },
         { id: "d4", name: "Fried Dumplings (4 Pack)", price: 400, description: "Golden, crispy traditional fried johnny cakes.", category: "Sides", image: "", inStock: true, likes: 15 }
       ],
       shop2: [
         { id: "e1", name: "Ital Pumpkin Soup", price: 800, description: "Rich coconut milk base loaded with ground provisions, dumplings, and fresh herbs.", category: "Soups", image: "", inStock: true, isSuggested: true, likes: 19 },
-        { id: "e2", name: "Coconut Ital Stew", price: 1100, description: "Beans, plantains, and fresh greens stewed slowly in pure coconut cream.", category: "Mains", image: "", inStock: true, likes: 11 }
+        { id: "e2", name: "Natural Ginger Beer", price: 400, description: "Cold spiced natural ginger brew.", category: "Drinks", image: "", inStock: true, likes: 9 }
       ]
     };
   });
@@ -157,6 +165,19 @@ export default function App() {
     const saved = localStorage.getItem("cookshop_all_orders");
     return saved ? JSON.parse(saved) : {};
   });
+
+  const [devNotes, setDevNotes] = useState<DevNote[]>(() => {
+    const saved = localStorage.getItem("cookshop_dev_notes");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [likedDishes, setLikedDishes] = useState<string[]>(() => {
+    const saved = localStorage.getItem("cookshop_user_liked_dishes");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Category Filtering
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
   // Cart & Customer States
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -186,6 +207,8 @@ export default function App() {
   const [loggedInAdminShopId, setLoggedInAdminShopId] = useState<string | null>(null);
   const [isMasterSession, setIsMasterSession] = useState(false);
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [newNoteText, setNewNoteText] = useState("");
 
   // Master Developer PIN
   const [masterPin] = useState("9999");
@@ -201,7 +224,7 @@ export default function App() {
   const [dishNameInput, setDishNameInput] = useState("");
   const [dishPriceInput, setDishPriceInput] = useState("");
   const [dishDescInput, setDishDescInput] = useState("");
-  const [dishCatInput, setDishCatInput] = useState("Mains");
+  const [dishCatInput, setDishCatInput] = useState<Dish["category"]>("Mains");
   const [dishImageInput, setDishImageInput] = useState("");
   const [dishSuggestedInput, setDishSuggestedInput] = useState(false);
 
@@ -209,6 +232,8 @@ export default function App() {
     try {
       localStorage.setItem("cookshop_all_shops", JSON.stringify(shops));
       localStorage.setItem("cookshop_all_menus", JSON.stringify(menus));
+      localStorage.setItem("cookshop_dev_notes", JSON.stringify(devNotes));
+      localStorage.setItem("cookshop_user_liked_dishes", JSON.stringify(likedDishes));
       const prunedOrders: Record<string, Order[]> = {};
       Object.keys(orders).forEach(id => {
         prunedOrders[id] = (orders[id] || []).slice(0, 50);
@@ -217,7 +242,15 @@ export default function App() {
     } catch (err) {
       console.warn("Storage warning:", err);
     }
-  }, [shops, menus, orders]);
+  }, [shops, menus, orders, devNotes, likedDishes]);
+
+  // Inject Custom Google Fonts dynamically
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&family=Poppins:wght@400;600;800;900&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+  }, []);
 
   const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
@@ -234,7 +267,7 @@ export default function App() {
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          callback(canvas.toDataURL("image/jpeg", 0.6));
+          callback(canvas.toDataURL("image/jpeg", 0.5));
         }
       };
       if (event.target?.result) img.src = event.target.result as string;
@@ -255,12 +288,23 @@ export default function App() {
   };
 
   const toggleLikeDish = (dishId: string) => {
-    setMenus(prev => ({
-      ...prev,
-      [activeShop.id]: (prev[activeShop.id] || []).map(d => 
-        d.id === dishId ? { ...d, likes: (d.likes || 0) + 1 } : d
-      )
-    }));
+    if (likedDishes.includes(dishId)) {
+      setLikedDishes(prev => prev.filter(id => id !== dishId));
+      setMenus(prev => ({
+        ...prev,
+        [activeShop.id]: (prev[activeShop.id] || []).map(d => 
+          d.id === dishId ? { ...d, likes: Math.max(0, (d.likes || 0) - 1) } : d
+        )
+      }));
+    } else {
+      setLikedDishes(prev => [...prev, dishId]);
+      setMenus(prev => ({
+        ...prev,
+        [activeShop.id]: (prev[activeShop.id] || []).map(d => 
+          d.id === dishId ? { ...d, likes: (d.likes || 0) + 1 } : d
+        )
+      }));
+    }
   };
 
   const addToCart = (dish: Dish) => {
@@ -280,7 +324,7 @@ export default function App() {
       name: `[Custom Request] ${customDishName}`,
       price: parseFloat(customDishPrice) || 0,
       description: customDishNotes,
-      category: "Custom",
+      category: "Mains",
       image: "",
       inStock: true
     };
@@ -295,8 +339,25 @@ export default function App() {
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
+  const sendNoteToDeveloper = () => {
+    if (!newNoteText.trim()) return;
+    const now = new Date();
+    const note: DevNote = {
+      id: "note_" + Date.now(),
+      shopName: activeShop.name,
+      shopId: activeShop.id,
+      message: newNoteText,
+      timestamp: `${now.toLocaleDateString()} at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    };
+    setDevNotes(prev => [note, ...prev]);
+    setNewNoteText("");
+    alert("Note dispatched directly to Developer Inbox!");
+  };
+
   const currentShopMenu = menus[activeShop.id] || [];
+  const filteredMenu = activeCategory === "All" ? currentShopMenu : currentShopMenu.filter(d => d.category === activeCategory);
   const currentShopOrders = orders[activeShop.id] || [];
+
   const cartSubtotal = cart.reduce((sum, item) => sum + item.dish.price * item.quantity, 0);
   const deliveryCost = orderType === "delivery" && activeShop.isDeliveryActive ? activeShop.deliveryFee : 0;
   const cartTotal = cartSubtotal + deliveryCost + tipAmount;
@@ -415,7 +476,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       deliveryZoneNote: "Local delivery zone applies.",
       operatingHours: "10:00 AM - 8:00 PM",
       headerPhoto: "",
-      fontFamily: "system-ui",
+      fontFamily: "Poppins, sans-serif",
       acceptCash: true,
       acceptBank: true,
       acceptLynk: true,
@@ -473,12 +534,49 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     }
   };
 
+  // Customer History Lookup Calculations
+  const getCustomerStats = (nameQuery: string) => {
+    if (!nameQuery.trim()) return null;
+    const matchingOrders = currentShopOrders.filter(o => o.customerName.toLowerCase().includes(nameQuery.toLowerCase()));
+    if (matchingOrders.length === 0) return null;
+
+    const totalSpent = matchingOrders.reduce((sum, o) => sum + o.total, 0);
+    const addresses = Array.from(new Set(matchingOrders.map(o => o.address)));
+
+    // Count dish frequencies
+    const dishCounts: Record<string, number> = {};
+    matchingOrders.forEach(o => {
+      o.items.forEach(it => {
+        dishCounts[it.dish.name] = (dishCounts[it.dish.name] || 0) + it.quantity;
+      });
+    });
+
+    let favoriteDish = "None";
+    let maxCount = 0;
+    Object.keys(dishCounts).forEach(d => {
+      if (dishCounts[d] > maxCount) {
+        maxCount = dishCounts[d];
+        favoriteDish = d;
+      }
+    });
+
+    return {
+      orderCount: matchingOrders.length,
+      totalSpent,
+      favoriteDish,
+      addresses,
+      matchingOrders
+    };
+  };
+
+  const searchedCustomerStats = getCustomerStats(customerSearchQuery);
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "system-ui, -apple-system, sans-serif", paddingBottom: "120px" }}>
-      {/* --- PUBLIC SHOP HEADER (NO PUBLIC SWITCHER DROPDOWN) --- */}
+    <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "Poppins, sans-serif", paddingBottom: "120px" }}>
+      {/* --- PUBLIC SHOP HEADER --- */}
       <header style={{ backgroundColor: "#18181b", color: "#ffffff", borderBottom: `4px solid ${activeShop.themeColor}`, boxShadow: "0 4px 10px rgba(0,0,0,0.5)", position: "sticky", top: 0, zIndex: 40 }}>
         {activeShop.headerPhoto && (
-          <div style={{ width: "100%", height: "120px", overflow: "hidden", borderBottom: "1px solid #27272a" }}>
+          <div style={{ width: "100%", height: "130px", overflow: "hidden", borderBottom: "1px solid #27272a" }}>
             <img src={activeShop.headerPhoto} alt="Header Banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
         )}
@@ -501,9 +599,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 📍 Pin
               </a>
             )}
+            {/* SOLID HIGH-CONTRAST ADMIN BUTTON */}
             <button
               onClick={() => setAdminModalOpen(true)}
-              style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+              style={{ backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
             >
               🔐 Admin
             </button>
@@ -519,86 +618,99 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           </div>
         )}
 
+        {/* Category Tabs */}
+        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "12px", marginBottom: "16px", scrollbarWidth: "none" }}>
+          {["All", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, border: activeCategory === cat ? "none" : "1px solid #3f3f46", backgroundColor: activeCategory === cat ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              {cat === "All" ? "🍽️ All Items" : cat === "Mains" ? "🍗 Mains" : cat === "Drinks" ? "🥤 Drinks" : cat === "Snacks" ? "🍿 Snacks" : cat === "Sides" ? "🍟 Sides" : "🥣 Soups"}
+            </button>
+          ))}
+        </div>
+
         {/* Menu Top Actions */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <h2 style={{ fontSize: "19px", fontWeight: 900, color: "#ffffff", margin: 0 }}>Today's Menu</h2>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              onClick={() => setCustomDishModal(true)}
-              style={{ backgroundColor: "#27272a", color: "#34d399", padding: "6px 12px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, border: "1px solid #059669", cursor: "pointer" }}
-            >
-              ➕ Custom Dish
-            </button>
-            <span style={{ fontSize: "11px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "6px 12px", borderRadius: "999px", fontWeight: 700, border: "1px solid #3f3f46" }}>
-              {currentShopMenu.filter(d => d.inStock).length} Available
-            </span>
-          </div>
+          <button
+            onClick={() => setCustomDishModal(true)}
+            style={{ backgroundColor: "#27272a", color: "#34d399", padding: "6px 12px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, border: "1px solid #059669", cursor: "pointer" }}
+          >
+            ➕ Custom Dish
+          </button>
         </div>
 
         {/* Dishes Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
-          {currentShopMenu.map(dish => (
-            <div key={dish.id} style={{ backgroundColor: "#18181b", borderRadius: "14px", boxShadow: "0 4px 12px rgba(0,0,0,0.4)", border: dish.isSuggested ? "2px solid #f59e0b" : "1px solid #27272a", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div style={{ padding: "16px", display: "flex", gap: "14px", alignItems: "flex-start" }}>
-                {dish.image ? (
-                  <img 
-                    src={dish.image} 
-                    alt={dish.name} 
-                    onClick={() => setZoomedImageUrl(dish.image)}
-                    style={{ width: "84px", height: "84px", objectFit: "cover", borderRadius: "10px", border: "1px solid #3f3f46", backgroundColor: "#27272a", flexShrink: 0, cursor: "pointer" }} 
-                    title="Tap to zoom photo"
-                  />
-                ) : (
-                  <div style={{ width: "84px", height: "84px", backgroundColor: "#27272a", borderRadius: "10px", border: "1px solid #3f3f46", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", flexShrink: 0 }}>
-                    🍲
-                  </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-                    <h3 style={{ fontSize: "15px", fontWeight: 900, color: "#ffffff", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {dish.name}
-                    </h3>
-                    <span style={{ fontSize: "14px", fontWeight: 900, color: "#34d399", whiteSpace: "nowrap" }}>${dish.price} JMD</span>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.4" }}>
-                    {dish.description}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "10px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, border: "1px solid #3f3f46" }}>
-                      {dish.category}
-                    </span>
-                    {dish.isSuggested && (
-                      <span style={{ fontSize: "10px", backgroundColor: "#78350f", color: "#fcd34d", padding: "2px 8px", borderRadius: "4px", fontWeight: 800, border: "1px solid #f59e0b" }}>
-                        ⭐ Chef's Special
+          {filteredMenu.map(dish => {
+            const isLiked = likedDishes.includes(dish.id);
+            return (
+              <div key={dish.id} style={{ backgroundColor: "#18181b", borderRadius: "14px", boxShadow: "0 4px 12px rgba(0,0,0,0.4)", border: dish.isSuggested ? "2px solid #f59e0b" : "1px solid #27272a", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ padding: "16px", display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                  {dish.image ? (
+                    <img 
+                      src={dish.image} 
+                      alt={dish.name} 
+                      onClick={() => setZoomedImageUrl(dish.image)}
+                      style={{ width: "84px", height: "84px", objectFit: "cover", borderRadius: "10px", border: "1px solid #3f3f46", backgroundColor: "#27272a", flexShrink: 0, cursor: "pointer" }} 
+                      title="Tap to zoom photo"
+                    />
+                  ) : (
+                    <div style={{ width: "84px", height: "84px", backgroundColor: "#27272a", borderRadius: "10px", border: "1px solid #3f3f46", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", flexShrink: 0 }}>
+                      🍲
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
+                      <h3 style={{ fontSize: "15px", fontWeight: 900, color: "#ffffff", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {dish.name}
+                      </h3>
+                      <span style={{ fontSize: "14px", fontWeight: 900, color: "#34d399", whiteSpace: "nowrap" }}>${dish.price} JMD</span>
+                    </div>
+                    <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.4" }}>
+                      {dish.description}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "10px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, border: "1px solid #3f3f46" }}>
+                        {dish.category}
                       </span>
-                    )}
+                      {dish.isSuggested && (
+                        <span style={{ fontSize: "10px", backgroundColor: "#78350f", color: "#fcd34d", padding: "2px 8px", borderRadius: "4px", fontWeight: 800, border: "1px solid #f59e0b" }}>
+                          ⭐ Chef's Special
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ backgroundColor: "#121215", padding: "10px 16px", borderTop: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
-                    {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
-                  </span>
-                  <button
-                    onClick={() => toggleLikeDish(dish.id)}
-                    style={{ backgroundColor: "#27272a", color: "#f43f5e", border: "1px solid #3f3f46", borderRadius: "6px", padding: "3px 8px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
-                  >
-                    ❤️ {dish.likes || 0}
-                  </button>
+                <div style={{ backgroundColor: "#121215", padding: "10px 16px", borderTop: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
+                      {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
+                    </span>
+                    {/* ANTI-SPAM LIKE BUTTON */}
+                    <button
+                      onClick={() => toggleLikeDish(dish.id)}
+                      style={{ backgroundColor: isLiked ? "#881337" : "#27272a", color: isLiked ? "#fda4af" : "#f43f5e", border: "1px solid #3f3f46", borderRadius: "6px", padding: "3px 8px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
+                    >
+                      {isLiked ? "❤️" : "🤍"} {dish.likes || 0}
+                    </button>
+                  </div>
+                  {/* SOLID HIGH-CONTRAST ADD TO PLATE BUTTON */}
+                  {activeShop.isOpen && dish.inStock && (
+                    <button
+                      onClick={() => setSelectedDish(dish)}
+                      style={{ backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                    >
+                      + Add to Plate
+                    </button>
+                  )}
                 </div>
-                {activeShop.isOpen && dish.inStock && (
-                  <button
-                    onClick={() => setSelectedDish(dish)}
-                    style={{ backgroundColor: activeShop.themeColor, color: "#ffffff", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
-                  >
-                    + Add to Plate
-                  </button>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* --- CUSTOMER ORDER PLATE & CHECKOUT --- */}
@@ -633,14 +745,14 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 <button
                   type="button"
                   onClick={() => setOrderType("delivery")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                 >
                   🚚 Delivery (${activeShop.deliveryFee} JMD)
                 </button>
                 <button
                   type="button"
                   onClick={() => setOrderType("pickup")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                 >
                   🏪 Store Pickup
                 </button>
@@ -675,7 +787,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Cash")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Cash" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Cash" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Cash" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Cash" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                     >
                       💵 Cash
                     </button>
@@ -684,7 +796,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Bank Transfer")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Bank Transfer" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Bank Transfer" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Bank Transfer" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Bank Transfer" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                     >
                       🏦 Bank
                     </button>
@@ -693,7 +805,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Lynk")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Lynk" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Lynk" ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Lynk" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Lynk" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                     >
                       📲 Lynk
                     </button>
@@ -722,7 +834,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={amt}
                       type="button"
                       onClick={() => setTipAmount(amt)}
-                      style={{ flex: 1, padding: "6px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: tipAmount === amt ? "none" : "1px solid #3f3f46", backgroundColor: tipAmount === amt ? activeShop.themeColor : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      style={{ flex: 1, padding: "6px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: tipAmount === amt ? "none" : "1px solid #3f3f46", backgroundColor: tipAmount === amt ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
                     >
                       {amt === 0 ? "No Tip" : `+$${amt}`}
                     </button>
@@ -864,7 +976,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setSpiceLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor : "#27272a", color: "#ffffff", cursor: "pointer" }}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", color: "#ffffff", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -880,7 +992,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setGravyLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor : "#27272a", color: "#ffffff", cursor: "pointer" }}
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", color: "#ffffff", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -895,7 +1007,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     type="checkbox"
                     checked={extraSauce}
                     onChange={(e) => setExtraSauce(e.target.checked)}
-                    style={{ width: "16px", height: "16px", accentColor: activeShop.themeColor }}
+                    style={{ width: "16px", height: "16px", accentColor: activeShop.themeColor || "#059669" }}
                   />
                   <span>🫙 Add Extra Sauce on the Side</span>
                 </label>
@@ -915,7 +1027,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => setSelectedDish(null)} style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => addToCart(selectedDish)} style={{ flex: 1, backgroundColor: activeShop.themeColor, color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>Add (${selectedDish.price} JMD)</button>
+              <button onClick={() => addToCart(selectedDish)} style={{ flex: 1, backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>Add (${selectedDish.price} JMD)</button>
             </div>
           </div>
         </div>
@@ -1050,7 +1162,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               </div>
             )}
 
-            {/* --- MASTER DEVELOPER PANEL (FULL POWERS & VISIT SHOPS DROPDOWN) --- */}
+            {/* --- MASTER DEVELOPER PANEL --- */}
             {isMasterSession && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {/* Visit Shops Selector Dropdown */}
@@ -1075,6 +1187,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                   </select>
                 </div>
 
+                {/* Developer Messages Inbox */}
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                  <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: "0 0 8px 0" }}>📬 Incoming Developer Inbox ({devNotes.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "160px", overflowY: "auto" }}>
+                    {devNotes.length === 0 ? (
+                      <p style={{ fontSize: "11px", color: "#a1a1aa", margin: 0 }}>No messages in developer inbox.</p>
+                    ) : (
+                      devNotes.map(n => (
+                        <div key={n.id} style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "8px", border: "1px solid #27272a", fontSize: "11px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#60a5fa", marginBottom: "4px" }}>
+                            <span>From: {n.shopName}</span>
+                            <span style={{ color: "#a1a1aa", fontWeight: 400 }}>{n.timestamp}</span>
+                          </div>
+                          <p style={{ margin: "0 0 6px 0", color: "#ffffff" }}>"{n.message}"</p>
+                          {shops.find(s => s.id === n.shopId)?.whatsapp && (
+                            <a href={`https://wa.me/${shops.find(s => s.id === n.shopId)?.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#34d399", fontWeight: 800, textDecoration: "none" }}>📲 Reply on WhatsApp</a>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 {/* Instant Shop Launcher */}
                 <form onSubmit={createInstantShop} style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
                   <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>🚀 1-Step Instant Shop Launcher</h4>
@@ -1082,7 +1217,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <input type="text" placeholder="Shop Name *" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px" }} />
                     <input type="text" placeholder="WhatsApp Number *" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px" }} />
                   </div>
-                  <input type="text" placeholder="Shop Tagline (e.g. Best O tails in Town)" value={newShopTagline} onChange={(e) => setNewShopTagline(e.target.value)} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px", boxSizing: "border-box" }} />
+                  <input type="text" placeholder="Shop Tagline (e.g. Best Oxtails in Town)" value={newShopTagline} onChange={(e) => setNewShopTagline(e.target.value)} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px", boxSizing: "border-box" }} />
                   <button type="submit" style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>
                     🚀 Launch New Shop Instantly
                   </button>
@@ -1177,6 +1312,74 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                         </div>
                       </div>
 
+                      {/* Header Customizer: Photo Banner, Fonts & Colors */}
+                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>🎨 Header Branding, Fonts & Accent Colors</h4>
+                        
+                        <div>
+                          <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "4px" }}>Header Photo Banner</label>
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa", flex: 1 }} />
+                            {shop.headerPhoto && <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>}
+                          </div>
+                          <input type="text" placeholder="Or paste direct image URL (e.g. https://...)" value={shop.headerPhoto} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", marginTop: "6px", boxSizing: "border-box" }} />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Font Style</label>
+                            <select value={shop.fontFamily} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, fontFamily: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                              <option value="Poppins, sans-serif">Modern Sans (Poppins)</option>
+                              <option value="'Bebas Neue', cursive">Bold Display (Bebas Neue)</option>
+                              <option value="'Playfair Display', serif">Classic Serif (Playfair)</option>
+                              <option value="system-ui, sans-serif">Clean System</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Theme Accent Color</label>
+                            <select value={shop.themeColor} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, themeColor: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                              <option value="#059669">Emerald Green</option>
+                              <option value="#d97706">Amber Gold</option>
+                              <option value="#e11d48">Crimson Red</option>
+                              <option value="#2563eb">Sapphire Blue</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Customer History Search Tool */}
+                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #38bdf8" }}>
+                        <h4 style={{ fontWeight: 800, color: "#38bdf8", fontSize: "13px", margin: "0 0 6px 0" }}>👤 Customer History Search</h4>
+                        <input
+                          type="text"
+                          placeholder="Search customer name (e.g. Omarian)..."
+                          value={customerSearchQuery}
+                          onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                          style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                        />
+
+                        {searchedCustomerStats ? (
+                          <div style={{ marginTop: "10px", backgroundColor: "#0284c7", color: "#ffffff", padding: "10px", borderRadius: "8px", fontSize: "11px" }}>
+                            <div style={{ fontWeight: 900, fontSize: "12px", marginBottom: "4px" }}>Customer Profile: {customerSearchQuery}</div>
+                            <div>• Total Orders: <strong>{searchedCustomerStats.orderCount}</strong></div>
+                            <div>• Total Amount Spent: <strong>${searchedCustomerStats.totalSpent} JMD</strong></div>
+                            <div>• Favorite Dish: <strong>{searchedCustomerStats.favoriteDish}</strong></div>
+                            <div>• Delivery Addresses: <strong>{searchedCustomerStats.addresses.join(" | ")}</strong></div>
+                          </div>
+                        ) : customerSearchQuery.trim() !== "" ? (
+                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "8px 0 0 0" }}>No past orders found for this customer name.</p>
+                        ) : null}
+                      </div>
+
+                      {/* Contact Developer & Send Note */}
+                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💬 Contact Developer Support</h4>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <input type="text" placeholder="Type a note or report to developer..." value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} style={{ flex: 1, backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
+                          <button onClick={sendNoteToDeveloper} style={{ backgroundColor: "#2563eb", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Send Note</button>
+                        </div>
+                      </div>
+
                       {/* Designated Socials & Contact Slots */}
                       <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
                         <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>📞 Contact Info & Designated Socials</h4>
@@ -1245,11 +1448,11 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                         </div>
                       </div>
 
-                      {/* Menu Management & Suggested Toggles */}
+                      {/* Menu Management & Categorization */}
                       <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                           <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
-                          <button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 800, border: "none", cursor: "pointer" }}>+ Add Dish</button>
+                          <button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 800, border: "none", cursor: "pointer" }}>+ Add Dish</button>
                         </div>
 
                         {editingDish !== null && (
@@ -1259,13 +1462,20 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                               <input type="text" placeholder="Dish Name" value={dishNameInput} onChange={(e) => setDishNameInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
                               <input type="number" placeholder="Price ($ JMD)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
                             </div>
-                            <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                                <input type="checkbox" checked={dishSuggestedInput} onChange={(e) => setDishSuggestedInput(e.target.checked)} /> ⭐ Mark as Chef's Special / Suggested
-                              </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                              <select value={dishCatInput} onChange={(e) => setDishCatInput(e.target.value as Dish["category"])} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                                <option value="Mains">Mains</option>
+                                <option value="Drinks">Drinks</option>
+                                <option value="Snacks">Snacks</option>
+                                <option value="Sides">Sides</option>
+                                <option value="Soups">Soups</option>
+                              </select>
                               <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
                             </div>
+                            <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
+                              <input type="checkbox" checked={dishSuggestedInput} onChange={(e) => setDishSuggestedInput(e.target.checked)} /> ⭐ Mark as Chef's Special / Suggested
+                            </label>
                             <div style={{ display: "flex", gap: "6px", paddingTop: "4px" }}>
                               <button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save Dish</button>
                               <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button>
@@ -1276,10 +1486,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                         <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
                           {(menus[loggedInAdminShopId] || []).map(dish => (
                             <div key={dish.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                              <span><strong style={{ color: "#ffffff" }}>{dish.name}</strong> (${dish.price}) {dish.isSuggested ? "⭐" : ""}</span>
+                              <span><strong style={{ color: "#ffffff" }}>{dish.name}</strong> (${dish.price}) [{dish.category}] {dish.isSuggested ? "⭐" : ""}</span>
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                 <button onClick={() => setMenus(prev => ({ ...prev, [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d) }))} style={{ padding: "3px 6px", borderRadius: "4px", fontWeight: 800, fontSize: "9px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#064e3b" : "#7f1d1d", color: dish.inStock ? "#34d399" : "#fca5a5" }}>{dish.inStock ? "In Stock" : "Sold Out"}</button>
-                                <button onClick={() => { setEditingDish(dish); setDishNameInput(dish.name); setDishPriceInput(dish.price.toString()); setDishDescInput(dish.description); setDishImageInput(dish.image); setDishSuggestedInput(!!dish.isSuggested); }} style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                                <button onClick={() => { setEditingDish(dish); setDishNameInput(dish.name); setDishPriceInput(dish.price.toString()); setDishDescInput(dish.description); setDishCatInput(dish.category); setDishImageInput(dish.image); setDishSuggestedInput(!!dish.isSuggested); }} style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Edit</button>
                                 <button onClick={() => deleteDish(dish.id)} style={{ color: "#f87171", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
                               </div>
                             </div>
