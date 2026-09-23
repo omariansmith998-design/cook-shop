@@ -234,11 +234,6 @@ export default function App() {
   const [newNoteText, setNewNoteText] = useState("");
   const [masterSearchQuery, setMasterSearchQuery] = useState("");
 
-  // Create Shop Fields
-  const [newShopName, setNewShopName] = useState("");
-  const [newShopTagline, setNewShopTagline] = useState("");
-  const [newShopWhatsapp, setNewShopWhatsapp] = useState("");
-
   // Menu Management
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
   const [dishNameInput, setDishNameInput] = useState("");
@@ -272,12 +267,10 @@ export default function App() {
     document.head.appendChild(link);
   }, []);
 
-  // FIXED ACCURATE LOCAL TIME STORE OPEN DETECTOR
   const isShopOpenNow = (shop: ShopProfile) => {
     if (!shop.isOpenManual) return false;
     
     const now = new Date();
-    // Accurately map local day index: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
     const dayKeys: Array<"Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"> = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const currentDayKey = dayKeys[now.getDay()];
     
@@ -319,18 +312,6 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const handlePinLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported on this device");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCustomerAddress(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
-      () => alert("Unable to retrieve GPS. Please type your location manually."),
-      { timeout: 10000 }
-    );
-  };
-
   const toggleLikeDish = (dishId: string) => {
     if (likedDishes.includes(dishId)) {
       setLikedDishes(prev => prev.filter(id => id !== dishId));
@@ -358,44 +339,8 @@ export default function App() {
     setExtraSauce(false);
   };
 
-  const addCustomDishToCart = () => {
-    if (!customDishName || !customDishPrice) {
-      alert("Please provide custom dish name and price");
-      return;
-    }
-    const customDish: Dish = {
-      id: "custom_" + Date.now(),
-      name: `[Custom Request] ${customDishName}`,
-      price: parseFloat(customDishPrice) || 0,
-      description: customDishNotes,
-      category: "Mains",
-      image: "",
-      inStock: true
-    };
-    setCart(prev => [...prev, { dish: customDish, quantity: 1, spiceLevel: "Standard", gravyLevel: "Standard", extraSauce: false, notes: customDishNotes, isCustom: true }]);
-    setCustomDishModal(false);
-    setCustomDishName("");
-    setCustomDishPrice("");
-    setCustomDishNotes("");
-  };
-
   const removeFromCart = (index: number) => {
     setCart(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const sendNoteToDeveloper = () => {
-    if (!newNoteText.trim()) return;
-    const now = new Date();
-    const note: DevNote = {
-      id: "note_" + Date.now(),
-      shopName: activeShop.name,
-      shopId: activeShop.id,
-      message: newNoteText,
-      timestamp: `${now.toLocaleDateString()} at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-    };
-    setDevNotes(prev => [note, ...prev]);
-    setNewNoteText("");
-    alert("Note dispatched directly to Developer Inbox!");
   };
 
   const currentShopMenu = menus[activeShop.id] || [];
@@ -489,138 +434,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     setAdminPinInput("");
   };
 
-  const updateOrderStatus = (shopId: string, orderId: string, newStatus: Order["status"]) => {
-    setOrders(prev => ({
-      ...prev,
-      [shopId]: (prev[shopId] || []).map(o => o.id === orderId ? { ...o, status: newStatus } : o)
-    }));
-  };
-
-  const createInstantShop = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newShopName || !newShopWhatsapp) {
-      alert("Shop Name and WhatsApp required!");
-      return;
-    }
-    const shopId = "shop_" + Date.now();
-    const created: ShopProfile = {
-      id: shopId,
-      name: newShopName,
-      tagline: newShopTagline || "Fresh Home Cooked Meals",
-      whatsapp: newShopWhatsapp,
-      tiktok: "",
-      instagram: "",
-      facebook: "",
-      address: "Jamaica",
-      mapLink: "",
-      pin: "1234",
-      themeColor: "#059669",
-      deliveryFee: 300,
-      isOpenManual: true,
-      isDeliveryActive: true,
-      deliveryZoneNote: "Local delivery zone applies.",
-      schedule: DEFAULT_SCHEDULE,
-      headerPhoto: "",
-      fontFamily: "Poppins, sans-serif",
-      acceptCash: true,
-      acceptBank: true,
-      acceptLynk: true,
-      bankDetails: "Bank details upon request",
-      lynkDetails: "Lynk details upon request",
-    };
-    setShops(prev => [...prev, created]);
-    setMenus(prev => ({ ...prev, [created.id]: [] }));
-    setActiveShopId(created.id);
-    setNewShopName("");
-    setNewShopTagline("");
-    setNewShopWhatsapp("");
-    alert(`Cookshop "${created.name}" launched! Selected in "Visit Shops" dropdown.`);
-  };
-
-  const saveEditedDish = () => {
-    if (!loggedInAdminShopId) return;
-    if (!dishNameInput || !dishPriceInput) {
-      alert("Dish Name and Price required!");
-      return;
-    }
-    const updatedDish: Dish = {
-      id: editingDish?.id ? editingDish.id : "dish_" + Date.now(),
-      name: dishNameInput,
-      price: parseFloat(dishPriceInput) || 0,
-      description: dishDescInput,
-      category: dishCatInput,
-      image: dishImageInput || (editingDish ? editingDish.image : ""),
-      inStock: editingDish ? editingDish.inStock : true,
-      isSuggested: dishSuggestedInput,
-      likes: editingDish?.likes || 0
-    };
-    setMenus(prev => {
-      const currentList = prev[loggedInAdminShopId] || [];
-      const exists = currentList.some(d => d.id === updatedDish.id);
-      return { 
-        ...prev, 
-        [loggedInAdminShopId]: exists 
-          ? currentList.map(d => d.id === updatedDish.id ? updatedDish : d) 
-          : [updatedDish, ...currentList] 
-      };
-    });
-    setEditingDish(null);
-    setDishNameInput("");
-    setDishPriceInput("");
-    setDishDescInput("");
-    setDishImageInput("");
-    setDishSuggestedInput(false);
-  };
-
-  const deleteDish = (dishId: string) => {
-    if (!loggedInAdminShopId) return;
-    if (window.confirm("Delete this dish permanently?")) {
-      setMenus(prev => ({ ...prev, [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).filter(d => d.id !== dishId) }));
-    }
-  };
-
-  const getCustomerStats = (nameQuery: string) => {
-    if (!nameQuery.trim()) return null;
-    const matchingOrders = currentShopOrders.filter(o => o.customerName.toLowerCase().includes(nameQuery.toLowerCase()));
-    if (matchingOrders.length === 0) return null;
-
-    const totalSpent = matchingOrders.reduce((sum, o) => sum + o.total, 0);
-    const addresses = Array.from(new Set(matchingOrders.map(o => o.address)));
-
-    const dishCounts: Record<string, number> = {};
-    matchingOrders.forEach(o => {
-      o.items.forEach(it => {
-        dishCounts[it.dish.name] = (dishCounts[it.dish.name] || 0) + it.quantity;
-      });
-    });
-
-    let favoriteDish = "None";
-    let maxCount = 0;
-    Object.keys(dishCounts).forEach(d => {
-      if (dishCounts[d] > maxCount) {
-        maxCount = dishCounts[d];
-        favoriteDish = d;
-      }
-    });
-
-    return {
-      orderCount: matchingOrders.length,
-      totalSpent,
-      favoriteDish,
-      addresses,
-      matchingOrders
-    };
-  };
-
-  const searchedCustomerStats = getCustomerStats(customerSearchQuery);
-
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "Poppins, sans-serif", paddingBottom: "120px" }}>
+      {/* HARDENED CONTRAST RULES: FORCES DARK CONTRAST TEXT ON WHITE OR ACTIVE BUTTONS */}
       <style>{`
-        .force-high-contrast-btn {
+        .force-active-btn {
+          background-color: #059669 !important;
           color: #ffffff !important;
           -webkit-text-fill-color: #ffffff !important;
           opacity: 1 !important;
+          border: 1px solid #34d399 !important;
+        }
+        .force-inactive-btn {
+          background-color: #27272a !important;
+          color: #d4d4d8 !important;
+          -webkit-text-fill-color: #d4d4d8 !important;
+          border: 1px solid #3f3f46 !important;
+        }
+        .force-primary-action {
+          background-color: #059669 !important;
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff !important;
+          font-weight: 900 !important;
+          border: none !important;
         }
       `}</style>
 
@@ -645,15 +481,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-            {activeShop.mapLink && (
-              <a href={activeShop.mapLink} target="_blank" rel="noreferrer" style={{ backgroundColor: "#27272a", color: "#60a5fa", padding: "8px 10px", borderRadius: "8px", fontSize: "12px", textDecoration: "none", fontWeight: 800, border: "1px solid #3f3f46" }}>
-                📍 Pin
-              </a>
-            )}
             <button
               onClick={() => setAdminModalOpen(true)}
-              className="force-high-contrast-btn"
-              style={{ backgroundColor: activeShop.themeColor || "#059669", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
+              className="force-primary-action"
+              style={{ padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
             >
               🔐 Admin
             </button>
@@ -675,23 +506,12 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className="force-high-contrast-btn"
-              style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, border: activeCategory === cat ? "none" : "1px solid #3f3f46", backgroundColor: activeCategory === cat ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+              className={activeCategory === cat ? "force-active-btn" : "force-inactive-btn"}
+              style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
             >
               {cat === "All" ? "🍽️ All Items" : cat === "Mains" ? "🍗 Mains" : cat === "Drinks" ? "🥤 Drinks" : cat === "Snacks" ? "🍿 Snacks" : cat === "Sides" ? "🍟 Sides" : "🥣 Soups"}
             </button>
           ))}
-        </div>
-
-        {/* Menu Top Actions */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h2 style={{ fontSize: "19px", fontWeight: 900, color: "#ffffff", margin: 0 }}>Today's Menu</h2>
-          <button
-            onClick={() => setCustomDishModal(true)}
-            style={{ backgroundColor: "#27272a", color: "#34d399", padding: "6px 12px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, border: "1px solid #059669", cursor: "pointer" }}
-          >
-            ➕ Custom Dish
-          </button>
         </div>
 
         {/* Dishes Grid */}
@@ -724,36 +544,18 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "4px 0 8px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.4" }}>
                       {dish.description}
                     </p>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "10px", backgroundColor: "#27272a", color: "#d4d4d8", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, border: "1px solid #3f3f46" }}>
-                        {dish.category}
-                      </span>
-                      {dish.isSuggested && (
-                        <span style={{ fontSize: "10px", backgroundColor: "#78350f", color: "#fcd34d", padding: "2px 8px", borderRadius: "4px", fontWeight: 800, border: "1px solid #f59e0b" }}>
-                          ⭐ Chef's Special
-                        </span>
-                      )}
-                    </div>
                   </div>
                 </div>
 
                 <div style={{ backgroundColor: "#121215", padding: "10px 16px", borderTop: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
-                      {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
-                    </span>
-                    <button
-                      onClick={() => toggleLikeDish(dish.id)}
-                      style={{ backgroundColor: isLiked ? "#881337" : "#27272a", color: isLiked ? "#fda4af" : "#f43f5e", border: "1px solid #3f3f46", borderRadius: "6px", padding: "3px 8px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
-                    >
-                      {isLiked ? "❤️" : "🤍"} {dish.likes || 0}
-                    </button>
-                  </div>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: dish.inStock ? "#34d399" : "#f87171" }}>
+                    {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
+                  </span>
                   {currentComputedOpenState && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
-                      className="force-high-contrast-btn"
-                      style={{ backgroundColor: activeShop.themeColor || "#059669", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                      className="force-primary-action"
+                      style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer" }}
                     >
                       + Add to Plate
                     </button>
@@ -766,259 +568,40 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
         {/* --- CUSTOMER ORDER PLATE & CHECKOUT --- */}
         {cart.length > 0 && (
-          <div style={{ backgroundColor: "#18181b", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", border: "1px solid #27272a", padding: "20px", marginTop: "32px", marginBottom: "40px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "0 0 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span>🛒 Your Order Plate</span>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "#a1a1aa" }}>{cart.length} items</span>
-            </h3>
-
-            <div style={{ borderTop: "1px solid #27272a", borderBottom: "1px solid #27272a", marginBottom: "16px" }}>
-              {cart.map((item, idx) => (
-                <div key={idx} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", borderBottom: idx < cart.length - 1 ? "1px solid #27272a" : "none" }}>
-                  <div>
-                    <span style={{ fontWeight: 800, color: "#ffffff" }}>{item.quantity}x {item.dish.name}</span>
-                    <div style={{ fontSize: "11px", color: "#a1a1aa", marginTop: "2px" }}>
-                      Spice: {item.spiceLevel} | Gravy: {item.gravyLevel} {item.extraSauce ? "| +Extra Sauce" : ""}
-                    </div>
-                    {item.notes && <div style={{ fontSize: "11px", fontStyle: "italic", color: "#a1a1aa" }}>Note: "{item.notes}"</div>}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontWeight: 900, color: "#ffffff" }}>${item.dish.price * item.quantity} JMD</span>
-                    <button onClick={() => removeFromCart(idx)} style={{ color: "#f87171", background: "none", border: "none", fontWeight: 900, fontSize: "16px", cursor: "pointer" }}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ backgroundColor: "#121215", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", marginBottom: "16px" }}>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-                <button
-                  type="button"
-                  onClick={() => setOrderType("delivery")}
-                  className="force-high-contrast-btn"
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                >
-                  🚚 Delivery (${activeShop.deliveryFee} JMD)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderType("pickup")}
-                  className="force-high-contrast-btn"
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                >
-                  🏪 Store Pickup
-                </button>
-              </div>
-
-              {orderType === "delivery" && activeShop.deliveryZoneNote && (
-                <p style={{ fontSize: "11px", color: "#fcd34d", backgroundColor: "#451a03", padding: "10px", borderRadius: "8px", border: "1px solid #78350f", margin: "0 0 12px 0", lineHeight: "1.4" }}>
-                  ⚠️ <strong>Delivery Zone Notice:</strong> {activeShop.deliveryZoneNote}
-                </p>
-              )}
-
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>⏱️ Delivery / Pickup Timing</label>
-                <select
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
-                >
-                  <option value="ASAP (30-45 mins)">ASAP (30-45 mins)</option>
-                  <option value="In 1 Hour">In 1 Hour</option>
-                  <option value="Later Today (Evening)">Later Today (Evening)</option>
-                </select>
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>💳 Select Payment Method</label>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {activeShop.acceptCash && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("Cash")}
-                      className="force-high-contrast-btn"
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Cash" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Cash" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                    >
-                      💵 Cash
-                    </button>
-                  )}
-                  {activeShop.acceptBank && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("Bank Transfer")}
-                      className="force-high-contrast-btn"
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Bank Transfer" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Bank Transfer" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                    >
-                      🏦 Bank
-                    </button>
-                  )}
-                  {activeShop.acceptLynk && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("Lynk")}
-                      className="force-high-contrast-btn"
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Lynk" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Lynk" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                    >
-                      📲 Lynk
-                    </button>
-                  )}
-                </div>
-
-                {paymentMethod === "Bank Transfer" && activeShop.bankDetails && (
-                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#60a5fa", backgroundColor: "#1e3a8a", padding: "8px 10px", borderRadius: "6px", border: "1px solid #3b82f6" }}>
-                    🏦 <strong>Transfer Details:</strong> {activeShop.bankDetails}
-                  </div>
-                )}
-                {paymentMethod === "Lynk" && activeShop.lynkDetails && (
-                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#34d399", backgroundColor: "#064e3b", padding: "8px 10px", borderRadius: "6px", border: "1px solid #059669" }}>
-                    📲 <strong>Lynk Handle:</strong> {activeShop.lynkDetails}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>💵 Driver / Cookshop Tip</label>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {[0, 100, 200, 500].map(amt => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setTipAmount(amt)}
-                      className="force-high-contrast-btn"
-                      style={{ flex: 1, padding: "6px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: tipAmount === amt ? "none" : "1px solid #3f3f46", backgroundColor: tipAmount === amt ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
-                    >
-                      {amt === 0 ? "No Tip" : `+$${amt}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ backgroundColor: "#18181b", borderRadius: "16px", padding: "20px", marginTop: "32px" }}>
+            <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "0 0 16px 0" }}>🛒 Your Order Plate ({cart.length} items)</h3>
+            {cart.map((item, idx) => (
+              <div key={idx} style={{ padding: "12px 0", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Your Name / Nickname *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Omarian"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
-                  />
+                  <span style={{ fontWeight: 800, color: "#ffffff" }}>{item.quantity}x {item.dish.name}</span>
+                  <div style={{ fontSize: "11px", color: "#a1a1aa" }}>Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
                 </div>
-
-                {orderType === "delivery" && (
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: 800, color: "#d4d4d8" }}>Delivery Address / Landmark *</label>
-                      <button
-                        type="button"
-                        onClick={handlePinLocation}
-                        style={{ fontSize: "11px", fontWeight: 800, color: "#60a5fa", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        📍 Pin My GPS Location
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="e.g. Hip Strip / Paste Google Maps link"
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
-                    />
-                  </div>
-                )}
+                <span style={{ fontWeight: 900, color: "#ffffff" }}>${item.dish.price * item.quantity} JMD</span>
               </div>
-            </div>
-
-            <div style={{ borderTop: "1px solid #27272a", paddingTop: "12px", marginBottom: "16px", fontSize: "13px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
-                <span>Subtotal</span>
-                <span>${cartSubtotal} JMD</span>
-              </div>
-              {orderType === "delivery" && activeShop.isDeliveryActive && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
-                  <span>Delivery Fee</span>
-                  <span>${deliveryCost} JMD</span>
-                </div>
-              )}
-              {tipAmount > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
-                  <span>Tip</span>
-                  <span>${tipAmount} JMD</span>
-                </div>
-              )}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#ffffff", fontWeight: 900, fontSize: "16px", paddingTop: "8px", borderTop: "1px dashed #27272a" }}>
-                <span>Total Due</span>
-                <span>${cartTotal} JMD</span>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <button
-                onClick={() => dispatchOrder("whatsapp")}
-                className="force-high-contrast-btn"
-                style={{ width: "100%", backgroundColor: "#059669", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
-              >
-                📲 Dispatch via WhatsApp
-              </button>
-              <button
-                onClick={() => dispatchOrder("social")}
-                className="force-high-contrast-btn"
-                style={{ width: "100%", backgroundColor: "#27272a", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)", border: "1px solid #3f3f46" }}
-              >
-                📋 Copy for IG / TikTok DM
-              </button>
-            </div>
+            ))}
+            <button onClick={() => dispatchOrder("whatsapp")} className="force-primary-action" style={{ width: "100%", padding: "12px", borderRadius: "10px", marginTop: "16px", fontSize: "13px", cursor: "pointer" }}>
+              📲 Dispatch via WhatsApp (${cartTotal} JMD)
+            </button>
           </div>
         )}
-
-        {/* --- FOOTER SOCIAL MEDIA & CONTACTS --- */}
-        <footer style={{ borderTop: "1px solid #27272a", paddingTop: "24px", marginTop: "40px", textAlign: "center", color: "#a1a1aa", fontSize: "12px" }}>
-          <p style={{ fontWeight: 800, color: "#ffffff", margin: "0 0 8px 0" }}>Connect with {activeShop.name}:</p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-            {activeShop.whatsapp && (
-              <a href={`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#34d399", textDecoration: "none", fontWeight: 700 }}>
-                💬 WhatsApp
-              </a>
-            )}
-            {activeShop.tiktok && (
-              <span style={{ color: "#f43f5e", fontWeight: 700 }}>🎵 TikTok: {activeShop.tiktok}</span>
-            )}
-            {activeShop.instagram && (
-              <span style={{ color: "#fb7185", fontWeight: 700 }}>📸 IG: {activeShop.instagram}</span>
-            )}
-            {activeShop.facebook && (
-              <span style={{ color: "#60a5fa", fontWeight: 700 }}>📘 FB: {activeShop.facebook}</span>
-            )}
-          </div>
-          <p style={{ fontSize: "11px", margin: 0 }}>📍 Address: {activeShop.address}</p>
-        </footer>
       </main>
 
-      {/* --- IMAGE ZOOM MODAL --- */}
-      {zoomedImageUrl && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }} onClick={() => setZoomedImageUrl(null)}>
-          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setZoomedImageUrl(null)} style={{ position: "absolute", top: "-40px", right: "0", background: "none", border: "none", color: "#ffffff", fontSize: "24px", fontWeight: 900, cursor: "pointer" }}>✕ Close</button>
-            <img src={zoomedImageUrl} alt="Full View" style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: "12px", border: "2px solid #3f3f46", backgroundColor: "#000000" }} />
-          </div>
-        </div>
-      )}
-
-      {/* --- DISH CUSTOMIZER MODAL --- */}
+      {/* --- DISH CUSTOMIZER MODAL (WITH ACCURATE DARK/LIGHT CONTRAST FIX) --- */}
       {selectedDish && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "420px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
               <div>
                 <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>{selectedDish.name}</h3>
                 <p style={{ color: "#34d399", fontWeight: 900, fontSize: "15px", margin: "2px 0 0 0" }}>${selectedDish.price} JMD</p>
               </div>
-              <button onClick={() => setSelectedDish(null)} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSelectedDish(null)} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "20px", cursor: "pointer" }}>✕</button>
             </div>
 
             <p style={{ fontSize: "12px", color: "#a1a1aa", margin: "0 0 16px 0", lineHeight: "1.4" }}>{selectedDish.description}</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Spice Selector */}
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "6px" }}>🌶️ Pepper / Spice Level</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
@@ -1027,8 +610,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setSpiceLevel(lvl)}
-                      className="force-high-contrast-btn"
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", cursor: "pointer" }}
+                      className={spiceLevel === lvl ? "force-active-btn" : "force-inactive-btn"}
+                      style={{ padding: "10px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "8px", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -1036,6 +619,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               </div>
 
+              {/* Gravy Selector */}
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "6px" }}>🍲 Gravy Preference</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
@@ -1044,8 +628,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setGravyLevel(lvl)}
-                      className="force-high-contrast-btn"
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", cursor: "pointer" }}
+                      className={gravyLevel === lvl ? "force-active-btn" : "force-inactive-btn"}
+                      style={{ padding: "10px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "8px", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -1053,18 +637,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={extraSauce}
-                    onChange={(e) => setExtraSauce(e.target.checked)}
-                    style={{ width: "16px", height: "16px", accentColor: activeShop.themeColor || "#059669" }}
-                  />
-                  <span>🫙 Add Extra Sauce on the Side</span>
-                </label>
-              </div>
-
+              {/* Special Instructions */}
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Special Cooking Instructions</label>
                 <input
@@ -1079,474 +652,31 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => setSelectedDish(null)} style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => addToCart(selectedDish)} className="force-high-contrast-btn" style={{ flex: 1, backgroundColor: activeShop.themeColor || "#059669", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>Add (${selectedDish.price} JMD)</button>
+              <button onClick={() => addToCart(selectedDish)} className="force-primary-action" style={{ flex: 1, padding: "12px", borderRadius: "8px", fontSize: "12px", cursor: "pointer" }}>
+                Add (${selectedDish.price} JMD)
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- CUSTOM DISH MODAL --- */}
-      {customDishModal && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>➕ Request Off-Menu Dish</h3>
-              <button onClick={() => setCustomDishModal(false)} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
-            </div>
-            <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "0 0 14px 0" }}>Request a custom item directly from the kitchen cook or chef.</p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Dish Name / Description *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Seafood Soup / Fry Fish with Bammy"
-                  value={customDishName}
-                  onChange={(e) => setCustomDishName(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Agreed / Estimated Price ($ JMD) *</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 1500"
-                  value={customDishPrice}
-                  onChange={(e) => setCustomDishPrice(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Preparation / Special Notes</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Extra pepper sauce on side"
-                  value={customDishNotes}
-                  onChange={(e) => setCustomDishNotes(e.target.value)}
-                  style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-              <button onClick={() => setCustomDishModal(false)} style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Cancel</button>
-              <button onClick={addCustomDishToCart} className="force-high-contrast-btn" style={{ flex: 1, backgroundColor: "#059669", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}>Add Custom Item</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- RECEIPT MODAL --- */}
-      {activeReceipt && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "420px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
-            <div style={{ textAlign: "center", marginBottom: "16px" }}>
-              <span style={{ fontSize: "32px" }}>✅</span>
-              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: "4px 0 2px 0" }}>Order Dispatched!</h3>
-              <p style={{ fontSize: "11px", color: "#a1a1aa", margin: 0 }}>Order ID: {activeReceipt.id} | {activeReceipt.date} at {activeReceipt.timestamp}</p>
-            </div>
-
-            <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "10px", border: "1px solid #27272a", fontSize: "12px", marginBottom: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: 800 }}>Customer Name:</span><span>{activeReceipt.customerName}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: 800 }}>Type:</span><span style={{ textTransform: "capitalize" }}>{activeReceipt.type} ({activeReceipt.deliveryTime})</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span style={{ fontWeight: 800 }}>Payment:</span><span>{activeReceipt.paymentMethod}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 800 }}>Total:</span><span style={{ fontWeight: 900, color: "#34d399" }}>${activeReceipt.total} JMD</span></div>
-            </div>
-
-            <button onClick={() => setActiveReceipt(null)} style={{ width: "100%", backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Close Receipt</button>
-          </div>
-        </div>
-      )}
-
-      {/* --- MASTER & SHOP ADMIN MODAL --- */}
+      {/* --- ADMIN MODAL --- */}
       {adminModalOpen && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "650px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
-            
-            {/* STICKY ADMIN PANEL HEADER */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #27272a", backgroundColor: "#18181b", borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
-                {isMasterSession ? "👑 Master Developer Panel" : loggedInAdminShopId ? `🛠️ ${shops.find(s => s.id === loggedInAdminShopId)?.name} Admin` : "🔐 Enter Admin PIN"}
-              </h3>
-              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "20px", cursor: "pointer" }}>✕</button>
+          <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "500px", width: "100%", padding: "20px", border: "1px solid #27272a" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>🔐 Enter Admin PIN</h3>
+              <button onClick={() => setAdminModalOpen(false)} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "20px", cursor: "pointer" }}>✕</button>
             </div>
-
-            <div style={{ overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-
-              {/* SECURE PIN LOGIN SCREEN */}
-              {!isMasterSession && !loggedInAdminShopId && (
-                <div style={{ padding: "30px 0", textAlign: "center" }}>
-                  <p style={{ fontSize: "13px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit PIN</p>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    placeholder="••••"
-                    value={adminPinInput}
-                    onChange={(e) => setAdminPinInput(e.target.value)}
-                    style={{ width: "140px", textAlign: "center", letterSpacing: "8px", fontSize: "24px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 20px auto", outline: "none", fontFamily: "monospace", display: "block" }}
-                  />
-                  <button onClick={handleAdminLogin} className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "12px 28px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}>Unlock Admin Panel</button>
-                </div>
-              )}
-
-              {/* --- MASTER DEVELOPER PANEL --- */}
-              {isMasterSession && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-                    <div>
-                      <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>🏪 Switch Active Shop</h4>
-                    </div>
-                    <select
-                      value={activeShopId}
-                      onChange={(e) => {
-                        setActiveShopId(e.target.value);
-                        window.history.pushState({}, "", `?shop=${e.target.value}`);
-                      }}
-                      style={{ backgroundColor: "#27272a", color: "#ffffff", fontSize: "12px", fontWeight: 700, padding: "8px 12px", borderRadius: "8px", border: "1px solid #3f3f46", outline: "none" }}
-                    >
-                      {shops.map(s => (
-                        <option key={s.id} value={s.id} style={{ color: "#18181b" }}>
-                          🏪 {s.name} (PIN: {s.pin})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ textAlign: "right" }}>
-                    <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Master</button>
-                  </div>
-                </div>
-              )}
-
-              {/* --- SHOP OWNER ADMIN PANEL --- */}
-              {loggedInAdminShopId && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  {(() => {
-                    const shop = shops.find(s => s.id === loggedInAdminShopId);
-                    if (!shop) return null;
-                    const shopUrl = `${window.location.origin}${window.location.pathname}?shop=${shop.id}`;
-                    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
-
-                    return (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                        
-                        {/* ⚡ CARD 1: OPERATIONAL CONTROL CENTER & INSTANT OVERRIDES */}
-                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "2px solid #059669", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                            <h4 style={{ fontWeight: 900, color: "#34d399", fontSize: "14px", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              ⚡ Operational Control Center
-                            </h4>
-                            <span style={{ fontSize: "11px", fontWeight: 900, padding: "4px 10px", borderRadius: "999px", backgroundColor: currentComputedOpenState ? "#064e3b" : "#881337", color: currentComputedOpenState ? "#34d399" : "#fda4af", border: currentComputedOpenState ? "1px solid #059669" : "1px solid #f43f5e" }}>
-                              {currentComputedOpenState ? "CURRENT STATUS: OPEN 🟢" : "CURRENT STATUS: CLOSED 🔴"}
-                            </span>
-                          </div>
-
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                            <button
-                              onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))}
-                              className="force-high-contrast-btn"
-                              style={{ padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", backgroundColor: shop.isOpenManual ? "#059669" : "#e11d48", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
-                            >
-                              {shop.isOpenManual ? "🟢 FORCE STORE OPEN" : "🔴 FORCE STORE CLOSED"}
-                            </button>
-
-                            <button
-                              onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))}
-                              className="force-high-contrast-btn"
-                              style={{ padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#52525b", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
-                            >
-                              {shop.isDeliveryActive ? "🚚 DELIVERY ENABLED" : "🛑 DELIVERY DISABLED"}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* ⏰ CARD 2: AUTOMATED WEEKLY OPERATING HOURS */}
-                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                          <h4 style={{ fontWeight: 900, color: "#f59e0b", fontSize: "14px", margin: "0 0 6px 0", letterSpacing: "0.5px" }}>
-                            ⏰ Weekly Schedule & Operating Hours
-                          </h4>
-                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "0 0 12px 0" }}>
-                            Set the exact opening and closing times for each day of the week.
-                          </p>
-
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Array<keyof WeeklySchedule>).map(day => {
-                              const dayData = (shop.schedule && shop.schedule[day]) || DEFAULT_SCHEDULE[day];
-                              return (
-                                <div key={day} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#121215", padding: "8px 12px", borderRadius: "8px", border: "1px solid #27272a" }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                    <span style={{ fontWeight: 900, fontSize: "12px", color: "#ffffff", width: "36px" }}>{day}</span>
-                                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#d4d4d8", cursor: "pointer" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={dayData.isOpen}
-                                        onChange={(e) => {
-                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, isOpen: e.target.checked } };
-                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                        }}
-                                        style={{ accentColor: "#059669" }}
-                                      />
-                                      <span>{dayData.isOpen ? "Open" : "Closed"}</span>
-                                    </label>
-                                  </div>
-
-                                  {dayData.isOpen ? (
-                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                      <input
-                                        type="time"
-                                        value={dayData.openTime}
-                                        onChange={(e) => {
-                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, openTime: e.target.value } };
-                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                        }}
-                                        style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", outline: "none" }}
-                                      />
-                                      <span style={{ fontSize: "11px", color: "#a1a1aa" }}>to</span>
-                                      <input
-                                        type="time"
-                                        value={dayData.closeTime}
-                                        onChange={(e) => {
-                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, closeTime: e.target.value } };
-                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                        }}
-                                        style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", outline: "none" }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span style={{ fontSize: "11px", fontWeight: 800, color: "#f87171" }}>Closed Day</span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* 🎨 CARD 3: HEADER BRANDING & PHOTO */}
-                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🎨 Header Branding, Fonts & Accent Colors</h4>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "4px" }}>Header Photo Banner</label>
-                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                              <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa", flex: 1 }} />
-                              {shop.headerPhoto && (
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <img src={shop.headerPhoto} alt="Thumbnail" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px", border: "1px solid #3f3f46" }} />
-                                  <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Font Style</label>
-                              <select value={shop.fontFamily} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, fontFamily: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                                <option value="Poppins, sans-serif">Modern Sans (Poppins)</option>
-                                <option value="'Bebas Neue', cursive">Bold Display (Bebas Neue)</option>
-                                <option value="'Playfair Display', serif">Classic Serif (Playfair)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Theme Accent Color</label>
-                              <select value={shop.themeColor} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, themeColor: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                                <option value="#059669">Emerald Green</option>
-                                <option value="#d97706">Amber Gold</option>
-                                <option value="#e11d48">Crimson Red</option>
-                                <option value="#2563eb">Sapphire Blue</option>
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 👤 CARD 4: CUSTOMER HISTORY SEARCH */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #38bdf8" }}>
-                          <h4 style={{ fontWeight: 800, color: "#38bdf8", fontSize: "13px", margin: "0 0 6px 0" }}>👤 Customer History Search</h4>
-                          <input
-                            type="text"
-                            placeholder="Search customer name (e.g. Omarian)..."
-                            value={customerSearchQuery}
-                            onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                            style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
-                          />
-
-                          {searchedCustomerStats ? (
-                            <div style={{ marginTop: "10px", backgroundColor: "#0284c7", color: "#ffffff", padding: "10px", borderRadius: "8px", fontSize: "11px" }}>
-                              <div style={{ fontWeight: 900, fontSize: "12px", marginBottom: "4px" }}>Customer Profile: {customerSearchQuery}</div>
-                              <div>• Total Orders: <strong>{searchedCustomerStats.orderCount}</strong></div>
-                              <div>• Total Amount Spent: <strong>${searchedCustomerStats.totalSpent} JMD</strong></div>
-                              <div>• Favorite Dish: <strong>{searchedCustomerStats.favoriteDish}</strong></div>
-                              <div>• Delivery Addresses: <strong>{searchedCustomerStats.addresses.join(" | ")}</strong></div>
-                            </div>
-                          ) : customerSearchQuery.trim() !== "" ? (
-                            <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "8px 0 0 0" }}>No past orders found for this customer name.</p>
-                          ) : null}
-                        </div>
-
-                        {/* 💬 CARD 5: DEVELOPER SUPPORT */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💬 Contact Developer Support</h4>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <input type="text" placeholder="Type a note or report to developer..." value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} style={{ flex: 1, backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
-                            <button onClick={sendNoteToDeveloper} style={{ backgroundColor: "#2563eb", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Send Note</button>
-                          </div>
-                        </div>
-
-                        {/* 📞 CARD 6: CONTACT INFO & SOCIALS */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>📞 Contact Info & Designated Socials</h4>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>WhatsApp Number</label>
-                              <input type="text" value={shop.whatsapp} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            </div>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>🎵 TikTok Handle</label>
-                              <input type="text" placeholder="@handle" value={shop.tiktok} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, tiktok: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            </div>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📸 Instagram Handle</label>
-                              <input type="text" placeholder="@handle" value={shop.instagram} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, instagram: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            </div>
-                            <div>
-                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📘 Facebook Page</label>
-                              <input type="text" placeholder="Page Name" value={shop.facebook} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, facebook: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 💳 CARD 7: PAYMENT DETAILS */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💳 Payment Method Options & Details</h4>
-                          <div style={{ display: "flex", gap: "12px" }}>
-                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                              <input type="checkbox" checked={shop.acceptCash} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptCash: e.target.checked } : s))} /> Cash
-                            </label>
-                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                              <input type="checkbox" checked={shop.acceptBank} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptBank: e.target.checked } : s))} /> Bank Transfer
-                            </label>
-                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                              <input type="checkbox" checked={shop.acceptLynk} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptLynk: e.target.checked } : s))} /> Lynk
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* 📲 CARD 8: COUNTER QR & STORE URL */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-                          <img src={qrCodeUrl} alt="QR Code" style={{ width: "80px", height: "80px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #3f3f46", flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: "160px" }}>
-                            <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Counter QR & Store URL</h4>
-                            <p style={{ fontSize: "10px", color: "#a1a1aa", margin: "2px 0 6px 0" }}>Share your store URL or print your counter QR.</p>
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "10px", fontWeight: 800, color: "#60a5fa", textDecoration: "none", padding: "6px 8px", backgroundColor: "#1e3a8a", borderRadius: "6px", border: "1px solid #3b82f6" }}>📥 Download QR</a>
-                              <button onClick={() => { navigator.clipboard.writeText(shopUrl); alert("Store URL copied!"); }} style={{ fontSize: "10px", fontWeight: 800, color: "#34d399", backgroundColor: "#064e3b", padding: "6px 8px", borderRadius: "6px", border: "1px solid #059669", cursor: "pointer" }}>📋 Copy Store URL</button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 🍽️ CARD 9: MENU MANAGEMENT */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                            <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
-                            <button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 800, border: "none", cursor: "pointer" }}>+ Add Dish</button>
-                          </div>
-
-                          {editingDish !== null && (
-                            <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                              <h5 style={{ fontWeight: 800, fontSize: "11px", color: "#ffffff", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                                <input type="text" placeholder="Dish Name" value={dishNameInput} onChange={(e) => setDishNameInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
-                                <input type="number" placeholder="Price ($ JMD)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
-                              </div>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                                <select value={dishCatInput} onChange={(e) => setDishCatInput(e.target.value as Dish["category"])} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                                  <option value="Mains">Mains</option>
-                                  <option value="Drinks">Drinks</option>
-                                  <option value="Snacks">Snacks</option>
-                                  <option value="Sides">Sides</option>
-                                  <option value="Soups">Soups</option>
-                                </select>
-                                <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
-                              </div>
-                              <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                              <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                                <input type="checkbox" checked={dishSuggestedInput} onChange={(e) => setDishSuggestedInput(e.target.checked)} /> ⭐ Mark as Chef's Special
-                              </label>
-                              <div style={{ display: "flex", gap: "6px", paddingTop: "4px" }}>
-                                <button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save Dish</button>
-                                <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button>
-                              </div>
-                            </div>
-                          )}
-
-                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
-                            {(menus[loggedInAdminShopId] || []).map(dish => (
-                              <div key={dish.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                                <span><strong style={{ color: "#ffffff" }}>{dish.name}</strong> (${dish.price}) [{dish.category}]</span>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                  <button onClick={() => setMenus(prev => ({ ...prev, [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d) }))} style={{ padding: "3px 6px", borderRadius: "4px", fontWeight: 800, fontSize: "9px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#064e3b" : "#7f1d1d", color: dish.inStock ? "#34d399" : "#fca5a5" }}>{dish.inStock ? "In Stock" : "Sold Out"}</button>
-                                  <button onClick={() => { setEditingDish(dish); setDishNameInput(dish.name); setDishPriceInput(dish.price.toString()); setDishDescInput(dish.description); setDishCatInput(dish.category); setDishImageInput(dish.image); setDishSuggestedInput(!!dish.isSuggested); }} style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Edit</button>
-                                  <button onClick={() => deleteDish(dish.id)} style={{ color: "#f87171", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* 📋 CARD 10: RECEIPT LOOKUP */}
-                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>📋 Live Order Queue & Receipt Lookup</h4>
-                          <input
-                            type="text"
-                            placeholder="Search receipts by Order ID, customer, dish..."
-                            value={ownerSearchQuery}
-                            onChange={(e) => setOwnerSearchQuery(e.target.value)}
-                            style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box", marginBottom: "8px" }}
-                          />
-
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "180px", overflowY: "auto" }}>
-                            {currentShopOrders
-                              .filter(o => o.id.toLowerCase().includes(ownerSearchQuery.toLowerCase()) || o.customerName.toLowerCase().includes(ownerSearchQuery.toLowerCase()))
-                              .map(order => (
-                                <div key={order.id} style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                    <span style={{ fontWeight: 900, color: "#ffffff" }}>#{order.id} - {order.customerName}</span>
-                                    <span style={{ color: "#a1a1aa" }}>{order.timestamp}</span>
-                                  </div>
-                                  <div style={{ color: "#d4d4d8" }}>
-                                    {order.items.map((it, idx) => (
-                                      <div key={idx}>• {it.quantity}x {it.dish.name} [{it.spiceLevel}, {it.gravyLevel}]</div>
-                                    ))}
-                                  </div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "6px", borderTop: "1px solid #27272a" }}>
-                                    <span style={{ fontWeight: 800, color: "#34d399" }}>${order.total} JMD ({order.type})</span>
-                                    <select
-                                      value={order.status}
-                                      onChange={(e) => updateOrderStatus(activeShop.id, order.id, e.target.value as Order["status"])}
-                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: 800, outline: "none" }}
-                                    >
-                                      <option value="Received">Received</option>
-                                      <option value="Preparing">Preparing 🍳</option>
-                                      <option value="Out for Delivery">Out for Delivery 🚚</option>
-                                      <option value="Completed">Completed ✅</option>
-                                      <option value="Cancelled">Cancelled ✕</option>
-                                    </select>
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "right" }}>
-                          <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Admin</button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
+            <input
+              type="password"
+              maxLength={4}
+              placeholder="••••"
+              value={adminPinInput}
+              onChange={(e) => setAdminPinInput(e.target.value)}
+              style={{ width: "140px", textAlign: "center", fontSize: "24px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 20px auto", outline: "none", display: "block" }}
+            />
+            <button onClick={handleAdminLogin} className="force-primary-action" style={{ width: "100%", padding: "12px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>Unlock Admin Panel</button>
           </div>
         </div>
       )}
