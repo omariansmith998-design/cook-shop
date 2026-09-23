@@ -47,6 +47,14 @@ interface DevNote {
   timestamp: string;
 }
 
+interface DaySchedule {
+  isOpen: boolean;
+  openTime: string; // e.g. "09:00"
+  closeTime: string; // e.g. "21:00"
+}
+
+type WeeklySchedule = Record<"Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun", DaySchedule>;
+
 interface ShopProfile {
   id: string;
   name: string;
@@ -60,10 +68,10 @@ interface ShopProfile {
   pin: string;
   themeColor: string;
   deliveryFee: number;
-  isOpen: boolean;
+  isOpenManual: boolean; // Manual override toggle
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
-  operatingHours: string;
+  schedule: WeeklySchedule;
   headerPhoto: string;
   fontFamily: string;
   acceptCash: boolean;
@@ -74,6 +82,17 @@ interface ShopProfile {
   supabaseUrl?: string;
   supabaseKey?: string;
 }
+
+// --- DEFAULT SCHEDULE INITIALIZER ---
+const DEFAULT_SCHEDULE: WeeklySchedule = {
+  Mon: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
+  Tue: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
+  Wed: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
+  Thu: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
+  Fri: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+  Sat: { isOpen: true, openTime: "10:00", closeTime: "22:00" },
+  Sun: { isOpen: false, openTime: "10:00", closeTime: "18:00" },
+};
 
 // --- INITIAL DEFAULT SHOPS ---
 const DEFAULT_SHOPS: ShopProfile[] = [
@@ -90,10 +109,10 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     pin: "1234",
     themeColor: "#059669",
     deliveryFee: 300,
-    isOpen: true,
+    isOpenManual: true,
     isDeliveryActive: true,
     deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
-    operatingHours: "10:00 AM - 9:00 PM",
+    schedule: DEFAULT_SCHEDULE,
     headerPhoto: "",
     fontFamily: "Poppins, sans-serif",
     acceptCash: true,
@@ -115,10 +134,10 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     pin: "5678",
     themeColor: "#d97706",
     deliveryFee: 250,
-    isOpen: true,
+    isOpenManual: true,
     isDeliveryActive: true,
     deliveryZoneNote: "Delivery available across Falmouth coastal strip.",
-    operatingHours: "11:00 AM - 8:00 PM",
+    schedule: DEFAULT_SCHEDULE,
     headerPhoto: "",
     fontFamily: "Poppins, sans-serif",
     acceptCash: true,
@@ -176,7 +195,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Master Developer PIN State (Stored locally so you can customize it)
   const [masterPin, setMasterPin] = useState<string>(() => {
     return localStorage.getItem("cookshop_master_pin") || "9999";
   });
@@ -253,6 +271,27 @@ export default function App() {
     link.rel = "stylesheet";
     document.head.appendChild(link);
   }, []);
+
+  // AUTOMATIC LIVE STORE OPEN DETECTOR
+  const isShopOpenNow = (shop: ShopProfile) => {
+    if (!shop.isOpenManual) return false;
+    const now = new Date();
+    const days: Array<"Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"> = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const currentDay = days[now.getDay()];
+    const daySched = shop.schedule ? shop.schedule[currentDay] : DEFAULT_SCHEDULE[currentDay];
+
+    if (!daySched || !daySched.isOpen) return false;
+
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const [openH, openM] = daySched.openTime.split(":").map(Number);
+    const [closeH, closeM] = daySched.closeTime.split(":").map(Number);
+    const openMins = openH * 60 + openM;
+    const closeMins = closeH * 60 + closeM;
+
+    return currentMins >= openMins && currentMins <= closeMins;
+  };
+
+  const currentComputedOpenState = isShopOpenNow(activeShop);
 
   const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
@@ -429,7 +468,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
     }
   };
 
-  // --- SECURE LOGIN HANDLER (NO LEAKED PINS IN ALERTS) ---
   const handleAdminLogin = () => {
     if (adminPinInput === masterPin) {
       setIsMasterSession(true);
@@ -444,7 +482,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       setAdminPinInput("");
       return;
     }
-    // SECURE NEUTRAL ERROR MESSAGE
     alert("Invalid PIN. Please try again or contact the administrator.");
     setAdminPinInput("");
   };
@@ -476,10 +513,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       pin: "1234",
       themeColor: "#059669",
       deliveryFee: 300,
-      isOpen: true,
+      isOpenManual: true,
       isDeliveryActive: true,
       deliveryZoneNote: "Local delivery zone applies.",
-      operatingHours: "10:00 AM - 8:00 PM",
+      schedule: DEFAULT_SCHEDULE,
       headerPhoto: "",
       fontFamily: "Poppins, sans-serif",
       acceptCash: true,
@@ -576,6 +613,15 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "Poppins, sans-serif", paddingBottom: "120px" }}>
+      {/* INJECT HARDCODED HIGH-CONTRAST CSS RULES TO OVERRIDE BROWSER FORCED-WHITE CONTRAST MODES */}
+      <style>{`
+        .force-high-contrast-btn {
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff !important;
+          opacity: 1 !important;
+        }
+      `}</style>
+
       {/* --- PUBLIC SHOP HEADER --- */}
       <header style={{ backgroundColor: "#18181b", color: "#ffffff", borderBottom: `4px solid ${activeShop.themeColor}`, boxShadow: "0 4px 10px rgba(0,0,0,0.5)", position: "sticky", top: 0, zIndex: 40 }}>
         {activeShop.headerPhoto && (
@@ -586,13 +632,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
         <div style={{ maxWidth: "800px", margin: "0 auto", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: activeShop.isOpen ? "#10b981" : "#f43f5e", display: "inline-block", flexShrink: 0 }}></span>
+              <span style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: currentComputedOpenState ? "#10b981" : "#f43f5e", display: "inline-block", flexShrink: 0 }}></span>
               <h1 style={{ fontSize: "20px", fontWeight: 900, margin: 0, color: "#ffffff", letterSpacing: "-0.5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {activeShop.name}
               </h1>
             </div>
             <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "3px 0 0 20px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {activeShop.tagline} | Hours: {activeShop.operatingHours}
+              {activeShop.tagline} | {currentComputedOpenState ? "🟢 Open Now" : "🔴 Closed Now"}
             </p>
           </div>
 
@@ -602,9 +648,11 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 📍 Pin
               </a>
             )}
+            {/* HARDCODED HIGH-CONTRAST ADMIN BUTTON */}
             <button
               onClick={() => setAdminModalOpen(true)}
-              style={{ backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
+              className="force-high-contrast-btn"
+              style={{ backgroundColor: activeShop.themeColor || "#059669", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
             >
               🔐 Admin
             </button>
@@ -614,9 +662,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
       {/* --- MAIN MENU PAGE --- */}
       <main style={{ maxWidth: "800px", margin: "0 auto", padding: "16px" }}>
-        {!activeShop.isOpen && (
+        {!currentComputedOpenState && (
           <div style={{ backgroundColor: "#7f1d1d", border: "1px solid #991b1b", color: "#fca5a5", padding: "12px", borderRadius: "10px", marginBottom: "16px", textAlign: "center", fontWeight: "bold", fontSize: "13px" }}>
-            🔴 Cookshop closed for new orders right now. Operating Hours: {activeShop.operatingHours}
+            🔴 Cookshop closed right now. Please check back during operational hours!
           </div>
         )}
 
@@ -626,7 +674,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, border: activeCategory === cat ? "none" : "1px solid #3f3f46", backgroundColor: activeCategory === cat ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+              className="force-high-contrast-btn"
+              style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, border: activeCategory === cat ? "none" : "1px solid #3f3f46", backgroundColor: activeCategory === cat ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
             >
               {cat === "All" ? "🍽️ All Items" : cat === "Mains" ? "🍗 Mains" : cat === "Drinks" ? "🥤 Drinks" : cat === "Snacks" ? "🍿 Snacks" : cat === "Sides" ? "🍟 Sides" : "🥣 Soups"}
             </button>
@@ -699,10 +748,12 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       {isLiked ? "❤️" : "🤍"} {dish.likes || 0}
                     </button>
                   </div>
-                  {activeShop.isOpen && dish.inStock && (
+                  {/* HARDCODED HIGH-CONTRAST ADD TO PLATE BUTTON */}
+                  {currentComputedOpenState && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
-                      style={{ backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                      className="force-high-contrast-btn"
+                      style={{ backgroundColor: activeShop.themeColor || "#059669", padding: "8px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
                     >
                       + Add to Plate
                     </button>
@@ -745,14 +796,16 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 <button
                   type="button"
                   onClick={() => setOrderType("delivery")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                  className="force-high-contrast-btn"
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "delivery" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "delivery" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                 >
                   🚚 Delivery (${activeShop.deliveryFee} JMD)
                 </button>
                 <button
                   type="button"
                   onClick={() => setOrderType("pickup")}
-                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                  className="force-high-contrast-btn"
+                  style={{ flex: 1, padding: "10px", fontSize: "12px", fontWeight: 800, borderRadius: "8px", border: orderType === "pickup" ? "none" : "1px solid #3f3f46", backgroundColor: orderType === "pickup" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                 >
                   🏪 Store Pickup
                 </button>
@@ -787,7 +840,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Cash")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Cash" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Cash" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Cash" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Cash" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                     >
                       💵 Cash
                     </button>
@@ -796,7 +850,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Bank Transfer")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Bank Transfer" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Bank Transfer" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Bank Transfer" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Bank Transfer" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                     >
                       🏦 Bank
                     </button>
@@ -805,14 +860,14 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("Lynk")}
-                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Lynk" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Lynk" ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ flex: 1, padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: paymentMethod === "Lynk" ? "none" : "1px solid #3f3f46", backgroundColor: paymentMethod === "Lynk" ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                     >
                       📲 Lynk
                     </button>
                   )}
                 </div>
 
-                {/* Display Payment Account Instructions */}
                 {paymentMethod === "Bank Transfer" && activeShop.bankDetails && (
                   <div style={{ marginTop: "8px", fontSize: "11px", color: "#60a5fa", backgroundColor: "#1e3a8a", padding: "8px 10px", borderRadius: "6px", border: "1px solid #3b82f6" }}>
                     🏦 <strong>Transfer Details:</strong> {activeShop.bankDetails}
@@ -834,7 +889,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={amt}
                       type="button"
                       onClick={() => setTipAmount(amt)}
-                      style={{ flex: 1, padding: "6px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: tipAmount === amt ? "none" : "1px solid #3f3f46", backgroundColor: tipAmount === amt ? activeShop.themeColor || "#059669" : "#18181b", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ flex: 1, padding: "6px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: tipAmount === amt ? "none" : "1px solid #3f3f46", backgroundColor: tipAmount === amt ? activeShop.themeColor || "#059669" : "#18181b", cursor: "pointer" }}
                     >
                       {amt === 0 ? "No Tip" : `+$${amt}`}
                     </button>
@@ -906,13 +962,15 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <button
                 onClick={() => dispatchOrder("whatsapp")}
-                style={{ width: "100%", backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                className="force-high-contrast-btn"
+                style={{ width: "100%", backgroundColor: "#059669", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
               >
                 📲 Dispatch via WhatsApp
               </button>
               <button
                 onClick={() => dispatchOrder("social")}
-                style={{ width: "100%", backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)", border: "1px solid #3f3f46" }}
+                className="force-high-contrast-btn"
+                style={{ width: "100%", backgroundColor: "#27272a", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "13px", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)", border: "1px solid #3f3f46" }}
               >
                 📋 Copy for IG / TikTok DM
               </button>
@@ -976,7 +1034,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setSpiceLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: spiceLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: spiceLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -992,7 +1051,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       key={lvl}
                       type="button"
                       onClick={() => setGravyLevel(lvl)}
-                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", color: "#ffffff", cursor: "pointer" }}
+                      className="force-high-contrast-btn"
+                      style={{ padding: "8px 4px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: gravyLevel === lvl ? "none" : "1px solid #3f3f46", backgroundColor: gravyLevel === lvl ? activeShop.themeColor || "#059669" : "#27272a", cursor: "pointer" }}
                     >
                       {lvl}
                     </button>
@@ -1000,7 +1060,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               </div>
 
-              {/* Extra Sauce Side Toggle */}
               <div>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", cursor: "pointer" }}>
                   <input
@@ -1027,7 +1086,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => setSelectedDish(null)} style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => addToCart(selectedDish)} style={{ flex: 1, backgroundColor: activeShop.themeColor || "#059669", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>Add (${selectedDish.price} JMD)</button>
+              <button onClick={() => addToCart(selectedDish)} className="force-high-contrast-btn" style={{ flex: 1, backgroundColor: activeShop.themeColor || "#059669", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>Add (${selectedDish.price} JMD)</button>
             </div>
           </div>
         </div>
@@ -1080,7 +1139,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
             <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
               <button onClick={() => setCustomDishModal(false)} style={{ flex: 1, backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Cancel</button>
-              <button onClick={addCustomDishToCart} style={{ flex: 1, backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}>Add Custom Item</button>
+              <button onClick={addCustomDishToCart} className="force-high-contrast-btn" style={{ flex: 1, backgroundColor: "#059669", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "12px", border: "none", cursor: "pointer" }}>Add Custom Item</button>
             </div>
           </div>
         </div>
@@ -1103,7 +1162,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 800 }}>Total:</span><span style={{ fontWeight: 900, color: "#34d399" }}>${activeReceipt.total} JMD</span></div>
             </div>
 
-            {/* Post-Order Wait Time Flexibility Actions */}
             <div style={{ marginBottom: "20px" }}>
               <p style={{ fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "8px" }}>⏱️ Need to modify order due to wait time?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
@@ -1158,7 +1216,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                   onChange={(e) => setAdminPinInput(e.target.value)}
                   style={{ width: "130px", textAlign: "center", letterSpacing: "8px", fontSize: "22px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 16px auto", outline: "none", fontFamily: "monospace", display: "block" }}
                 />
-                <button onClick={handleAdminLogin} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "12px 24px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}>Unlock Admin Panel</button>
+                <button onClick={handleAdminLogin} className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "12px 24px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}>Unlock Admin Panel</button>
               </div>
             )}
 
@@ -1233,7 +1291,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <input type="text" placeholder="WhatsApp Number *" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px" }} />
                   </div>
                   <input type="text" placeholder="Shop Tagline (e.g. Best Oxtails in Town)" value={newShopTagline} onChange={(e) => setNewShopTagline(e.target.value)} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px", boxSizing: "border-box" }} />
-                  <button type="submit" style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>
+                  <button type="submit" className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>
                     🚀 Launch New Shop Instantly
                   </button>
                 </form>
@@ -1261,7 +1319,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     <input type="password" placeholder="eyJhGciOi..." value={activeShop.supabaseKey || ""} onChange={(e) => setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, supabaseKey: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", boxSizing: "border-box", fontFamily: "monospace" }} />
                   </div>
 
-                  {/* Safe Reset Button with Double Confirmation */}
                   <button
                     type="button"
                     onClick={() => {
@@ -1315,15 +1372,65 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                      {/* Operational Status Toggles */}
+                      {/* RESTORED OPERATIONAL STATUS CARD */}
                       <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
                         <div>
                           <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Operational Status</h4>
-                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 0 0" }}>Control whether your shop accepts orders.</p>
+                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 0 0" }}>Control store open status & delivery availability.</p>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
-                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpen: !s.isOpen } : s))} style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isOpen ? "#059669" : "#e11d48", color: "#ffffff" }}>{shop.isOpen ? "🟢 Open" : "🔴 Closed"}</button>
-                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))} style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#71717a", color: "#ffffff" }}>{shop.isDeliveryActive ? "🚚 Delivery On" : "🛑 Delivery Off"}</button>
+                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))} className="force-high-contrast-btn" style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isOpenManual ? "#059669" : "#e11d48" }}>{shop.isOpenManual ? "🟢 Open Override" : "🔴 Force Closed"}</button>
+                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))} className="force-high-contrast-btn" style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#71717a" }}>{shop.isDeliveryActive ? "🚚 Delivery On" : "🛑 Delivery Off"}</button>
+                        </div>
+                      </div>
+
+                      {/* AUTOMATED WEEKLY OPERATING HOURS BUILDER */}
+                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>⏰ Automated Weekly Schedule & Days</h4>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "180px", overflowY: "auto" }}>
+                          {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Array<keyof WeeklySchedule>).map(day => {
+                            const dayData = (shop.schedule && shop.schedule[day]) || DEFAULT_SCHEDULE[day];
+                            return (
+                              <div key={day} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", fontSize: "11px" }}>
+                                <label style={{ fontWeight: 800, width: "40px", color: "#ffffff" }}>{day}:</label>
+                                <label style={{ display: "flex", alignItems: "center", gap: "4px", color: "#a1a1aa" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={dayData.isOpen}
+                                    onChange={(e) => {
+                                      const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, isOpen: e.target.checked } };
+                                      setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                    }}
+                                  /> Open
+                                </label>
+                                {dayData.isOpen ? (
+                                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                    <input
+                                      type="time"
+                                      value={dayData.openTime}
+                                      onChange={(e) => {
+                                        const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, openTime: e.target.value } };
+                                        setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                      }}
+                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 4px", fontSize: "10px" }}
+                                    />
+                                    <span>to</span>
+                                    <input
+                                      type="time"
+                                      value={dayData.closeTime}
+                                      onChange={(e) => {
+                                        const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, closeTime: e.target.value } };
+                                        setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                      }}
+                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 4px", fontSize: "10px" }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span style={{ color: "#f87171", fontWeight: 800 }}>Closed</span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1335,9 +1442,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "4px" }}>Header Photo Banner</label>
                           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa", flex: 1 }} />
-                            {shop.headerPhoto && <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>}
+                            {shop.headerPhoto && (
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <img src={shop.headerPhoto} alt="Thumbnail" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px", border: "1px solid #3f3f46" }} />
+                                <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>
+                              </div>
+                            )}
                           </div>
-                          <input type="text" placeholder="Or paste direct image URL (e.g. https://...)" value={shop.headerPhoto} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", marginTop: "6px", boxSizing: "border-box" }} />
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
@@ -1416,15 +1527,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                             <input type="text" placeholder="Page Name" value={shop.facebook} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, facebook: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
                           </div>
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Operating Hours</label>
-                            <input type="text" value={shop.operatingHours} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, operatingHours: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📍 Google Maps Pin Link</label>
-                            <input type="text" placeholder="https://maps.google.com/?q=..." value={shop.mapLink} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, mapLink: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📍 Google Maps Pin Link</label>
+                          <input type="text" placeholder="https://maps.google.com/?q=..." value={shop.mapLink} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, mapLink: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
                         </div>
                       </div>
 
