@@ -1,340 +1,204 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from "react";
 
-// --- TYPES ---
-export interface Dish {
-  id: number;
+// --- TYPES & INTERFACES ---
+interface Dish {
+  id: string;
   name: string;
   price: number;
+  description: string;
   category: string;
-  soldOut: boolean;
-  desc: string;
-  image?: string;
+  image: string;
+  inStock: boolean;
 }
 
-export interface ShopTheme {
-  primaryBg: string;
-  primaryBorder: string;
-  accentText: string;
-  accentBg: string;
-  badgeBg: string;
+interface CartItem {
+  dish: Dish;
+  quantity: number;
+  spiceLevel: string;
+  gravyLevel: string;
+  notes: string;
 }
 
-export interface CustomizerOptions {
-  spiceLevels: string[];
-  gravyOptions: string[];
+interface Order {
+  id: string;
+  customerName: string;
+  items: CartItem[];
+  total: number;
+  type: "delivery" | "pickup";
+  address: string;
+  status: "Received" | "Preparing" | "Out for Delivery" | "Completed" | "Cancelled";
+  timestamp: string;
 }
 
-export interface ShopData {
+interface ShopProfile {
   id: string;
   name: string;
   tagline: string;
   whatsapp: string;
   address: string;
-  shopUrl: string;
   pin: string;
-  crossPromoName: string;
-  crossPromoId: string;
-  isOpen: boolean;
-  autoCloseEnabled: boolean;
-  closeHour: number;
-  deliveryEnabled: boolean;
-  onlinePaymentEnabled: boolean;
-  paymentDetailsNote: string;
-  eventMode: boolean;
-  eventTitle: string;
-  eventBanner: string;
+  themeColor: string;
+  instagram: string;
+  facebook: string;
   deliveryFee: number;
-  supabaseUrl: string;
-  supabaseKey: string;
-  theme: ShopTheme;
-  customizerOptions: CustomizerOptions;
-  paymentMethods: string[];
-  menu: Dish[];
+  isOpen: boolean;
+  isDeliveryActive: boolean;
+  deliveryZoneNote: string;
 }
 
-export interface CartItem extends Dish {
-  cartId: number;
-  spice: string;
-  gravy: string;
-  note: string;
-}
-
-export interface Order {
-  id: number;
-  shopName: string;
-  items: CartItem[];
-  fulfillment: 'pickup' | 'delivery';
-  deliveryAddress?: string;
-  paymentMethod: string;
-  bankRef?: string;
-  total: number;
-  time: string;
-  status: string;
-}
-
-export interface Suggestion {
-  id: number;
-  text: string;
-  votes: number;
-}
-
-// --- INITIAL DATA STATE ---
-const INITIAL_SHOPS: Record<string, ShopData> = {
-  shop1: {
-    id: 'shop1',
+// --- INITIAL DEFAULT SHOPS ---
+const DEFAULT_SHOPS: ShopProfile[] = [
+  {
+    id: "shop1",
     name: "Mama's Yard Cookshop",
-    tagline: "Authentic Jamaican Flame & Pot",
-    whatsapp: "8765550192",
-    address: "Main Street, Montego Bay",
-    shopUrl: "https://cook-shop.vercel.app",
+    tagline: "Authentic Jamaican Home-Style Flavours",
+    whatsapp: "18765551234",
+    address: "Hip Strip, Montego Bay, St. James",
     pin: "1234",
-    crossPromoName: "Auntie's Ital Corner",
-    crossPromoId: "shop2",
-    isOpen: true,
-    autoCloseEnabled: true,
-    closeHour: 21,
-    deliveryEnabled: true,
-    onlinePaymentEnabled: false,
-    paymentDetailsNote: "Lynk ID: @MamasYard | NCB Acc: 123456789",
-    eventMode: false,
-    eventTitle: "Weekend Fish Fry & Soup Special!",
-    eventBanner: "Live Red Peas Soup & Fried Snapper available today!",
+    themeColor: "emerald",
+    instagram: "mamas_yard_ja",
+    facebook: "MamasYardCookshop",
     deliveryFee: 300,
-    supabaseUrl: "",
-    supabaseKey: "",
-    theme: {
-      primaryBg: "bg-emerald-950",
-      primaryBorder: "border-emerald-800/60",
-      accentText: "text-emerald-400",
-      accentBg: "bg-emerald-600 hover:bg-emerald-500",
-      badgeBg: "bg-emerald-900/40 text-emerald-200 border-emerald-700/40"
-    },
-    customizerOptions: {
-      spiceLevels: ["No Pepper", "Mild", "Medium Pepper", "Extra Hot / Scotch Bonnet"],
-      gravyOptions: ["No Gravy", "Light Gravy", "Normal Gravy", "Extra Gravy / Drowned"]
-    },
-    paymentMethods: ["Cash on Delivery/Pickup", "Lynk Transfer", "Bank Transfer"],
-    menu: [
-      { id: 1, name: "Brown Stew Chicken", price: 900, category: "Mains", soldOut: false, desc: "Tender chicken simmered in rich gravy with carrots & butter beans." },
-      { id: 2, name: "Curry Goat", price: 1200, category: "Mains", soldOut: false, desc: "Slow-cooked tender goat meat packed with authentic curry spices." },
-      { id: 3, name: "Fried Dumpling & Ackee & Saltfish", price: 1000, category: "Breakfast / Staples", soldOut: false, desc: "National dish served with hot golden fried dumplings." },
-      { id: 4, name: "Rice & Peas", price: 350, category: "Sides", soldOut: false, desc: "Gungo peas and coconut milk seasoned to perfection." },
-      { id: 5, name: "Soup of the Day (Red Peas)", price: 500, category: "Soups", soldOut: false, desc: "Loaded with beef, spinners, yam, and red peas." },
-      { id: 6, name: "Ice-Cold Carrot Juice", price: 250, category: "Drinks", soldOut: false, desc: "Blended fresh with condensed milk, spices, and vanilla." }
-    ]
-  },
-  shop2: {
-    id: 'shop2',
-    name: "Auntie's Ital Corner",
-    tagline: "Pure Natural Livity & Plant-Based Meals",
-    whatsapp: "8765550999",
-    address: "Market Square, Montego Bay",
-    shopUrl: "https://cook-shop.vercel.app",
-    pin: "5678",
-    crossPromoName: "Mama's Yard Cookshop",
-    crossPromoId: "shop1",
     isOpen: true,
-    autoCloseEnabled: true,
-    closeHour: 20,
-    deliveryEnabled: true,
-    onlinePaymentEnabled: false,
-    paymentDetailsNote: "Lynk ID: @AuntiesItal | Scotiabank Acc: 987654321",
-    eventMode: false,
-    eventTitle: "Ital Stew Special",
-    eventBanner: "Fresh coconut run-down with breadfruit and callaloo.",
+    isDeliveryActive: true,
+    deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip. Hills/out-of-town = Pickup only.",
+  },
+  {
+    id: "shop2",
+    name: "Auntie's Ital Corner",
+    tagline: "Fresh Natural Juices & Ital Stews",
+    whatsapp: "18765555678",
+    address: "Falmouth Main Road, Trelawny",
+    pin: "5678",
+    themeColor: "amber",
+    instagram: "aunties_ital",
+    facebook: "AuntiesItalCorner",
     deliveryFee: 250,
-    supabaseUrl: "",
-    supabaseKey: "",
-    theme: {
-      primaryBg: "bg-amber-950",
-      primaryBorder: "border-amber-800/60",
-      accentText: "text-amber-400",
-      accentBg: "bg-amber-600 hover:bg-amber-500",
-      badgeBg: "bg-amber-900/40 text-amber-200 border-amber-700/40"
-    },
-    customizerOptions: {
-      spiceLevels: ["No Pepper", "Mild", "Medium Pepper", "Extra Hot / Scotch Bonnet"],
-      gravyOptions: ["No Gravy", "Light Gravy", "Normal Gravy", "Extra Gravy / Drowned"]
-    },
-    paymentMethods: ["Cash on Delivery/Pickup", "Lynk Transfer", "Bank Transfer"],
-    menu: [
-      { id: 201, name: "Ital Coconut Stew", price: 800, category: "Mains", soldOut: false, desc: "Fresh vegetables simmered in pure coconut cream." },
-      { id: 202, name: "Roasted Breadfruit & Callaloo", price: 700, category: "Mains", soldOut: false, desc: "Flame-roasted breadfruit loaded with steamed seasoned callaloo." },
-      { id: 203, name: "Natural Soursop Juice", price: 300, category: "Drinks", soldOut: false, desc: "Freshly squeezed natural soursop with touch of cane and lime." }
-    ]
+    isOpen: true,
+    isDeliveryActive: true,
+    deliveryZoneNote: "Delivery available across Falmouth coastal strip.",
   }
-};
-
-const MASTER_PIN = "9999";
+];
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [shops, setShops] = useState<Record<string, ShopData>>(() => {
-    try {
-      const saved = localStorage.getItem('yv_cookshop_shops');
-      return saved ? JSON.parse(saved) : INITIAL_SHOPS;
-    } catch (e) {
-      return INITIAL_SHOPS;
-    }
+  // --- STATE MANAGEMENT ---
+  const [shops, setShops] = useState<ShopProfile[]>(() => {
+    const saved = localStorage.getItem("cookshop_all_shops");
+    return saved ? JSON.parse(saved) : DEFAULT_SHOPS;
   });
 
-  const [currentShopId, setCurrentShopId] = useState<string>('shop1');
-  const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'wishlist'>('menu');
-  const [cart, setCart] = useState<CartItem[]>([]);
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const saved = localStorage.getItem('yv_cookshop_orders');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+  // Active Shop Selection (default or via URL param ?shop=id)
+  const [activeShopId, setActiveShopId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shopParam = params.get("shop");
+    if (shopParam && shops.some(s => s.id === shopParam)) return shopParam;
+    return shops[0]?.id || "shop1";
   });
 
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(() => {
-    try {
-      const saved = localStorage.getItem('yv_cookshop_suggestions');
-      return saved ? JSON.parse(saved) : [
-        { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
-        { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
-      ];
-    } catch (e) {
-      return [];
-    }
-  });
+  const activeShop = shops.find(s => s.id === activeShopId) || shops[0];
 
-  const [newSuggestion, setNewSuggestion] = useState('');
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
-  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
-  const [receiptSearchTerm, setReceiptSearchTerm] = useState('');
-  const [linkCopiedNotice, setLinkCopiedNotice] = useState(false);
-
-  // Customizer Modal State
-  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-  const [spice, setSpice] = useState("Normal Pepper");
-  const [gravy, setGravy] = useState("Normal Gravy");
-  const [note, setNote] = useState("");
-
-  // Checkout State
-  const [fulfillment, setFulfillment] = useState<'pickup' | 'delivery'>('pickup');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery/Pickup');
-  const [bankRef, setBankRef] = useState('');
-
-  // Admin Auth State
-  const [adminRole, setAdminRole] = useState<'master' | 'cousin' | null>(null);
-  const [enteredPin, setEnteredPin] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [newDishName, setNewDishName] = useState('');
-  const [newDishPrice, setNewDishPrice] = useState('');
-  const [newDishImg, setNewDishImg] = useState('');
-
-  // EDIT DISH STATE
-  const [editingDishId, setEditingDishId] = useState<number | null>(null);
-  const [editDishName, setEditDishName] = useState('');
-  const [editDishPrice, setEditDishPrice] = useState('');
-  const [editDishImg, setEditDishImg] = useState('');
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
-    } catch (e) {}
-  }, [shops]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('yv_cookshop_orders', JSON.stringify(orders));
-    } catch (e) {}
-  }, [orders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
-    } catch (e) {}
-  }, [suggestions]);
-
-  useEffect(() => {
-    if (!document.getElementById('tailwind-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'tailwind-cdn';
-      script.src = 'https://cdn.tailwindcss.com';
-      document.head.appendChild(script);
-    }
-
-    const initAudio = () => {
-      if (!audioCtxRef.current) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) audioCtxRef.current = new AudioCtx();
-      }
-      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
+  // Menus per shop
+  const [menus, setMenus] = useState<Record<string, Dish[]>>(() => {
+    const saved = localStorage.getItem("cookshop_all_menus");
+    if (saved) return JSON.parse(saved);
+    return {
+      shop1: [
+        { id: "d1", name: "Brown Stew Chicken", price: 1200, description: "Slow-braised chicken in rich savory spices with carrots and butter beans.", category: "Mains", image: "", inStock: true },
+        { id: "d2", name: "Curry Goat & Rice", price: 1600, description: "Tender seasoned goat meat simmered with authentic Jamaican curry and potatoes.", category: "Mains", image: "", inStock: true },
+        { id: "d3", name: "Ackee & Saltfish", price: 1400, description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.", category: "Breakfast", image: "", inStock: true },
+        { id: "d4", name: "Fried Dumplings (4 Pack)", price: 400, description: "Golden, crispy traditional fried johnny cakes.", category: "Sides", image: "", inStock: true }
+      ],
+      shop2: [
+        { id: "e1", name: "Ital Pumpkin Soup", price: 800, description: "Rich coconut milk base loaded with ground provisions, dumplings, and fresh herbs.", category: "Soups", image: "", inStock: true },
+        { id: "e2", name: "Coconut Ital Stew", price: 1100, description: "Beans, plantains, and fresh greens stewed slowly in pure coconut cream.", category: "Mains", image: "", inStock: true }
+      ]
     };
+  });
 
-    window.addEventListener('click', initAudio, { once: true });
-    window.addEventListener('touchstart', initAudio, { once: true });
+  // Orders per shop
+  const [orders, setOrders] = useState<Record<string, Order[]>>(() => {
+    const saved = localStorage.getItem("cookshop_all_orders");
+    return saved ? JSON.parse(saved) : {};
+  });
 
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  // Cart & UI Modals
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [spiceLevel, setSpiceLevel] = useState("Medium");
+  const [gravyLevel, setGravyLevel] = useState("Normal");
+  const [itemNotes, setItemNotes] = useState("");
+  const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
+  const [customerName, setCustomerName] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
 
-  const playChime = () => {
+  // Admin states
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [adminPinInput, setAdminPinInput] = useState("");
+  const [loggedInAdminShopId, setLoggedInAdminShopId] = useState<string | null>(null);
+  const [isMasterSession, setIsMasterSession] = useState(false);
+
+  // Master PIN & Recovery
+  const [masterPin, setMasterPin] = useState(() => localStorage.getItem("cookshop_master_pin") || "9999");
+  const [masterRecoveryPass, setMasterRecoveryPass] = useState(() => localStorage.getItem("cookshop_master_recovery") || "jamaica2026");
+  const [newMasterPinInput, setNewMasterPinInput] = useState("");
+  const [newMasterRecoveryInput, setNewMasterRecoveryInput] = useState("");
+  const [currentMasterPassCheck, setCurrentMasterPassCheck] = useState("");
+
+  // New Shop Creator Form State
+  const [newShopName, setNewShopName] = useState("");
+  const [newShopTagline, setNewShopTagline] = useState("");
+  const [newShopWhatsapp, setNewShopWhatsapp] = useState("");
+  const [newShopAddress, setNewShopAddress] = useState("");
+  const [newShopPin, setNewShopPin] = useState("1234");
+
+  // Dish Editor Modal
+  const [editingDish, setEditingDish] = useState<Dish | null>(null);
+  const [dishNameInput, setDishNameInput] = useState("");
+  const [dishPriceInput, setDishPriceInput] = useState("");
+  const [dishDescInput, setDishDescInput] = useState("");
+  const [dishCatInput, setDishCatInput] = useState("Mains");
+  const [dishImageInput, setDishImageInput] = useState("");
+
+  // Driver Status & Return Timer
+  const [driverStatus, setDriverStatus] = useState<"ready" | "out">("ready");
+  const [driverEta, setDriverEta] = useState<string>("");
+
+  // --- PERSISTENCE & AUTO-PRUNING ---
+  useEffect(() => {
     try {
-      if (!audioCtxRef.current) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx) {
-        if (ctx.state === 'suspended') ctx.resume();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-      }
-    } catch (e) {}
-  };
+      localStorage.setItem("cookshop_all_shops", JSON.stringify(shops));
+      localStorage.setItem("cookshop_all_menus", JSON.stringify(menus));
+      
+      // Auto-prune receipt history to latest 50 entries per shop to avoid quota limits
+      const prunedOrders: Record<string, Order[]> = {};
+      Object.keys(orders).forEach(id => {
+        prunedOrders[id] = (orders[id] || []).slice(0, 50);
+      });
+      localStorage.setItem("cookshop_all_orders", JSON.stringify(prunedOrders));
+    } catch (err) {
+      console.warn("Storage quota exceeded or warning:", err);
+    }
+  }, [shops, menus, orders]);
 
-  const handleCompressedImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setTargetState: (val: string) => void
-  ) => {
+  // --- CANVAS IMAGE COMPRESSOR (~30KB max 500px) ---
+  const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         const MAX_WIDTH = 500;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
+        const ctx = canvas.getContext("2d");
         if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-          setTargetState(compressedBase64);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
+          callback(compressedDataUrl);
         }
       };
       if (event.target?.result) {
@@ -344,995 +208,956 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const shop = shops[currentShopId] || shops['shop1'];
-  const t = shop.theme;
-
-  const copyUrlToClipboard = (urlToCopy: string) => {
-    const finalUrl = urlToCopy || window.location.href;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(finalUrl);
-    } else {
-      const textArea = document.createElement("textarea");
-      textArea.value = finalUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
+  // --- GPS GEOLOCATION PINNING ---
+  const handlePinLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
     }
-    setLinkCopiedNotice(true);
-    playChime();
-    setTimeout(() => setLinkCopiedNotice(false), 2500);
-  };
-
-  const addToCart = () => {
-    if (!selectedDish) return;
-    const item: CartItem = {
-      ...selectedDish,
-      cartId: Date.now(),
-      spice,
-      gravy,
-      note
-    };
-    setCart([...cart, item]);
-    setSelectedDish(null);
-    setSpice("Normal Pepper");
-    setGravy("Normal Gravy");
-    setNote("");
-  };
-
-  const removeFromCart = (cartId: number) => {
-    setCart(cart.filter(c => c.cartId !== cartId));
-  };
-
-  const subtotal = cart.reduce((acc, item) => acc + item.price, 0);
-  const deliveryFee = fulfillment === 'delivery' && shop.deliveryEnabled ? shop.deliveryFee : 0;
-  const grandTotal = subtotal + deliveryFee;
-
-  const generateOrderObject = (): Order => ({
-    id: Math.floor(1000 + Math.random() * 9000),
-    shopName: shop.name,
-    items: [...cart],
-    fulfillment,
-    deliveryAddress: fulfillment === 'delivery' ? deliveryAddress : undefined,
-    paymentMethod,
-    bankRef: paymentMethod !== 'Cash on Delivery/Pickup' ? bankRef : undefined,
-    total: grandTotal,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    status: 'Received'
-  });
-
-  const handlePlaceWhatsAppOrder = () => {
-    if (cart.length === 0) return;
-    if (fulfillment === 'delivery' && !deliveryAddress.trim()) return;
-    if (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim()) return;
-
-    const newOrder = generateOrderObject();
-    setOrders([newOrder, ...orders]);
-    setActiveReceipt(newOrder);
-    playChime();
-
-    const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
-    const msg = `*NEW ORDER #${newOrder.id} - ${shop.name}*\n\n` +
-      `*Items:*\n${orderItemsText}\n\n` +
-      `*Fulfillment:* ${fulfillment.toUpperCase()}\n` +
-      (fulfillment === 'delivery' ? `*Address:* ${deliveryAddress}\n` : '') +
-      `*Payment:* ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
-      `*Total:* $${grandTotal} JMD`;
-
-    const cleanNumber = shop.whatsapp.replace(/[^0-9]/g, '');
-    const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
-
-    setCart([]);
-    setBankRef('');
-    setDeliveryAddress('');
-    setActiveTab('menu');
-  };
-
-  const handleCopyForSocialDM = () => {
-    if (cart.length === 0) return;
-    if (fulfillment === 'delivery' && !deliveryAddress.trim()) return;
-    if (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim()) return;
-
-    const newOrder = generateOrderObject();
-    setOrders([newOrder, ...orders]);
-    setActiveReceipt(newOrder);
-    playChime();
-
-    const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
-    const msg = `NEW ORDER #${newOrder.id} - ${shop.name}\n\n` +
-      `Items:\n${orderItemsText}\n\n` +
-      `Fulfillment: ${fulfillment.toUpperCase()}\n` +
-      (fulfillment === 'delivery' ? `Address: ${deliveryAddress}\n` : '') +
-      `Payment: ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
-      `Total: $${grandTotal} JMD`;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(msg);
-    } else {
-      const textArea = document.createElement("textarea");
-      textArea.value = msg;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-    }
-
-    setCart([]);
-    setBankRef('');
-    setDeliveryAddress('');
-    setActiveTab('menu');
-  };
-
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    if (enteredPin === MASTER_PIN) {
-      setAdminRole('master');
-    } else if (enteredPin === shop.pin) {
-      setAdminRole('cousin');
-    } else {
-      setAuthError('Incorrect PIN code.');
-    }
-  };
-
-  const handleStartEditingDish = (dish: Dish) => {
-    setEditingDishId(dish.id);
-    setEditDishName(dish.name);
-    setEditDishPrice(dish.price.toString());
-    setEditDishImg(dish.image || '');
-  };
-
-  const handleSaveEditedDish = (dishId: number) => {
-    if (!editDishName || !editDishPrice) return;
-    const updatedMenu = shop.menu.map(item => item.id === dishId ? {
-      ...item,
-      name: editDishName,
-      price: Number(editDishPrice),
-      image: editDishImg.trim() ? editDishImg.trim() : undefined
-    } : item);
-
-    setShops({ ...shops, [currentShopId]: { ...shop, menu: updatedMenu } });
-    setEditingDishId(null);
-  };
-
-  const handleDeleteDish = (dishId: number) => {
-    const updatedMenu = shop.menu.filter(item => item.id !== dishId);
-    setShops({ ...shops, [currentShopId]: { ...shop, menu: updatedMenu } });
-  };
-
-  const filteredOrders = orders.filter(o => {
-    const term = receiptSearchTerm.toLowerCase();
-    return o.id.toString().includes(term) ||
-      o.shopName.toLowerCase().includes(term) ||
-      (o.deliveryAddress && o.deliveryAddress.toLowerCase().includes(term)) ||
-      (o.bankRef && o.bankRef.toLowerCase().includes(term)) ||
-      o.items.some(i => i.name.toLowerCase().includes(term));
-  });
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <h2 className="text-lg font-black tracking-wider uppercase">Loading Cookshop...</h2>
-        <p className="text-xs text-slate-500">Preparing fresh menu & settings</p>
-      </div>
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lon}`;
+        setCustomerAddress(mapsUrl);
+      },
+      () => {
+        alert("Unable to retrieve your location. Please type your address or landmark manually.");
+      },
+      { timeout: 10000 }
     );
-  }
+  };
+
+  // --- CART OPERATIONS ---
+  const addToCart = (dish: Dish) => {
+    setCart(prev => [
+      ...prev,
+      { dish, quantity: 1, spiceLevel, gravyLevel, notes: itemNotes }
+    ]);
+    setSelectedDish(null);
+    setItemNotes("");
+  };
+
+  const removeFromCart = (index: number) => {
+    setCart(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const currentShopMenu = menus[activeShop.id] || [];
+  const currentShopOrders = orders[activeShop.id] || [];
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.dish.price * item.quantity, 0);
+  const deliveryCost = orderType === "delivery" && activeShop.isDeliveryActive ? activeShop.deliveryFee : 0;
+  const cartTotal = cartSubtotal + deliveryCost;
+
+  // --- ORDER DISPATCHING & QUEUING ---
+  const dispatchOrder = (method: "whatsapp" | "social") => {
+    if (!customerName.trim()) {
+      alert("Please enter your name or nickname so the cookshop knows who you are!");
+      return;
+    }
+    if (orderType === "delivery" && !customerAddress.trim()) {
+      alert("Please provide a delivery address or pin your GPS location!");
+      return;
+    }
+    if (cart.length === 0) {
+      alert("Your plate is empty!");
+      return;
+    }
+
+    const newOrder: Order = {
+      id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+      customerName,
+      items: [...cart],
+      total: cartTotal,
+      type: orderType,
+      address: orderType === "delivery" ? customerAddress : "Store Pickup",
+      status: "Received",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // Save to active shop queue
+    setOrders(prev => ({
+      ...prev,
+      [activeShop.id]: [newOrder, ...(prev[activeShop.id] || [])]
+    }));
+
+    setActiveReceipt(newOrder);
+    setCart([]);
+
+    // Format text
+    const orderLines = newOrder.items.map(i => `• ${i.quantity}x ${i.dish.name} ($${i.dish.price * i.quantity}) [Spice: ${i.spiceLevel}, Gravy: ${i.gravyLevel}]`).join("\n");
+    const appReturnUrl = `${window.location.origin}${window.location.pathname}?shop=${activeShop.id}`;
+    
+    const fullText = `*NEW ORDER: #${newOrder.id}*
+*Shop:* ${activeShop.name}
+*Customer:* ${customerName}
+*Type:* ${orderType.toUpperCase()}
+*Location/Info:* ${newOrder.address}
+------------------------------
+${orderLines}
+------------------------------
+*Subtotal:* $${cartSubtotal} JMD
+${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTAL:* $${cartTotal} JMD
+------------------------------
+🔗 Reopen Menu / App: ${appRefSanitize(appReturnUrl)}`;
+
+    if (method === "whatsapp") {
+      const encoded = encodeURIComponent(fullText);
+      const cleanPhone = activeShop.whatsapp.replace(/[^0-9]/g, "");
+      window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
+    } else {
+      navigator.clipboard.writeText(fullText);
+      alert("Order receipt copied to clipboard! Paste it directly into your Instagram or Facebook DM.");
+    }
+  };
+
+  const appRefSanitize = (url: string) => url;
+
+  // --- ADMIN AUTHENTICATION ---
+  const handleAdminLogin = () => {
+    if (adminPinInput === masterPin) {
+      setIsMasterSession(true);
+      setLoggedInAdminShopId(null);
+      setAdminPinInput("");
+      return;
+    }
+
+    const foundShop = shops.find(s => s.pin === adminPinInput);
+    if (foundShop) {
+      setIsMasterSession(false);
+      setLoggedInAdminShopId(foundShop.id);
+      setAdminPinInput("");
+      return;
+    }
+
+    alert("Invalid PIN. Please check your code.");
+  };
+
+  // --- ADMIN ACTIONS ---
+  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
+    setOrders(prev => ({
+      ...prev,
+      [activeShop.id]: (prev[activeShop.id] || []).map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    }));
+  };
+
+  const saveEditedDish = () => {
+    if (!loggedInAdminShopId) return;
+    if (!dishNameInput || !dishPriceInput) {
+      alert("Dish name and price are required!");
+      return;
+    }
+
+    const updatedDish: Dish = {
+      id: editingDish ? editingDish.id : "dish_" + Date.now(),
+      name: dishNameInput,
+      price: parseFloat(dishPriceInput) || 0,
+      description: dishDescInput,
+      category: dishCatInput,
+      image: dishImageInput || (editingDish ? editingDish.image : ""),
+      inStock: editingDish ? editingDish.inStock : true
+    };
+
+    setMenus(prev => {
+      const currentList = prev[loggedInAdminShopId] || [];
+      const exists = currentList.some(d => d.id === updatedDish.id);
+      const newList = exists ? currentList.map(d => d.id === updatedDish.id ? updatedDish : d) : [updatedDish, ...currentList];
+      return { ...prev, [loggedInAdminShopId]: newList };
+    });
+
+    setEditingDish(null);
+    setDishNameInput("");
+    setDishPriceInput("");
+    setDishDescInput("");
+    setDishImageInput("");
+  };
+
+  const deleteDish = (dishId: string) => {
+    if (!loggedInAdminShopId) return;
+    if (window.confirm("Are you sure you want to delete this dish?")) {
+      setMenus(prev => ({
+        ...prev,
+        [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).filter(d => d.id !== dishId)
+      }));
+    }
+  };
+
+  const createNewShop = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newShopName || !newShopWhatsapp) {
+      alert("Shop Name and WhatsApp number are required!");
+      return;
+    }
+
+    const shopId = "shop_" + Date.now();
+    const newShop: ShopProfile = {
+      id: shopId,
+      name: newShopName,
+      tagline: newShopTagline || "Fresh Jamaican Cuisine",
+      whatsapp: newShopWhatsapp,
+      address: newShopAddress || "Jamaica",
+      pin: newShopPin || "1234",
+      themeColor: "emerald",
+      instagram: "",
+      facebook: "",
+      deliveryFee: 300,
+      isOpen: true,
+      isDeliveryActive: true,
+      deliveryZoneNote: "Standard delivery radius applies."
+    };
+
+    setShops(prev => [...prev, newShop]);
+    setMenus(prev => ({ ...prev, [shopId]: [] }));
+    setActiveShopId(shopId);
+
+    setNewShopName("");
+    setNewShopTagline("");
+    setNewShopWhatsapp("");
+    setNewShopAddress("");
+    alert(`Shop "${newShop.name}" created successfully!`);
+  };
+
+  const changeMasterCredentials = () => {
+    if (currentMasterPassCheck !== masterRecoveryPass) {
+      alert("Incorrect Master Recovery Password! Access denied.");
+      return;
+    }
+    if (!newMasterPinInput || newMasterPinInput.length !== 4) {
+      alert("New Master PIN must be exactly 4 digits.");
+      return;
+    }
+
+    localStorage.setItem("cookshop_master_pin", newMasterPinInput);
+    setMasterPin(newMasterPinInput);
+    if (newMasterRecoveryInput.trim()) {
+      localStorage.setItem("cookshop_master_recovery", newMasterRecoveryInput);
+      setMasterRecoveryPass(newMasterRecoveryInput);
+    }
+    setNewMasterPinInput("");
+    setNewMasterRecoveryInput("");
+    setCurrentMasterPassCheck("");
+    alert("Master Developer PIN updated securely!");
+  };
+
+  // Theme color mapping
+  const themeClasses: Record<string, { bg: string, text: string, border: string, badge: string }> = {
+    emerald: { bg: "bg-emerald-700", text: "text-emerald-700", border: "border-emerald-600", badge: "bg-emerald-100 text-emerald-800" },
+    amber: { bg: "bg-amber-700", text: "text-amber-700", border: "border-amber-600", badge: "bg-amber-100 text-amber-800" }
+  };
+  const activeTheme = themeClasses[activeShop.themeColor] || themeClasses.emerald;
 
   return (
-    <div className={`min-h-screen ${t.primaryBg} text-slate-100 font-sans pb-24`}>
-      
-      {/* HEADER */}
-      <header className={`p-4 border-b ${t.primaryBorder} bg-black/40 backdrop-blur sticky top-0 z-30 flex justify-between items-center shadow-lg`}>
-        <div>
-          <h1 className="text-xl font-black text-white tracking-tight">{shop.name}</h1>
-          <p className="text-xs text-slate-400 font-medium">{shop.tagline}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setCurrentShopId(shop.crossPromoId)}
-            className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border ${t.badgeBg} hover:opacity-80 transition`}>
-            🔄 {shop.crossPromoName}
-          </button>
-          <button 
-            onClick={() => setIsAdminOpen(true)}
-            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow">
-            ⚙️ Admin
-          </button>
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans pb-24">
+      {/* --- HEADER BAR --- */}
+      <header className={`${activeTheme.bg} text-white shadow-md sticky top-0 z-40 transition-colors duration-300`}>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black tracking-tight">{activeShop.name}</h1>
+            <p className="text-xs opacity-90">{activeShop.tagline}</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Cross-Promo Shop Switcher */}
+            <select
+              value={activeShopId}
+              onChange={(e) => {
+                setActiveShopId(e.target.value);
+                window.history.pushState({}, "", `?shop=${e.target.value}`);
+              }}
+              className="bg-black/30 text-white text-xs font-medium px-2 py-1.5 rounded border border-white/20 outline-none cursor-pointer"
+            >
+              {shops.map(s => (
+                <option key={s.id} value={s.id} className="text-stone-900">
+                  🏪 {s.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Admin Trigger */}
+            <button
+              onClick={() => setAdminModalOpen(true)}
+              className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-xs font-bold transition-all border border-white/30"
+            >
+              🔐 Admin
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* EVENT BANNER */}
-      {shop.eventMode && (
-        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-black flex justify-between items-center shadow-md">
-          <span>🔥 {shop.eventTitle}: {shop.eventBanner}</span>
-        </div>
-      )}
-
-      {/* NAVIGATION TABS */}
-      <div className="flex border-b border-slate-800/80 bg-black/30 text-xs font-bold sticky top-[65px] z-20 backdrop-blur">
-        <button 
-          onClick={() => setActiveTab('menu')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'menu' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
-          🍱 Daily Menu
-        </button>
-        <button 
-          onClick={() => setActiveTab('cart')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'cart' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
-          🛒 My Plate ({cart.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('wishlist')}
-          className={`flex-1 py-3 text-center transition ${activeTab === 'wishlist' ? `${t.accentText} border-b-2 border-current bg-white/5` : 'text-slate-400 hover:text-slate-200'}`}>
-          💡 Wishlist Box
-        </button>
-      </div>
-
-      {/* MAIN CONTENT CONTAINER */}
-      <main className="p-4 max-w-lg mx-auto">
-
-        {/* MENU TAB */}
-        {activeTab === 'menu' && (
-          <div className="space-y-4">
-            {!shop.isOpen && (
-              <div className="bg-red-950/80 border border-red-800/80 text-red-200 p-3.5 rounded-xl text-xs font-bold text-center shadow">
-                ⛔ {shop.name} is currently CLOSED for ordering.
-              </div>
-            )}
-            
-            <div className="flex justify-between items-center">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Today's Specials</h2>
-              <span className="text-[11px] text-slate-500 font-medium">📍 {shop.address}</span>
-            </div>
-            
-            <div className="space-y-3">
-              {shop.menu.map(item => (
-                <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-md hover:border-slate-700 transition">
-                  {item.image && (
-                    <div 
-                      onClick={() => setPreviewImage({ src: item.image!, title: item.name })}
-                      className="h-44 w-full bg-slate-950/90 overflow-hidden relative cursor-pointer group flex items-center justify-center">
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
-                        className="w-full h-full object-contain transition group-hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                      <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded-md border border-white/20 shadow">
-                        🔍 Tap to view photo
-                      </div>
-                    </div>
-                  )}
-                  <div className="p-4 flex justify-between items-center">
-                    <div className="space-y-1.5 max-w-[68%]">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-extrabold text-sm text-white">{item.name}</h3>
-                        {item.soldOut && <span className="bg-red-950 text-red-400 border border-red-800/60 text-[10px] px-2 py-0.5 rounded font-bold">Sold Out</span>}
-                      </div>
-                      <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
-                      <p className={`text-xs font-black ${t.accentText}`}>${item.price} JMD</p>
-                    </div>
-                    <button 
-                      disabled={item.soldOut || !shop.isOpen}
-                      onClick={() => {
-                        setSelectedDish(item);
-                        setSpice(shop.customizerOptions.spiceLevels[1] || "Mild");
-                        setGravy(shop.customizerOptions.gravyOptions[2] || "Normal Gravy");
-                      }}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow transition ${item.soldOut || !shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white shadow-emerald-950/50`}`}>
-                      + Customize
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* --- MAIN CONTENT AREA --- */}
+      <main className="max-w-4xl mx-auto px-4 pt-6">
+        {/* Status Banners */}
+        {!activeShop.isOpen && (
+          <div className="bg-rose-100 border border-rose-300 text-rose-800 p-3 rounded-lg mb-4 text-center font-bold text-sm">
+            🔴 This cookshop is currently closed for new orders. Check back later!
           </div>
         )}
 
-        {/* CART TAB */}
-        {activeTab === 'cart' && (
-          <div className="space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Your Customized Plate</h2>
+        {/* Categories / Filter View */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-stone-800">Today's Menu</h2>
+            <span className="text-xs bg-stone-200 px-2.5 py-1 rounded-full font-semibold">
+              {currentShopMenu.filter(d => d.inStock).length} Available Items
+            </span>
+          </div>
 
-            {cart.length === 0 ? (
-              <div className="bg-slate-900/50 border border-slate-800/60 p-8 text-center rounded-2xl space-y-3">
-                <p className="text-slate-400 text-xs font-medium">Your plate is currently empty.</p>
-                <button onClick={() => setActiveTab('menu')} className={`text-xs font-bold ${t.accentText} underline underline-offset-4`}>
-                  Browse Today's Menu →
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart.map(item => (
-                  <div key={item.cartId} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex justify-between items-start text-xs shadow">
-                    <div className="space-y-1">
-                      <h4 className="font-extrabold text-white text-sm">{item.name}</h4>
-                      <p className="text-slate-300 font-medium">🌶️ {item.spice} | 🍲 {item.gravy}</p>
-                      {item.note && <p className="text-slate-400 italic bg-slate-950/60 p-1.5 rounded border border-slate-800/80 mt-1">"{item.note}"</p>}
-                      <p className={`font-black ${t.accentText} pt-1`}>${item.price} JMD</p>
-                    </div>
-                    <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 font-bold p-1 text-sm">✕</button>
-                  </div>
-                ))}
-
-                {/* FULFILLMENT SELECTOR */}
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
-                  <label className="font-black text-slate-300 uppercase tracking-wider text-[11px]">Fulfillment Method</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button 
-                      onClick={() => setFulfillment('pickup')}
-                      className={`p-2.5 rounded-xl font-bold transition border ${fulfillment === 'pickup' ? `${t.accentBg} text-white border-transparent shadow` : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-                      🏪 Pickup (Free)
-                    </button>
-                    <button 
-                      disabled={!shop.deliveryEnabled}
-                      onClick={() => setFulfillment('delivery')}
-                      className={`p-2.5 rounded-xl font-bold transition border ${!shop.deliveryEnabled ? 'bg-slate-950 border-slate-900 text-slate-600 cursor-not-allowed' : fulfillment === 'delivery' ? `${t.accentBg} text-white border-transparent shadow` : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-                      🚚 Delivery (${shop.deliveryFee})
-                    </button>
-                  </div>
-                  {!shop.deliveryEnabled && <p className="text-[10px] text-red-400 font-bold">Delivery is currently toggled off by shop admin.</p>}
-
-                  {fulfillment === 'delivery' && (
-                    <input 
-                      type="text" 
-                      placeholder="Enter Delivery Address / Landmark..." 
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700"
+          {/* Dish Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {currentShopMenu.map(dish => (
+              <div key={dish.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col justify-between transition-all hover:shadow-md">
+                <div className="p-4 flex gap-4">
+                  {dish.image && (
+                    <img 
+                      src={dish.image} 
+                      alt={dish.name} 
+                      className="w-24 h-24 object-cover rounded-lg border border-stone-100 bg-stone-100 shrink-0" 
                     />
                   )}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-bold text-stone-900">{dish.name}</h3>
+                      <span className="font-extrabold text-emerald-700 whitespace-nowrap">${dish.price} JMD</span>
+                    </div>
+                    <p className="text-xs text-stone-600 mt-1 line-clamp-2">{dish.description}</p>
+                    <span className="inline-block mt-2 text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-medium">
+                      {dish.category}
+                    </span>
+                  </div>
                 </div>
 
-                {/* PAYMENT SELECTOR */}
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
-                  <label className="font-black text-slate-300 uppercase tracking-wider text-[11px]">Payment Method</label>
-                  <select 
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700">
-                    <option value="Cash on Delivery/Pickup">Cash on Delivery / Pickup</option>
-                    {shop.onlinePaymentEnabled && (
-                      <>
-                        <option value="Lynk Transfer">Lynk Transfer</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                      </>
-                    )}
-                  </select>
-
-                  {!shop.onlinePaymentEnabled && (
-                    <p className="text-[10px] text-slate-400 italic">Online transfers (Lynk/Bank) are turned off. Pay with cash upon receipt.</p>
-                  )}
-
-                  {shop.onlinePaymentEnabled && paymentMethod !== 'Cash on Delivery/Pickup' && (
-                    <div className="space-y-2">
-                      <div className="bg-slate-950 p-2 rounded border border-slate-800 text-[11px] text-amber-400 font-mono">
-                        {shop.paymentDetailsNote || "Send payment to shop account and enter reference below."}
-                      </div>
-                      <input 
-                        type="text" 
-                        placeholder="Enter Lynk / Bank Transfer Reference..." 
-                        value={bankRef}
-                        onChange={(e) => setBankRef(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700 font-mono"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* TOTAL & DUAL CHECKOUT DISPATCH */}
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>Subtotal</span>
-                    <span>${subtotal} JMD</span>
-                  </div>
-                  {fulfillment === 'delivery' && (
-                    <div className="flex justify-between text-xs text-slate-400">
-                      <span>Delivery Fee</span>
-                      <span>${shop.deliveryFee} JMD</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-black text-sm text-white border-t border-slate-800/80 pt-2.5">
-                    <span>Total</span>
-                    <span className={t.accentText}>${grandTotal} JMD</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 pt-1">
-                    <button 
-                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) || (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim())}
-                      onClick={handlePlaceWhatsAppOrder}
-                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition shadow ${!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
-                      📲 Dispatch Order via WhatsApp
+                <div className="bg-stone-50 px-4 py-2.5 border-t border-stone-100 flex items-center justify-between">
+                  <span className={`text-xs font-bold ${dish.inStock ? "text-emerald-600" : "text-rose-600"}`}>
+                    {dish.inStock ? "🟢 In Stock" : "🔴 Sold Out"}
+                  </span>
+                  {activeShop.isOpen && dish.inStock && (
+                    <button
+                      onClick={() => setSelectedDish(dish)}
+                      className={`${activeTheme.bg} text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-all`}
+                    >
+                      + Add to Plate
                     </button>
-
-                    <button 
-                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress.trim()) || (paymentMethod !== 'Cash on Delivery/Pickup' && !bankRef.trim())}
-                      onClick={handleCopyForSocialDM}
-                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-bold text-xs transition">
-                      📋 Copy Order text for IG / FB DM
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
-            )}
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* WISHLIST TAB */}
-        {activeTab === 'wishlist' && (
-          <div className="space-y-4">
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs shadow">
-              <h3 className="font-extrabold text-white text-sm">💡 Suggest a Daily Special</h3>
-              <p className="text-slate-400">Have a favorite meal you want added to the menu? Submit a suggestion below:</p>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="e.g., Oxtail with Broad Beans..." 
-                  value={newSuggestion}
-                  onChange={(e) => setNewSuggestion(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700"
-                />
-                <button 
-                  onClick={() => {
-                    if (!newSuggestion.trim()) return;
-                    setSuggestions([...suggestions, { id: Date.now(), text: newSuggestion, votes: 1 }]);
-                    setNewSuggestion('');
-                  }}
-                  className={`${t.accentBg} text-white font-black px-4 py-2.5 rounded-xl text-xs shadow`}>
-                  Add
-                </button>
-              </div>
-            </div>
+        {/* --- ACTIVE CART / CHECKOUT SECTION --- */}
+        {cart.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg border border-stone-200 p-5 mt-8 mb-12">
+            <h3 className="text-base font-black text-stone-800 mb-3 flex items-center justify-between">
+              <span>🛒 Your Order Plate</span>
+              <span className="text-xs font-normal text-stone-500">{cart.length} items</span>
+            </h3>
 
-            <div className="space-y-2">
-              {suggestions.map(s => (
-                <div key={s.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center text-xs shadow">
-                  <span className="font-bold text-slate-200">{s.text}</span>
-                  <button 
-                    onClick={() => {
-                      setSuggestions(suggestions.map(item => item.id === s.id ? { ...item, votes: item.votes + 1 } : item));
-                    }}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-black px-3 py-1.5 rounded-lg border border-slate-700 shadow">
-                    👍 {s.votes}
-                  </button>
+            <div className="divide-y divide-stone-100 mb-4">
+              {cart.map((item, idx) => (
+                <div key={idx} className="py-2.5 flex items-center justify-between text-sm">
+                  <div>
+                    <span className="font-bold text-stone-800">{item.quantity}x {item.dish.name}</span>
+                    <div className="text-xs text-stone-500">Spice: {item.spiceLevel} | Gravy: {item.gravyLevel}</div>
+                    {item.notes && <div className="text-xs italic text-stone-500">Note: "{item.notes}"</div>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-stone-900">${item.dish.price * item.quantity} JMD</span>
+                    <button onClick={() => removeFromCart(idx)} className="text-rose-500 hover:text-rose-700 text-xs font-bold">✕</button>
+                  </div>
                 </div>
               ))}
             </div>
+
+            {/* Delivery vs Pickup Selector */}
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-4 space-y-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderType("delivery")}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${orderType === "delivery" ? `${activeTheme.bg} text-white border-transparent` : "bg-white text-stone-700 border-stone-300"}`}
+                >
+                  🚚 Delivery (${activeShop.deliveryFee} JMD)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderType("pickup")}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${orderType === "pickup" ? `${activeTheme.bg} text-white border-transparent` : "bg-white text-stone-700 border-stone-300"}`}
+                >
+                  🏪 Store Pickup
+                </button>
+              </div>
+
+              {/* Delivery Zone Note Warning */}
+              {orderType === "delivery" && activeShop.deliveryZoneNote && (
+                <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                  ⚠️ <strong>Delivery Notice:</strong> {activeShop.deliveryZoneNote}
+                </p>
+              )}
+
+              {/* Customer Info Form */}
+              <div className="space-y-2 pt-2">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Your Name / Nickname *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Omarian"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full bg-white text-stone-900 border border-stone-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                  />
+                </div>
+
+                {orderType === "delivery" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-stone-700">Delivery Address / Landmark *</label>
+                      <button
+                        type="button"
+                        onClick={handlePinLocation}
+                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        📍 Pin My Current GPS Location
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. Near Hip Strip / Paste Google Maps link here"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      className="w-full bg-white text-stone-900 border border-stone-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Totals & Dispatch Buttons */}
+            <div className="border-t border-stone-200 pt-3 mb-4 space-y-1 text-sm">
+              <div className="flex justify-between text-stone-600">
+                <span>Subtotal</span>
+                <span>${cartSubtotal} JMD</span>
+              </div>
+              {orderType === "delivery" && activeShop.isDeliveryActive && (
+                <div className="flex justify-between text-stone-600">
+                  <span>Delivery Fee</span>
+                  <span>${deliveryCost} JMD</span>
+                </div>
+              )}
+              <div className="flex justify-between text-stone-900 font-black text-base pt-1 border-t border-dashed border-stone-200">
+                <span>Total Due</span>
+                <span>${cartTotal} JMD</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => dispatchOrder("whatsapp")}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                📲 Dispatch via WhatsApp
+              </button>
+              <button
+                onClick={() => dispatchOrder("social")}
+                className="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                📋 Copy Order for IG / FB DM
+              </button>
+            </div>
           </div>
         )}
-
       </main>
 
-      {/* CLEAN POP-UP IMAGE PREVIEW MODAL */}
-      {previewImage && (
-        <div 
-          onClick={() => setPreviewImage(null)} 
-          className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div 
-            onClick={(e) => e.stopPropagation()} 
-            className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-3 space-y-3 shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2 px-1">
-              <h3 className="font-black text-white text-sm">{previewImage.title}</h3>
-              <button onClick={() => setPreviewImage(null)} className="text-slate-400 hover:text-white font-bold p-1">✕</button>
-            </div>
-            <div className="max-h-[60vh] flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden p-1">
-              <img src={previewImage.src} alt={previewImage.title} className="max-h-[55vh] w-auto object-contain rounded-lg" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CUSTOMER DIGITAL RECEIPT MODAL */}
-      {activeReceipt && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="font-black text-white text-base">🧾 Order Receipt #{activeReceipt.id}</h3>
-                <p className="text-[11px] text-slate-400">{activeReceipt.shopName} • {activeReceipt.time}</p>
-              </div>
-              <button onClick={() => setActiveReceipt(null)} className="text-slate-400 hover:text-white font-black text-sm p-1">✕</button>
-            </div>
-
-            <div className="space-y-2 text-xs max-h-48 overflow-y-auto">
-              {activeReceipt.items.map((item, idx) => (
-                <div key={idx} className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg space-y-0.5">
-                  <div className="flex justify-between font-bold text-slate-200">
-                    <span>{item.name}</span>
-                    <span>${item.price} JMD</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">Spice: {item.spice} | Gravy: {item.gravy}</p>
-                  {item.note && <p className="text-[10px] text-slate-400 italic">Note: "{item.note}"</p>}
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Fulfillment</span>
-                <span className="font-bold text-slate-200 uppercase">{activeReceipt.fulfillment}</span>
-              </div>
-              {activeReceipt.deliveryAddress && (
-                <div className="text-[10px] text-slate-400">Address: {activeReceipt.deliveryAddress}</div>
-              )}
-              <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-900">
-                <span>Payment</span>
-                <span className="font-bold text-slate-200">{activeReceipt.paymentMethod}</span>
-              </div>
-              {activeReceipt.bankRef && (
-                <div className="text-[10px] text-slate-400 font-mono">Ref: {activeReceipt.bankRef}</div>
-              )}
-              <div className="flex justify-between font-black text-sm text-white pt-2 border-t border-slate-800">
-                <span>Grand Total</span>
-                <span className={t.accentText}>${activeReceipt.total} JMD</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => window.print()}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition border border-slate-700">
-              🖨️ Save / Print Receipt
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PLATE CUSTOMIZER MODAL */}
+      {/* --- DISH CUSTOMIZER MODAL --- */}
       {selectedDish && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-black text-white text-base">{selectedDish.name}</h3>
-                <p className="text-[11px] text-slate-400">${selectedDish.price} JMD</p>
+                <h3 className="text-lg font-black text-stone-900">{selectedDish.name}</h3>
+                <p className="text-emerald-700 font-extrabold text-sm">${selectedDish.price} JMD</p>
               </div>
-              <button onClick={() => setSelectedDish(null)} className="text-slate-400 hover:text-white font-black text-sm p-1">✕</button>
+              <button onClick={() => setSelectedDish(null)} className="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Spice Level</label>
-                <select value={spice} onChange={(e) => setSpice(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none">
-                  {shop.customizerOptions.spiceLevels.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+            <p className="text-xs text-stone-600 mb-4">{selectedDish.description}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">🌶️ Pepper / Spice Level</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["No Pepper", "Medium", "Extra Scotch Bonnet"].map(lvl => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setSpiceLevel(lvl)}
+                      className={`py-2 text-xs font-bold rounded-lg border transition-all ${spiceLevel === lvl ? `${activeTheme.bg} text-white border-transparent` : "bg-stone-50 text-stone-700 border-stone-200"}`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Gravy Option</label>
-                <select value={gravy} onChange={(e) => setGravy(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none">
-                  {shop.customizerOptions.gravyOptions.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">🍲 Gravy Preference</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["No Gravy", "Normal", "Extra Drowned"].map(lvl => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setGravyLevel(lvl)}
+                      className={`py-2 text-xs font-bold rounded-lg border transition-all ${gravyLevel === lvl ? `${activeTheme.bg} text-white border-transparent` : "bg-stone-50 text-stone-700 border-stone-200"}`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Special Instructions</label>
-                <input type="text" placeholder="e.g., No salad, extra plantain..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none" />
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Special Cooking Instructions</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Separate gravy, extra fork please"
+                  value={itemNotes}
+                  onChange={(e) => setItemNotes(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-stone-500"
+                />
               </div>
             </div>
 
-            <button onClick={addToCart} className={`w-full ${t.accentBg} text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg`}>
-              Add to Plate (${selectedDish.price} JMD)
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setSelectedDish(null)}
+                className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => addToCart(selectedDish)}
+                className={`flex-1 ${activeTheme.bg} text-white font-bold py-2.5 rounded-xl text-xs shadow-sm hover:opacity-90`}
+              >
+                Add to Plate (${selectedDish.price} JMD)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- POST-DISPATCH RECEIPT & TRACKING MODAL --- */}
+      {activeReceipt && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
+            <div className="text-center mb-4">
+              <span className="text-3xl">✅</span>
+              <h3 className="text-lg font-black text-stone-900 mt-1">Order Dispatched!</h3>
+              <p className="text-xs text-stone-500">Order ID: {activeReceipt.id}</p>
+            </div>
+
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2 text-xs mb-4">
+              <div className="flex justify-between"><span className="font-bold">Customer:</span><span>{activeReceipt.customerName}</span></div>
+              <div className="flex justify-between"><span className="font-bold">Fulfillment:</span><span className="capitalize">{activeReceipt.type}</span></div>
+              <div className="flex justify-between"><span className="font-bold">Total:</span><span className="font-black text-emerald-700">${activeReceipt.total} JMD</span></div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-xs font-bold text-stone-700 mb-2">Need to make a change? Choose an option below:</p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    alert("Acknowledged. Waiting for delivery time.");
+                    setActiveReceipt(null);
+                  }}
+                  className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center"
+                >
+                  ⏱️ Wait for Delivery
+                </button>
+                <button
+                  onClick={() => {
+                    updateOrderStatus(activeReceipt.id, "Cancelled");
+                    window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20would%20like%20to%20switch%20my%20order%20%23${activeReceipt.id}%20to%20Store%20Pickup.`, "_blank");
+                    setActiveReceipt(null);
+                  }}
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center border border-amber-200"
+                >
+                  🏪 Switch to Pickup
+                </button>
+                <button
+                  onClick={() => {
+                    updateOrderStatus(activeReceipt.id, "Cancelled");
+                    window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20CANCEL%20my%20order%20%23${activeReceipt.id}.`, "_blank");
+                    setActiveReceipt(null);
+                  }}
+                  className="bg-rose-50 hover:bg-rose-100 text-rose-800 text-[11px] font-bold py-2.5 px-1 rounded-lg text-center border border-rose-200"
+                >
+                  ❌ Cancel Order
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveReceipt(null)}
+              className="w-full bg-stone-900 text-white font-bold py-2.5 rounded-xl text-xs"
+            >
+              Close Window
             </button>
           </div>
         </div>
       )}
 
-      {/* DUAL-TIER ADMIN & DEVELOPER DASHBOARD MODAL */}
-      {isAdminOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 my-auto shadow-2xl">
-            
-            {!adminRole ? (
-              <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <h3 className="font-extrabold text-base text-white">Admin Authentication</h3>
-                  <button type="button" onClick={() => setIsAdminOpen(false)} className="text-slate-400 font-bold">✕</button>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Enter Shop PIN (e.g. 1234) for shift & order management, or Master PIN (9999) for developer settings.
-                </p>
-                <input 
-                  type="password" 
+      {/* --- ADMIN AUTH / DASHBOARD MODAL --- */}
+      {adminModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 my-8">
+            <div className="flex justify-between items-center mb-4 border-b border-stone-100 pb-3">
+              <h3 className="text-lg font-black text-stone-900">
+                {isMasterSession ? "⚡ Master Developer Panel" : loggedInAdminShopId ? `🛠️ Admin Panel: ${shops.find(s => s.id === loggedInAdminShopId)?.name}` : "🔐 Enter Admin PIN"}
+              </h3>
+              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} className="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
+            </div>
+
+            {/* UNAUTHENTICATED: PIN LOGIN */}
+            {!isMasterSession && !loggedInAdminShopId && (
+              <div className="space-y-4 py-4 text-center">
+                <p className="text-xs text-stone-600">Enter your 4-digit shop PIN or Master PIN to access management controls.</p>
+                <input
+                  type="password"
                   maxLength={4}
-                  placeholder="Enter 4-Digit PIN"
-                  value={enteredPin}
-                  onChange={(e) => setEnteredPin(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-center text-xl text-white tracking-widest focus:outline-none focus:border-slate-700"
-                  autoFocus
+                  placeholder="••••"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  className="w-36 text-center tracking-widest text-xl bg-stone-50 border border-stone-300 rounded-xl py-3 mx-auto outline-none focus:border-stone-500 font-mono"
                 />
-                {authError && <p className="text-xs text-red-400 text-center font-bold">{authError}</p>}
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl transition text-xs uppercase tracking-wider shadow">
-                  Unlock Dashboard
-                </button>
-              </form>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                  <div>
-                    <h3 className="font-black text-sm text-white">
-                      {adminRole === 'master' ? '👑 Master Developer Panel' : `🔒 ${shop.name} Admin Panel`}
-                    </h3>
-                  </div>
-                  <button onClick={() => { setAdminRole(null); setEnteredPin(''); setIsAdminOpen(false); }} className="text-slate-400 hover:text-white font-bold text-xs bg-slate-800 px-2.5 py-1 rounded-lg">
-                    Logout
+                <div>
+                  <button
+                    onClick={handleAdminLogin}
+                    className="bg-stone-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm hover:bg-stone-800"
+                  >
+                    Unlock Admin Access
                   </button>
                 </div>
+              </div>
+            )}
 
-                {linkCopiedNotice && (
-                  <div className="bg-emerald-900 border border-emerald-600 text-emerald-200 p-2.5 rounded-xl text-xs font-bold text-center animate-bounce">
-                    🔗 Live Shop URL copied to clipboard!
-                  </div>
-                )}
-
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium truncate max-w-[70%]">🔗 {shop.shopUrl || window.location.href}</span>
-                  <button 
-                    onClick={() => copyUrlToClipboard(shop.shopUrl)}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold px-3 py-1.5 rounded-lg border border-slate-700">
-                    Copy Link
-                  </button>
-                </div>
-
-                {/* 1. MASTER DEVELOPER EXCLUSIVE PANEL */}
-                {adminRole === 'master' && (
-                  <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
-                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Info Editor</h4>
-
-                    <div className="space-y-1 bg-amber-950/30 p-2 rounded-lg border border-amber-800/50">
-                      <label className="text-[11px] text-amber-300 font-bold block">🔐 Update Active Shop PIN (Operational PIN)</label>
-                      <input 
-                        type="text" 
+            {/* MASTER DEVELOPER PANEL */}
+            {isMasterSession && (
+              <div className="space-y-6">
+                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                  <h4 className="font-bold text-stone-800 text-sm mb-2">⚡ Master Controls & Security</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Current Master Recovery Password</label>
+                      <input
+                        type="password"
+                        placeholder="Enter recovery password"
+                        value={currentMasterPassCheck}
+                        onChange={(e) => setCurrentMasterPassCheck(e.target.value)}
+                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">New 4-Digit Master PIN</label>
+                      <input
+                        type="text"
                         maxLength={4}
-                        value={shop.pin}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, pin: val } });
-                        }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-amber-500"
-                        placeholder="e.g. 1234"
+                        placeholder="New PIN"
+                        value={newMasterPinInput}
+                        onChange={(e) => setNewMasterPinInput(e.target.value)}
+                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
                       />
                     </div>
+                  </div>
+                  <button
+                    onClick={changeMasterCredentials}
+                    className="mt-3 bg-stone-800 text-white font-bold px-4 py-2 rounded-lg text-xs hover:bg-stone-900"
+                  >
+                    Update Master PIN Securely
+                  </button>
+                </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Edit Shop WhatsApp Number / Contact</label>
-                      <input 
-                        type="text" 
-                        value={shop.whatsapp}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, whatsapp: val } });
-                        }}
-                        placeholder="8765550192"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
+                {/* Multi-Shop Creator Form */}
+                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                  <h4 className="font-bold text-stone-800 text-sm mb-3">➕ Spin Up New Cookshop</h4>
+                  <form onSubmit={createNewShop} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Shop Name (e.g. Babsie's Seafood)"
+                        value={newShopName}
+                        onChange={(e) => setNewShopName(e.target.value)}
+                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Tagline / Description"
+                        value={newShopTagline}
+                        onChange={(e) => setNewShopTagline(e.target.value)}
+                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="WhatsApp Number (e.g. 18765550000)"
+                        value={newShopWhatsapp}
+                        onChange={(e) => setNewShopWhatsapp(e.target.value)}
+                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Operational PIN (e.g. 4321)"
+                        maxLength={4}
+                        value={newShopPin}
+                        onChange={(e) => setNewShopPin(e.target.value)}
+                        className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
                       />
                     </div>
+                    <button type="submit" className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg text-xs hover:bg-emerald-700">
+                      Launch Shop Instantly
+                    </button>
+                  </form>
+                </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Name</label>
-                      <input 
-                        type="text" 
-                        value={shop.name}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, name: val } });
-                        }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
-                      />
+                <div className="text-center pt-2">
+                  <button
+                    onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }}
+                    className="text-xs font-bold text-rose-600 hover:underline"
+                  >
+                    Log Out of Master Panel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SHOP OWNER ADMIN PANEL */}
+            {loggedInAdminShopId && (
+              <div className="space-y-6">
+                {/* Shop Toggles & QR Code Generator */}
+                {(() => {
+                  const shop = shops.find(s => s.id === loggedInAdminShopId);
+                  if (!shop) return null;
+                  const shopUrl = `${window.location.origin}${window.location.pathname}?shop=${shop.id}`;
+                  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <h4 className="font-bold text-stone-800 text-sm">Operational Status</h4>
+                          <p className="text-xs text-stone-500">Toggle whether your shop is currently accepting orders.</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpen: !s.isOpen } : s));
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${shop.isOpen ? "bg-emerald-600" : "bg-rose-600"}`}
+                          >
+                            {shop.isOpen ? "🟢 Shop Open" : "🔴 Shop Closed"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s));
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${shop.isDeliveryActive ? "bg-blue-600" : "bg-stone-400"}`}
+                          >
+                            {shop.isDeliveryActive ? "🚚 Delivery Active" : "🛑 Delivery Off"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Built-in QR Code Card */}
+                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 flex items-center gap-4">
+                        <img src={qrCodeUrl} alt="Shop QR Code" className="w-24 h-24 bg-white p-1 rounded border border-stone-300 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-stone-800 text-sm">Counter & Flyer QR Code</h4>
+                          <p className="text-xs text-stone-600 mt-0.5">Customers can scan this code with their phone camera to open your menu instantly.</p>
+                          <a
+                            href={qrCodeUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline"
+                          >
+                            📥 Download / Print QR Code
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Driver Status & ETA */}
+                      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-3">
+                        <h4 className="font-bold text-stone-800 text-sm">🛵 Driver Logistics & Turnaround</h4>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setDriverStatus(prev => prev === "ready" ? "out" : "ready")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${driverStatus === "ready" ? "bg-emerald-600" : "bg-amber-600"}`}
+                          >
+                            {driverStatus === "ready" ? "🟢 Driver Ready" : "🛵 Driver Out on Run"}
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-stone-600 font-medium">Quick ETA:</span>
+                            {["+15 mins", "+30 mins", "+45 mins"].map(time => (
+                              <button
+                                key={time}
+                                onClick={() => setDriverEta(time)}
+                                className={`px-2 py-1 text-[11px] font-bold rounded border ${driverEta === time ? "bg-stone-900 text-white" : "bg-white text-stone-700 border-stone-300"}`}
+                              >
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {driverEta && <p className="text-xs text-stone-500 font-medium">Estimated Driver Return: <strong className="text-stone-800">{driverEta}</strong></p>}
+                      </div>
                     </div>
+                  );
+                })()}
 
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Location / Address</label>
-                      <input 
-                        type="text" 
-                        value={shop.address}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, address: val } });
-                        }}
-                        placeholder="e.g. Main Street, Montego Bay"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Edit Live Shop URL</label>
-                      <input 
-                        type="text" 
-                        value={shop.shopUrl}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, shopUrl: val } });
-                        }}
-                        placeholder="https://cook-shop.vercel.app"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Supabase Database URL</label>
-                      <input 
-                        type="text" 
-                        placeholder="https://xxxxxx.supabase.co"
-                        value={shop.supabaseUrl}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, supabaseUrl: val } });
-                        }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-300 font-bold">Supabase Anon Key</label>
-                      <input 
-                        type="password" 
-                        placeholder="eyJhGciOi..."
-                        value={shop.supabaseKey}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setShops({ ...shops, [currentShopId]: { ...shop, supabaseKey: val } });
-                        }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none"
-                      />
-                    </div>
-
-                    <button 
+                {/* Menu CRUD Editor */}
+                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-bold text-stone-800 text-sm">🍽️ Menu Management</h4>
+                    <button
                       onClick={() => {
-                        localStorage.clear();
-                        setShops(INITIAL_SHOPS);
-                        setOrders([]);
+                        setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true });
+                        setDishNameInput("");
+                        setDishPriceInput("");
+                        setDishDescInput("");
+                        setDishImageInput("");
                       }}
-                      className="w-full py-2 bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 rounded-lg text-xs font-bold transition">
-                      ⚠️ Reset State to Master Configuration
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                    >
+                      + Add New Dish
                     </button>
                   </div>
-                )}
 
-                {/* 2. SHOP OPERATIONAL ADMIN PANEL */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Shop Operational Controls</h4>
-
-                  {/* SHOP OWNER CONTACT INFO EDITOR */}
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                    <label className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">📞 Shop Contact Information</label>
-                    <div className="space-y-1.5">
-                      <div>
-                        <label className="text-[10px] text-slate-400 block font-medium">WhatsApp Number for Orders</label>
-                        <input 
-                          type="text" 
-                          value={shop.whatsapp} 
-                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, whatsapp: e.target.value } })}
-                          placeholder="8765550192"
-                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white font-mono"
+                  {/* Add/Edit Form Modal or Section */}
+                  {editingDish !== null && (
+                    <div className="bg-white p-4 rounded-xl border border-stone-300 mb-4 space-y-3">
+                      <h5 className="font-bold text-xs text-stone-800">{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Dish Name"
+                          value={dishNameInput}
+                          onChange={(e) => setDishNameInput(e.target.value)}
+                          className="bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Price ($ JMD)"
+                          value={dishPriceInput}
+                          onChange={(e) => setDishPriceInput(e.target.value)}
+                          className="bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] text-slate-400 block font-medium">Shop Location / Address</label>
-                        <input 
-                          type="text" 
-                          value={shop.address} 
-                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, address: e.target.value } })}
-                          placeholder="Main Street, Montego Bay"
-                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ORDERS QUEUE & HISTORICAL RECEIPT SEARCH */}
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-slate-300">Order Queue & Receipt History</label>
-                    <input 
-                      type="text"
-                      placeholder="🔍 Search receipts by ID, dish, address, ref..."
-                      value={receiptSearchTerm}
-                      onChange={(e) => setReceiptSearchTerm(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none"
-                    />
-
-                    <div className="max-h-40 overflow-y-auto space-y-2 pt-1">
-                      {filteredOrders.length === 0 ? (
-                        <p className="text-xs text-slate-500 text-center py-2 bg-slate-950 rounded-xl border border-slate-800/60">No orders found.</p>
-                      ) : (
-                        filteredOrders.map(o => (
-                          <div key={o.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs space-y-1">
-                            <div className="flex justify-between font-bold text-emerald-400">
-                              <span>#{o.id} ({o.fulfillment}) - {o.time}</span>
-                              <span>${o.total} JMD</span>
-                            </div>
-                            <p className="text-slate-300">{o.items.map(i => `${i.name} [${i.spice}, ${i.gravy}]`).join(', ')}</p>
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-900">
-                              <button onClick={() => setActiveReceipt(o)} className="text-[10px] text-amber-400 font-bold underline">📄 View / Print Receipt</button>
-                              <button onClick={() => setOrders(orders.filter(item => item.id !== o.id))} className="text-[10px] text-red-400 font-bold underline">Delete Log</button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* SHIFT & PAYMENT TOGGLES */}
-                  <div className="space-y-2 border-t border-slate-800 pt-3">
-                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-300">Shop Open Status</span>
-                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, isOpen: !shop.isOpen } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.isOpen ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-                        {shop.isOpen ? 'OPEN' : 'CLOSED'}
-                      </button>
-                    </div>
-
-                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-300">Delivery Toggle</span>
-                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, deliveryEnabled: !shop.deliveryEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.deliveryEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                        {shop.deliveryEnabled ? 'ENABLED' : 'DISABLED'}
-                      </button>
-                    </div>
-
-                    <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-300">Online Payment (Lynk/Bank)</span>
-                      <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, onlinePaymentEnabled: !shop.onlinePaymentEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.onlinePaymentEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                        {shop.onlinePaymentEnabled ? 'ACTIVE' : 'OFF'}
-                      </button>
-                    </div>
-
-                    {shop.onlinePaymentEnabled && (
-                      <div className="space-y-1 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                        <label className="text-[10px] text-slate-400 font-bold">Payment Details Note for Customers</label>
-                        <input 
-                          type="text" 
-                          value={shop.paymentDetailsNote} 
-                          onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, paymentDetailsNote: e.target.value } })}
-                          placeholder="e.g. Lynk handle or account #"
-                          className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* MENU MANAGEMENT WITH AUTOMATIC AUTO-COMPRESSING PHOTO PICKER */}
-                  <div className="space-y-2 border-t border-slate-800 pt-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory & Dish Editor</h4>
-                    <div className="max-h-48 overflow-y-auto space-y-2">
-                      {shop.menu.map(m => (
-                        <div key={m.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs space-y-2">
-                          {editingDishId === m.id ? (
-                            <div className="space-y-2 bg-slate-900 p-2.5 rounded-lg border border-slate-700">
-                              <input 
-                                type="text" 
-                                value={editDishName} 
-                                onChange={(e) => setEditDishName(e.target.value)} 
-                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white"
-                                placeholder="Dish Name"
-                              />
-                              <input 
-                                type="number" 
-                                value={editDishPrice} 
-                                onChange={(e) => setEditDishPrice(e.target.value)} 
-                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white"
-                                placeholder="Price JMD"
-                              />
-                              
-                              <div className="space-y-1">
-                                <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
-                                <input 
-                                  type="file" 
-                                  accept="image/*"
-                                  onChange={(e) => handleCompressedImageUpload(e, setEditDishImg)}
-                                  className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
-                                />
-                                {editDishImg && (
-                                  <div className="h-16 w-16 rounded-lg overflow-hidden mt-1 border border-slate-700">
-                                    <img src={editDishImg} alt="Preview" className="w-full h-full object-cover" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="flex gap-2 pt-1">
-                                <button 
-                                  onClick={() => handleSaveEditedDish(m.id)} 
-                                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded text-[11px]">
-                                  Save Dish
-                                </button>
-                                <button 
-                                  onClick={() => setEditingDishId(null)} 
-                                  className="bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded text-[11px]">
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                {m.image && (
-                                  <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 flex-shrink-0">
-                                    <img src={m.image} alt={m.name} className="w-full h-full object-cover" />
-                                  </div>
-                                )}
-                                <div>
-                                  <span className="text-slate-200 font-bold block">{m.name}</span>
-                                  <span className="text-amber-400 font-mono text-[11px]">${m.price} JMD</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <button 
-                                  onClick={() => {
-                                    const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
-                                    setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
-                                  }}
-                                  className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
-                                  {m.soldOut ? 'Sold Out' : 'In Stock'}
-                                </button>
-                                <button 
-                                  onClick={() => handleStartEditingDish(m)} 
-                                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2 py-1 rounded text-[10px] border border-slate-700">
-                                  ✏️ Edit
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteDish(m.id)} 
-                                  className="bg-red-950 hover:bg-red-900 text-red-300 font-bold px-2 py-1 rounded text-[10px] border border-red-800">
-                                  🗑️
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* ADD NEW DISH WITH COMPRESSION SELECTOR */}
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2 pt-2">
-                      <span className="text-[11px] font-bold text-slate-400 block">+ Add New Dish</span>
-                      <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
-                      <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
-                      
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
-                        <input 
-                          type="file" 
+                      <input
+                        type="text"
+                        placeholder="Description"
+                        value={dishDescInput}
+                        onChange={(e) => setDishDescInput(e.target.value)}
+                        className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs outline-none"
+                      />
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold text-stone-700">Photo:</label>
+                        <input
+                          type="file"
                           accept="image/*"
-                          onChange={(e) => handleCompressedImageUpload(e, setNewDishImg)}
-                          className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
+                          onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))}
+                          className="text-xs text-stone-500"
                         />
-                        {newDishImg && (
-                          <div className="h-16 w-16 rounded-lg overflow-hidden mt-1 border border-slate-700">
-                            <img src={newDishImg} alt="Preview" className="w-full h-full object-cover" />
-                          </div>
-                        )}
                       </div>
-
-                      <button 
-                        onClick={() => {
-                          if (!newDishName || !newDishPrice) return;
-                          const newItem: Dish = { 
-                            id: Date.now(), 
-                            name: newDishName, 
-                            price: Number(newDishPrice), 
-                            category: 'Mains', 
-                            soldOut: false, 
-                            desc: 'Freshly prepared daily.', 
-                            image: newDishImg || undefined 
-                          };
-                          setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
-                          setNewDishName(''); 
-                          setNewDishPrice(''); 
-                          setNewDishImg('');
-                        }}
-                        className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
-                        + Add Dish
-                      </button>
+                      <div className="flex gap-2 pt-2">
+                        <button onClick={saveEditedDish} className="bg-stone-900 text-white font-bold px-3 py-1.5 rounded text-xs">Save Dish</button>
+                        <button onClick={() => setEditingDish(null)} className="bg-stone-200 text-stone-700 font-bold px-3 py-1.5 rounded text-xs">Cancel</button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {(menus[loggedInAdminShopId] || []).map(dish => (
+                      <div key={dish.id} className="bg-white p-3 rounded-lg border border-stone-200 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-stone-900">{dish.name}</span> - <span className="font-semibold text-emerald-700">${dish.price} JMD</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setMenus(prev => ({
+                                ...prev,
+                                [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d)
+                              }));
+                            }}
+                            className={`px-2 py-1 rounded font-bold text-[10px] ${dish.inStock ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}
+                          >
+                            {dish.inStock ? "In Stock" : "Sold Out"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingDish(dish);
+                              setDishNameInput(dish.name);
+                              setDishPriceInput(dish.price.toString());
+                              setDishDescInput(dish.description);
+                              setDishImageInput(dish.image);
+                            }}
+                            className="text-blue-600 font-bold hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button onClick={() => deleteDish(dish.id)} className="text-rose-600 font-bold hover:underline">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Live Order Queue */}
+                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                  <h4 className="font-bold text-stone-800 text-sm mb-3">📋 Live Order Queue ({currentShopOrders.length})</h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {currentShopOrders.length === 0 ? (
+                      <p className="text-xs text-stone-500 italic text-center py-4">No active orders in queue.</p>
+                    ) : (
+                      currentShopOrders.map(order => (
+                        <div key={order.id} className="bg-white p-3 rounded-lg border border-stone-200 text-xs space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-black text-stone-900">#{order.id} - {order.customerName}</span>
+                            <span className="text-stone-500">{order.timestamp}</span>
+                          </div>
+                          <div className="text-stone-600">
+                            {order.items.map((it, idx) => (
+                              <div key={idx}>• {it.quantity}x {it.dish.name} ({it.spiceLevel})</div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-stone-100">
+                            <span className="font-bold text-emerald-700">${order.total} JMD ({order.type})</span>
+                            <select
+                              value={order.status}
+                              onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
+                              className="bg-stone-100 border border-stone-300 rounded px-2 py-1 text-[11px] font-bold outline-none cursor-pointer"
+                            >
+                              <option value="Received">Received</option>
+                              <option value="Preparing">Preparing 🍳</option>
+                              <option value="Out for Delivery">Out for Delivery 🚚</option>
+                              <option value="Completed">Completed ✅</option>
+                              <option value="Cancelled">Cancelled ✕</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-center pt-2">
+                  <button
+                    onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }}
+                    className="text-xs font-bold text-rose-600 hover:underline"
+                  >
+                    Log Out of Admin Dashboard
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
-
     </div>
   );
 }
