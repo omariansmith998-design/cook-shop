@@ -49,8 +49,8 @@ interface DevNote {
 
 interface DaySchedule {
   isOpen: boolean;
-  openTime: string; // e.g. "09:00"
-  closeTime: string; // e.g. "21:00"
+  openTime: string;  // Format "09:00"
+  closeTime: string; // Format "20:00"
 }
 
 type WeeklySchedule = Record<"Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun", DaySchedule>;
@@ -68,7 +68,7 @@ interface ShopProfile {
   pin: string;
   themeColor: string;
   deliveryFee: number;
-  isOpenManual: boolean; // Manual override toggle
+  isOpenManual: boolean;
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
   schedule: WeeklySchedule;
@@ -85,10 +85,10 @@ interface ShopProfile {
 
 // --- DEFAULT SCHEDULE INITIALIZER ---
 const DEFAULT_SCHEDULE: WeeklySchedule = {
-  Mon: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
-  Tue: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
-  Wed: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
-  Thu: { isOpen: true, openTime: "09:00", closeTime: "21:00" },
+  Mon: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
+  Tue: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
+  Wed: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
+  Thu: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
   Fri: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
   Sat: { isOpen: true, openTime: "10:00", closeTime: "22:00" },
   Sun: { isOpen: false, openTime: "10:00", closeTime: "18:00" },
@@ -272,19 +272,22 @@ export default function App() {
     document.head.appendChild(link);
   }, []);
 
-  // AUTOMATIC LIVE STORE OPEN DETECTOR
+  // FIXED ACCURATE LOCAL TIME STORE OPEN DETECTOR
   const isShopOpenNow = (shop: ShopProfile) => {
     if (!shop.isOpenManual) return false;
+    
     const now = new Date();
-    const days: Array<"Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"> = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const currentDay = days[now.getDay()];
-    const daySched = shop.schedule ? shop.schedule[currentDay] : DEFAULT_SCHEDULE[currentDay];
-
+    // Accurately map local day index: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+    const dayKeys: Array<"Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"> = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const currentDayKey = dayKeys[now.getDay()];
+    
+    const daySched = shop.schedule ? shop.schedule[currentDayKey] : DEFAULT_SCHEDULE[currentDayKey];
     if (!daySched || !daySched.isOpen) return false;
 
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    const [openH, openM] = daySched.openTime.split(":").map(Number);
-    const [closeH, closeM] = daySched.closeTime.split(":").map(Number);
+    const [openH, openM] = (daySched.openTime || "09:00").split(":").map(Number);
+    const [closeH, closeM] = (daySched.closeTime || "20:00").split(":").map(Number);
+    
     const openMins = openH * 60 + openM;
     const closeMins = closeH * 60 + closeM;
 
@@ -613,7 +616,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "Poppins, sans-serif", paddingBottom: "120px" }}>
-      {/* INJECT HARDCODED HIGH-CONTRAST CSS RULES TO OVERRIDE BROWSER FORCED-WHITE CONTRAST MODES */}
       <style>{`
         .force-high-contrast-btn {
           color: #ffffff !important;
@@ -648,7 +650,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 📍 Pin
               </a>
             )}
-            {/* HARDCODED HIGH-CONTRAST ADMIN BUTTON */}
             <button
               onClick={() => setAdminModalOpen(true)}
               className="force-high-contrast-btn"
@@ -664,7 +665,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       <main style={{ maxWidth: "800px", margin: "0 auto", padding: "16px" }}>
         {!currentComputedOpenState && (
           <div style={{ backgroundColor: "#7f1d1d", border: "1px solid #991b1b", color: "#fca5a5", padding: "12px", borderRadius: "10px", marginBottom: "16px", textAlign: "center", fontWeight: "bold", fontSize: "13px" }}>
-            🔴 Cookshop closed right now. Please check back during operational hours!
+            🔴 Cookshop closed right now. Please check back during operational hours or turn on "Open Override" in Admin.
           </div>
         )}
 
@@ -748,7 +749,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                       {isLiked ? "❤️" : "🤍"} {dish.likes || 0}
                     </button>
                   </div>
-                  {/* HARDCODED HIGH-CONTRAST ADD TO PLATE BUTTON */}
                   {currentComputedOpenState && dish.inStock && (
                     <button
                       onClick={() => setSelectedDish(dish)}
@@ -791,7 +791,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
             </div>
 
             <div style={{ backgroundColor: "#121215", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", marginBottom: "16px" }}>
-              {/* Delivery vs Pickup Toggle */}
               <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <button
                   type="button"
@@ -811,14 +810,12 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </button>
               </div>
 
-              {/* Delivery Zone Notice */}
               {orderType === "delivery" && activeShop.deliveryZoneNote && (
                 <p style={{ fontSize: "11px", color: "#fcd34d", backgroundColor: "#451a03", padding: "10px", borderRadius: "8px", border: "1px solid #78350f", margin: "0 0 12px 0", lineHeight: "1.4" }}>
                   ⚠️ <strong>Delivery Zone Notice:</strong> {activeShop.deliveryZoneNote}
                 </p>
               )}
 
-              {/* Delivery Timing Options */}
               <div style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>⏱️ Delivery / Pickup Timing</label>
                 <select
@@ -832,7 +829,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </select>
               </div>
 
-              {/* Payment Method Selector */}
               <div style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>💳 Select Payment Method</label>
                 <div style={{ display: "flex", gap: "6px" }}>
@@ -880,7 +876,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 )}
               </div>
 
-              {/* Driver Tip */}
               <div style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>💵 Driver / Cookshop Tip</label>
                 <div style={{ display: "flex", gap: "6px" }}>
@@ -898,7 +893,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                 </div>
               </div>
 
-              {/* Customer Info */}
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>Your Name / Nickname *</label>
@@ -935,7 +929,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               </div>
             </div>
 
-            {/* Totals Breakdown */}
             <div style={{ borderTop: "1px solid #27272a", paddingTop: "12px", marginBottom: "16px", fontSize: "13px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", color: "#a1a1aa", marginBottom: "4px" }}>
                 <span>Subtotal</span>
@@ -1092,7 +1085,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
         </div>
       )}
 
-      {/* --- CUSTOM / OFF-MENU DISH MODAL --- */}
+      {/* --- CUSTOM DISH MODAL --- */}
       {customDishModal && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
@@ -1145,7 +1138,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
         </div>
       )}
 
-      {/* --- RECEIPT & POST-ORDER ACTIONS MODAL --- */}
+      {/* --- RECEIPT MODAL --- */}
       {activeReceipt && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "#18181b", color: "#ffffff", borderRadius: "16px", maxWidth: "420px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
@@ -1162,32 +1155,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 800 }}>Total:</span><span style={{ fontWeight: 900, color: "#34d399" }}>${activeReceipt.total} JMD</span></div>
             </div>
 
-            <div style={{ marginBottom: "20px" }}>
-              <p style={{ fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "8px" }}>⏱️ Need to modify order due to wait time?</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <button
-                  onClick={() => {
-                    updateOrderStatus(activeShop.id, activeReceipt.id, "Cancelled");
-                    window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20SWITCH%20my%20order%20%23${activeReceipt.id}%20to%20Store%20Pickup%20instead%20of%20delivery.`, "_blank");
-                    setActiveReceipt(null);
-                  }}
-                  style={{ backgroundColor: "#451a03", color: "#fcd34d", fontSize: "11px", fontWeight: 800, padding: "10px 4px", borderRadius: "8px", border: "1px solid #78350f", cursor: "pointer", textAlign: "center" }}
-                >
-                  🏪 Switch to Pickup
-                </button>
-                <button
-                  onClick={() => {
-                    updateOrderStatus(activeShop.id, activeReceipt.id, "Cancelled");
-                    window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20CANCEL%20my%20order%20%23${activeReceipt.id}%20due%20to%20the%20wait%20time.`, "_blank");
-                    setActiveReceipt(null);
-                  }}
-                  style={{ backgroundColor: "#7f1d1d", color: "#fca5a5", fontSize: "11px", fontWeight: 800, padding: "10px 4px", borderRadius: "8px", border: "1px solid #991b1b", cursor: "pointer", textAlign: "center" }}
-                >
-                  ❌ Cancel Order
-                </button>
-              </div>
-            </div>
-
             <button onClick={() => setActiveReceipt(null)} style={{ width: "100%", backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "8px", fontSize: "12px", border: "1px solid #3f3f46", cursor: "pointer" }}>Close Receipt</button>
           </div>
         </div>
@@ -1195,480 +1162,391 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
       {/* --- MASTER & SHOP ADMIN MODAL --- */}
       {adminModalOpen && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-          <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "650px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a", margin: "32px 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #27272a", paddingBottom: "12px" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "650px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a" }}>
+            
+            {/* STICKY ADMIN PANEL HEADER */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #27272a", backgroundColor: "#18181b", borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
               <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
-                {isMasterSession ? "👑 Master Developer Panel" : loggedInAdminShopId ? `🛠️ Admin Panel: ${shops.find(s => s.id === loggedInAdminShopId)?.name}` : "🔐 Enter Admin PIN"}
+                {isMasterSession ? "👑 Master Developer Panel" : loggedInAdminShopId ? `🛠️ ${shops.find(s => s.id === loggedInAdminShopId)?.name} Admin` : "🔐 Enter Admin PIN"}
               </h3>
-              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
+              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "20px", cursor: "pointer" }}>✕</button>
             </div>
 
-            {/* SECURE PIN LOGIN SCREEN */}
-            {!isMasterSession && !loggedInAdminShopId && (
-              <div style={{ padding: "20px 0", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit PIN</p>
-                <input
-                  type="password"
-                  maxLength={4}
-                  placeholder="••••"
-                  value={adminPinInput}
-                  onChange={(e) => setAdminPinInput(e.target.value)}
-                  style={{ width: "130px", textAlign: "center", letterSpacing: "8px", fontSize: "22px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 16px auto", outline: "none", fontFamily: "monospace", display: "block" }}
-                />
-                <button onClick={handleAdminLogin} className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "12px 24px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}>Unlock Admin Panel</button>
-              </div>
-            )}
+            <div style={{ overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-            {/* --- MASTER DEVELOPER PANEL --- */}
-            {isMasterSession && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {/* Visit Shops Selector Dropdown */}
-                <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-                  <div>
-                    <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>🏪 Visit Shops (Exclusive Master Switcher)</h4>
-                    <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 0 0" }}>Select which cookshop to actively manage or view.</p>
-                  </div>
-                  <select
-                    value={activeShopId}
-                    onChange={(e) => {
-                      setActiveShopId(e.target.value);
-                      window.history.pushState({}, "", `?shop=${e.target.value}`);
-                    }}
-                    style={{ backgroundColor: "#27272a", color: "#ffffff", fontSize: "12px", fontWeight: 700, padding: "8px 12px", borderRadius: "8px", border: "1px solid #3f3f46", outline: "none" }}
-                  >
-                    {shops.map(s => (
-                      <option key={s.id} value={s.id} style={{ color: "#18181b" }}>
-                        🏪 {s.name} (PIN: {s.pin})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Developer Messages Inbox */}
-                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                  <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: "0 0 8px 0" }}>📬 Incoming Developer Inbox ({devNotes.length})</h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "160px", overflowY: "auto" }}>
-                    {devNotes.length === 0 ? (
-                      <p style={{ fontSize: "11px", color: "#a1a1aa", margin: 0 }}>No messages in developer inbox.</p>
-                    ) : (
-                      devNotes.map(n => (
-                        <div key={n.id} style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "8px", border: "1px solid #27272a", fontSize: "11px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#60a5fa", marginBottom: "4px" }}>
-                            <span>From: {n.shopName}</span>
-                            <span style={{ color: "#a1a1aa", fontWeight: 400 }}>{n.timestamp}</span>
-                          </div>
-                          <p style={{ margin: "0 0 6px 0", color: "#ffffff" }}>"{n.message}"</p>
-                          {shops.find(s => s.id === n.shopId)?.whatsapp && (
-                            <a href={`https://wa.me/${shops.find(s => s.id === n.shopId)?.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#34d399", fontWeight: 800, textDecoration: "none" }}>📲 Reply on WhatsApp</a>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Custom Master PIN Settings */}
-                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                  <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: "0 0 6px 0" }}>🔑 Master Developer Security</h4>
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <input
-                      type="text"
-                      maxLength={4}
-                      value={masterPin}
-                      onChange={(e) => setMasterPin(e.target.value)}
-                      style={{ width: "100px", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", textAlign: "center", fontFamily: "monospace" }}
-                    />
-                    <span style={{ fontSize: "11px", color: "#a1a1aa" }}>Update Secret Master PIN (Default: 9999)</span>
-                  </div>
-                </div>
-
-                {/* Instant Shop Launcher */}
-                <form onSubmit={createInstantShop} style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>🚀 1-Step Instant Shop Launcher</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                    <input type="text" placeholder="Shop Name *" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px" }} />
-                    <input type="text" placeholder="WhatsApp Number *" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px" }} />
-                  </div>
-                  <input type="text" placeholder="Shop Tagline (e.g. Best Oxtails in Town)" value={newShopTagline} onChange={(e) => setNewShopTagline(e.target.value)} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px", boxSizing: "border-box" }} />
-                  <button type="submit" className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>
-                    🚀 Launch New Shop Instantly
-                  </button>
-                </form>
-
-                {/* Developer Info & Credentials Editor */}
-                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Active Shop Operational Settings</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Active Shop PIN</label>
-                      <input type="text" maxLength={4} value={activeShop.pin} onChange={(e) => setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, pin: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", boxSizing: "border-box" }} />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Shop Name</label>
-                      <input type="text" value={activeShop.name} onChange={(e) => setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, name: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", boxSizing: "border-box" }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Supabase Database URL</label>
-                    <input type="text" placeholder="https://xxxxxx.supabase.co" value={activeShop.supabaseUrl || ""} onChange={(e) => setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, supabaseUrl: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", boxSizing: "border-box", fontFamily: "monospace" }} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Supabase Anon Key</label>
-                    <input type="password" placeholder="eyJhGciOi..." value={activeShop.supabaseKey || ""} onChange={(e) => setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, supabaseKey: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "12px", boxSizing: "border-box", fontFamily: "monospace" }} />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm("⚠️ WARNING: Are you sure you want to reset state?") && window.confirm("🚨 FINAL CONFIRMATION: Resetting will restore default shops and clear saved local updates. Proceed?")) {
-                        localStorage.clear();
-                        window.location.reload();
-                      }
-                    }}
-                    style={{ backgroundColor: "#991b1b", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer", marginTop: "4px" }}
-                  >
-                    ⚠️ Reset State to Master Configuration (Double Confirm Protected)
-                  </button>
-                </div>
-
-                {/* Global Receipt Search Bar across all stores */}
-                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                  <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>🔎 Global Order Queue & Master Receipt Search</h4>
+              {/* SECURE PIN LOGIN SCREEN */}
+              {!isMasterSession && !loggedInAdminShopId && (
+                <div style={{ padding: "30px 0", textAlign: "center" }}>
+                  <p style={{ fontSize: "13px", color: "#a1a1aa", marginBottom: "16px" }}>Enter 4-digit PIN</p>
                   <input
-                    type="text"
-                    placeholder="Search receipts by ID, customer name, dish, address..."
-                    value={masterSearchQuery}
-                    onChange={(e) => setMasterSearchQuery(e.target.value)}
-                    style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "12px", outline: "none", boxSizing: "border-box", marginBottom: "8px" }}
+                    type="password"
+                    maxLength={4}
+                    placeholder="••••"
+                    value={adminPinInput}
+                    onChange={(e) => setAdminPinInput(e.target.value)}
+                    style={{ width: "140px", textAlign: "center", letterSpacing: "8px", fontSize: "24px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 20px auto", outline: "none", fontFamily: "monospace", display: "block" }}
                   />
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "150px", overflowY: "auto" }}>
-                    {currentShopOrders
-                      .filter(o => o.id.toLowerCase().includes(masterSearchQuery.toLowerCase()) || o.customerName.toLowerCase().includes(masterSearchQuery.toLowerCase()) || o.address.toLowerCase().includes(masterSearchQuery.toLowerCase()))
-                      .map(o => (
-                        <div key={o.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span>#{o.id} - {o.customerName} (${o.total})</span>
-                          <span style={{ color: "#34d399", fontWeight: 800 }}>{o.status}</span>
-                        </div>
+                  <button onClick={handleAdminLogin} className="force-high-contrast-btn" style={{ backgroundColor: "#059669", fontWeight: 800, padding: "12px 28px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}>Unlock Admin Panel</button>
+                </div>
+              )}
+
+              {/* --- MASTER DEVELOPER PANEL --- */}
+              {isMasterSession && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+                    <div>
+                      <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>🏪 Switch Active Shop</h4>
+                    </div>
+                    <select
+                      value={activeShopId}
+                      onChange={(e) => {
+                        setActiveShopId(e.target.value);
+                        window.history.pushState({}, "", `?shop=${e.target.value}`);
+                      }}
+                      style={{ backgroundColor: "#27272a", color: "#ffffff", fontSize: "12px", fontWeight: 700, padding: "8px 12px", borderRadius: "8px", border: "1px solid #3f3f46", outline: "none" }}
+                    >
+                      {shops.map(s => (
+                        <option key={s.id} value={s.id} style={{ color: "#18181b" }}>
+                          🏪 {s.name} (PIN: {s.pin})
+                        </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Master</button>
                   </div>
                 </div>
+              )}
 
-                <div style={{ textAlign: "right" }}>
-                  <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Master</button>
-                </div>
-              </div>
-            )}
+              {/* --- SHOP OWNER ADMIN PANEL --- */}
+              {loggedInAdminShopId && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {(() => {
+                    const shop = shops.find(s => s.id === loggedInAdminShopId);
+                    if (!shop) return null;
+                    const shopUrl = `${window.location.origin}${window.location.pathname}?shop=${shop.id}`;
+                    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
 
-            {/* --- SHOP OWNER ADMIN PANEL --- */}
-            {loggedInAdminShopId && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {(() => {
-                  const shop = shops.find(s => s.id === loggedInAdminShopId);
-                  if (!shop) return null;
-                  const shopUrl = `${window.location.origin}${window.location.pathname}?shop=${shop.id}`;
-                  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
-
-                  return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                      {/* RESTORED OPERATIONAL STATUS CARD */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-                        <div>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Operational Status</h4>
-                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 0 0" }}>Control store open status & delivery availability.</p>
-                        </div>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))} className="force-high-contrast-btn" style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isOpenManual ? "#059669" : "#e11d48" }}>{shop.isOpenManual ? "🟢 Open Override" : "🔴 Force Closed"}</button>
-                          <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))} className="force-high-contrast-btn" style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#71717a" }}>{shop.isDeliveryActive ? "🚚 Delivery On" : "🛑 Delivery Off"}</button>
-                        </div>
-                      </div>
-
-                      {/* AUTOMATED WEEKLY OPERATING HOURS BUILDER */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>⏰ Automated Weekly Schedule & Days</h4>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "180px", overflowY: "auto" }}>
-                          {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Array<keyof WeeklySchedule>).map(day => {
-                            const dayData = (shop.schedule && shop.schedule[day]) || DEFAULT_SCHEDULE[day];
-                            return (
-                              <div key={day} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", fontSize: "11px" }}>
-                                <label style={{ fontWeight: 800, width: "40px", color: "#ffffff" }}>{day}:</label>
-                                <label style={{ display: "flex", alignItems: "center", gap: "4px", color: "#a1a1aa" }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={dayData.isOpen}
-                                    onChange={(e) => {
-                                      const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, isOpen: e.target.checked } };
-                                      setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                    }}
-                                  /> Open
-                                </label>
-                                {dayData.isOpen ? (
-                                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                    <input
-                                      type="time"
-                                      value={dayData.openTime}
-                                      onChange={(e) => {
-                                        const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, openTime: e.target.value } };
-                                        setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                      }}
-                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 4px", fontSize: "10px" }}
-                                    />
-                                    <span>to</span>
-                                    <input
-                                      type="time"
-                                      value={dayData.closeTime}
-                                      onChange={(e) => {
-                                        const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, closeTime: e.target.value } };
-                                        setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
-                                      }}
-                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 4px", fontSize: "10px" }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <span style={{ color: "#f87171", fontWeight: 800 }}>Closed</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Header Customizer: Photo Banner, Fonts & Colors */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>🎨 Header Branding, Fonts & Accent Colors</h4>
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                         
-                        <div>
-                          <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "4px" }}>Header Photo Banner</label>
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                            <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa", flex: 1 }} />
-                            {shop.headerPhoto && (
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <img src={shop.headerPhoto} alt="Thumbnail" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px", border: "1px solid #3f3f46" }} />
-                                <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>
-                              </div>
-                            )}
+                        {/* ⚡ CARD 1: OPERATIONAL CONTROL CENTER & INSTANT OVERRIDES */}
+                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "2px solid #059669", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                            <h4 style={{ fontWeight: 900, color: "#34d399", fontSize: "14px", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                              ⚡ Operational Control Center
+                            </h4>
+                            <span style={{ fontSize: "11px", fontWeight: 900, padding: "4px 10px", borderRadius: "999px", backgroundColor: currentComputedOpenState ? "#064e3b" : "#881337", color: currentComputedOpenState ? "#34d399" : "#fda4af", border: currentComputedOpenState ? "1px solid #059669" : "1px solid #f43f5e" }}>
+                              {currentComputedOpenState ? "CURRENT STATUS: OPEN 🟢" : "CURRENT STATUS: CLOSED 🔴"}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                            <button
+                              onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))}
+                              className="force-high-contrast-btn"
+                              style={{ padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", backgroundColor: shop.isOpenManual ? "#059669" : "#e11d48", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                            >
+                              {shop.isOpenManual ? "🟢 FORCE STORE OPEN" : "🔴 FORCE STORE CLOSED"}
+                            </button>
+
+                            <button
+                              onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))}
+                              className="force-high-contrast-btn"
+                              style={{ padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: 900, border: "none", cursor: "pointer", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#52525b", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+                            >
+                              {shop.isDeliveryActive ? "🚚 DELIVERY ENABLED" : "🛑 DELIVERY DISABLED"}
+                            </button>
                           </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        {/* ⏰ CARD 2: AUTOMATED WEEKLY OPERATING HOURS */}
+                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                          <h4 style={{ fontWeight: 900, color: "#f59e0b", fontSize: "14px", margin: "0 0 6px 0", letterSpacing: "0.5px" }}>
+                            ⏰ Weekly Schedule & Operating Hours
+                          </h4>
+                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "0 0 12px 0" }}>
+                            Set the exact opening and closing times for each day of the week.
+                          </p>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Array<keyof WeeklySchedule>).map(day => {
+                              const dayData = (shop.schedule && shop.schedule[day]) || DEFAULT_SCHEDULE[day];
+                              return (
+                                <div key={day} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#121215", padding: "8px 12px", borderRadius: "8px", border: "1px solid #27272a" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                    <span style={{ fontWeight: 900, fontSize: "12px", color: "#ffffff", width: "36px" }}>{day}</span>
+                                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#d4d4d8", cursor: "pointer" }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={dayData.isOpen}
+                                        onChange={(e) => {
+                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, isOpen: e.target.checked } };
+                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                        }}
+                                        style={{ accentColor: "#059669" }}
+                                      />
+                                      <span>{dayData.isOpen ? "Open" : "Closed"}</span>
+                                    </label>
+                                  </div>
+
+                                  {dayData.isOpen ? (
+                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                      <input
+                                        type="time"
+                                        value={dayData.openTime}
+                                        onChange={(e) => {
+                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, openTime: e.target.value } };
+                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                        }}
+                                        style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", outline: "none" }}
+                                      />
+                                      <span style={{ fontSize: "11px", color: "#a1a1aa" }}>to</span>
+                                      <input
+                                        type="time"
+                                        value={dayData.closeTime}
+                                        onChange={(e) => {
+                                          const updatedSchedule = { ...shop.schedule, [day]: { ...dayData, closeTime: e.target.value } };
+                                          setShops(prev => prev.map(s => s.id === shop.id ? { ...s, schedule: updatedSchedule } : s));
+                                        }}
+                                        style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", outline: "none" }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: "11px", fontWeight: 800, color: "#f87171" }}>Closed Day</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 🎨 CARD 3: HEADER BRANDING & PHOTO */}
+                        <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px" }}>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🎨 Header Branding, Fonts & Accent Colors</h4>
                           <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Font Style</label>
-                            <select value={shop.fontFamily} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, fontFamily: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                              <option value="Poppins, sans-serif">Modern Sans (Poppins)</option>
-                              <option value="'Bebas Neue', cursive">Bold Display (Bebas Neue)</option>
-                              <option value="'Playfair Display', serif">Classic Serif (Playfair)</option>
-                              <option value="system-ui, sans-serif">Clean System</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Theme Accent Color</label>
-                            <select value={shop.themeColor} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, themeColor: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                              <option value="#059669">Emerald Green</option>
-                              <option value="#d97706">Amber Gold</option>
-                              <option value="#e11d48">Crimson Red</option>
-                              <option value="#2563eb">Sapphire Blue</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Customer History Search Tool */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #38bdf8" }}>
-                        <h4 style={{ fontWeight: 800, color: "#38bdf8", fontSize: "13px", margin: "0 0 6px 0" }}>👤 Customer History Search</h4>
-                        <input
-                          type="text"
-                          placeholder="Search customer name (e.g. Omarian)..."
-                          value={customerSearchQuery}
-                          onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                          style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
-                        />
-
-                        {searchedCustomerStats ? (
-                          <div style={{ marginTop: "10px", backgroundColor: "#0284c7", color: "#ffffff", padding: "10px", borderRadius: "8px", fontSize: "11px" }}>
-                            <div style={{ fontWeight: 900, fontSize: "12px", marginBottom: "4px" }}>Customer Profile: {customerSearchQuery}</div>
-                            <div>• Total Orders: <strong>{searchedCustomerStats.orderCount}</strong></div>
-                            <div>• Total Amount Spent: <strong>${searchedCustomerStats.totalSpent} JMD</strong></div>
-                            <div>• Favorite Dish: <strong>{searchedCustomerStats.favoriteDish}</strong></div>
-                            <div>• Delivery Addresses: <strong>{searchedCustomerStats.addresses.join(" | ")}</strong></div>
-                          </div>
-                        ) : customerSearchQuery.trim() !== "" ? (
-                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "8px 0 0 0" }}>No past orders found for this customer name.</p>
-                        ) : null}
-                      </div>
-
-                      {/* Contact Developer & Send Note */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💬 Contact Developer Support</h4>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <input type="text" placeholder="Type a note or report to developer..." value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} style={{ flex: 1, backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
-                          <button onClick={sendNoteToDeveloper} style={{ backgroundColor: "#2563eb", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Send Note</button>
-                        </div>
-                      </div>
-
-                      {/* Designated Socials & Contact Slots */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>📞 Contact Info & Designated Socials</h4>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>WhatsApp Number</label>
-                            <input type="text" value={shop.whatsapp} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>🎵 TikTok Handle</label>
-                            <input type="text" placeholder="@handle" value={shop.tiktok} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, tiktok: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📸 Instagram Handle</label>
-                            <input type="text" placeholder="@handle" value={shop.instagram} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, instagram: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📘 Facebook Page</label>
-                            <input type="text" placeholder="Page Name" value={shop.facebook} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, facebook: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                          </div>
-                        </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📍 Google Maps Pin Link</label>
-                          <input type="text" placeholder="https://maps.google.com/?q=..." value={shop.mapLink} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, mapLink: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                        </div>
-                      </div>
-
-                      {/* Payment Method Options Toggles */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💳 Payment Method Options & Details</h4>
-                        <div style={{ display: "flex", gap: "12px" }}>
-                          <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                            <input type="checkbox" checked={shop.acceptCash} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptCash: e.target.checked } : s))} /> Cash
-                          </label>
-                          <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                            <input type="checkbox" checked={shop.acceptBank} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptBank: e.target.checked } : s))} /> Bank Transfer
-                          </label>
-                          <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                            <input type="checkbox" checked={shop.acceptLynk} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptLynk: e.target.checked } : s))} /> Lynk
-                          </label>
-                        </div>
-                        {shop.acceptBank && (
-                          <input type="text" placeholder="Bank Account Details" value={shop.bankDetails} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, bankDetails: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                        )}
-                        {shop.acceptLynk && (
-                          <input type="text" placeholder="Lynk Handle / Details" value={shop.lynkDetails} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, lynkDetails: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                        )}
-                      </div>
-
-                      {/* Counter QR & Link Copying */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-                        <img src={qrCodeUrl} alt="QR Code" style={{ width: "80px", height: "80px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #3f3f46", flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: "160px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Counter QR & Store URL</h4>
-                          <p style={{ fontSize: "10px", color: "#a1a1aa", margin: "2px 0 6px 0" }}>Share your store URL or print your counter QR.</p>
-                          <div style={{ display: "flex", gap: "6px" }}>
-                            <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "10px", fontWeight: 800, color: "#60a5fa", textDecoration: "none", padding: "6px 8px", backgroundColor: "#1e3a8a", borderRadius: "6px", border: "1px solid #3b82f6" }}>📥 Download QR</a>
-                            <button onClick={() => { navigator.clipboard.writeText(shopUrl); alert("Store URL copied!"); }} style={{ fontSize: "10px", fontWeight: 800, color: "#34d399", backgroundColor: "#064e3b", padding: "6px 8px", borderRadius: "6px", border: "1px solid #059669", cursor: "pointer" }}>📋 Copy Store URL</button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Menu Management & Categorization */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
-                          <button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 800, border: "none", cursor: "pointer" }}>+ Add Dish</button>
-                        </div>
-
-                        {editingDish !== null && (
-                          <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <h5 style={{ fontWeight: 800, fontSize: "11px", color: "#ffffff", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                              <input type="text" placeholder="Dish Name" value={dishNameInput} onChange={(e) => setDishNameInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
-                              <input type="number" placeholder="Price ($ JMD)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
+                            <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "4px" }}>Header Photo Banner</label>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                              <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa", flex: 1 }} />
+                              {shop.headerPhoto && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <img src={shop.headerPhoto} alt="Thumbnail" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px", border: "1px solid #3f3f46" }} />
+                                  <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: "" } : s))} style={{ backgroundColor: "#7f1d1d", color: "#ffffff", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", border: "none", cursor: "pointer" }}>Remove</button>
+                                </div>
+                              )}
                             </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                              <select value={dishCatInput} onChange={(e) => setDishCatInput(e.target.value as Dish["category"])} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
-                                <option value="Mains">Mains</option>
-                                <option value="Drinks">Drinks</option>
-                                <option value="Snacks">Snacks</option>
-                                <option value="Sides">Sides</option>
-                                <option value="Soups">Soups</option>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Font Style</label>
+                              <select value={shop.fontFamily} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, fontFamily: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                                <option value="Poppins, sans-serif">Modern Sans (Poppins)</option>
+                                <option value="'Bebas Neue', cursive">Bold Display (Bebas Neue)</option>
+                                <option value="'Playfair Display', serif">Classic Serif (Playfair)</option>
                               </select>
-                              <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
                             </div>
-                            <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
-                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
-                              <input type="checkbox" checked={dishSuggestedInput} onChange={(e) => setDishSuggestedInput(e.target.checked)} /> ⭐ Mark as Chef's Special / Suggested
-                            </label>
-                            <div style={{ display: "flex", gap: "6px", paddingTop: "4px" }}>
-                              <button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save Dish</button>
-                              <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>Theme Accent Color</label>
+                              <select value={shop.themeColor} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, themeColor: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                                <option value="#059669">Emerald Green</option>
+                                <option value="#d97706">Amber Gold</option>
+                                <option value="#e11d48">Crimson Red</option>
+                                <option value="#2563eb">Sapphire Blue</option>
+                              </select>
                             </div>
                           </div>
-                        )}
+                        </div>
 
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
-                          {(menus[loggedInAdminShopId] || []).map(dish => (
-                            <div key={dish.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                              <span><strong style={{ color: "#ffffff" }}>{dish.name}</strong> (${dish.price}) [{dish.category}] {dish.isSuggested ? "⭐" : ""}</span>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <button onClick={() => setMenus(prev => ({ ...prev, [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d) }))} style={{ padding: "3px 6px", borderRadius: "4px", fontWeight: 800, fontSize: "9px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#064e3b" : "#7f1d1d", color: dish.inStock ? "#34d399" : "#fca5a5" }}>{dish.inStock ? "In Stock" : "Sold Out"}</button>
-                                <button onClick={() => { setEditingDish(dish); setDishNameInput(dish.name); setDishPriceInput(dish.price.toString()); setDishDescInput(dish.description); setDishCatInput(dish.category); setDishImageInput(dish.image); setDishSuggestedInput(!!dish.isSuggested); }} style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Edit</button>
-                                <button onClick={() => deleteDish(dish.id)} style={{ color: "#f87171", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
+                        {/* 👤 CARD 4: CUSTOMER HISTORY SEARCH */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #38bdf8" }}>
+                          <h4 style={{ fontWeight: 800, color: "#38bdf8", fontSize: "13px", margin: "0 0 6px 0" }}>👤 Customer History Search</h4>
+                          <input
+                            type="text"
+                            placeholder="Search customer name (e.g. Omarian)..."
+                            value={customerSearchQuery}
+                            onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                            style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                          />
+
+                          {searchedCustomerStats ? (
+                            <div style={{ marginTop: "10px", backgroundColor: "#0284c7", color: "#ffffff", padding: "10px", borderRadius: "8px", fontSize: "11px" }}>
+                              <div style={{ fontWeight: 900, fontSize: "12px", marginBottom: "4px" }}>Customer Profile: {customerSearchQuery}</div>
+                              <div>• Total Orders: <strong>{searchedCustomerStats.orderCount}</strong></div>
+                              <div>• Total Amount Spent: <strong>${searchedCustomerStats.totalSpent} JMD</strong></div>
+                              <div>• Favorite Dish: <strong>{searchedCustomerStats.favoriteDish}</strong></div>
+                              <div>• Delivery Addresses: <strong>{searchedCustomerStats.addresses.join(" | ")}</strong></div>
+                            </div>
+                          ) : customerSearchQuery.trim() !== "" ? (
+                            <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "8px 0 0 0" }}>No past orders found for this customer name.</p>
+                          ) : null}
+                        </div>
+
+                        {/* 💬 CARD 5: DEVELOPER SUPPORT */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💬 Contact Developer Support</h4>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <input type="text" placeholder="Type a note or report to developer..." value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} style={{ flex: 1, backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
+                            <button onClick={sendNoteToDeveloper} style={{ backgroundColor: "#2563eb", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Send Note</button>
+                          </div>
+                        </div>
+
+                        {/* 📞 CARD 6: CONTACT INFO & SOCIALS */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <h4 style={{ fontWeight: 800, color: "#34d399", fontSize: "13px", margin: 0 }}>📞 Contact Info & Designated Socials</h4>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>WhatsApp Number</label>
+                              <input type="text" value={shop.whatsapp} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>🎵 TikTok Handle</label>
+                              <input type="text" placeholder="@handle" value={shop.tiktok} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, tiktok: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📸 Instagram Handle</label>
+                              <input type="text" placeholder="@handle" value={shop.instagram} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, instagram: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa" }}>📘 Facebook Page</label>
+                              <input type="text" placeholder="Page Name" value={shop.facebook} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, facebook: e.target.value } : s))} style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 💳 CARD 7: PAYMENT DETAILS */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>💳 Payment Method Options & Details</h4>
+                          <div style={{ display: "flex", gap: "12px" }}>
+                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
+                              <input type="checkbox" checked={shop.acceptCash} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptCash: e.target.checked } : s))} /> Cash
+                            </label>
+                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
+                              <input type="checkbox" checked={shop.acceptBank} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptBank: e.target.checked } : s))} /> Bank Transfer
+                            </label>
+                            <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
+                              <input type="checkbox" checked={shop.acceptLynk} onChange={(e) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, acceptLynk: e.target.checked } : s))} /> Lynk
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* 📲 CARD 8: COUNTER QR & STORE URL */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+                          <img src={qrCodeUrl} alt="QR Code" style={{ width: "80px", height: "80px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #3f3f46", flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: "160px" }}>
+                            <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Counter QR & Store URL</h4>
+                            <p style={{ fontSize: "10px", color: "#a1a1aa", margin: "2px 0 6px 0" }}>Share your store URL or print your counter QR.</p>
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "10px", fontWeight: 800, color: "#60a5fa", textDecoration: "none", padding: "6px 8px", backgroundColor: "#1e3a8a", borderRadius: "6px", border: "1px solid #3b82f6" }}>📥 Download QR</a>
+                              <button onClick={() => { navigator.clipboard.writeText(shopUrl); alert("Store URL copied!"); }} style={{ fontSize: "10px", fontWeight: 800, color: "#34d399", backgroundColor: "#064e3b", padding: "6px 8px", borderRadius: "6px", border: "1px solid #059669", cursor: "pointer" }}>📋 Copy Store URL</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 🍽️ CARD 9: MENU MANAGEMENT */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                            <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
+                            <button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#ffffff", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 800, border: "none", cursor: "pointer" }}>+ Add Dish</button>
+                          </div>
+
+                          {editingDish !== null && (
+                            <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                              <h5 style={{ fontWeight: 800, fontSize: "11px", color: "#ffffff", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                                <input type="text" placeholder="Dish Name" value={dishNameInput} onChange={(e) => setDishNameInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
+                                <input type="number" placeholder="Price ($ JMD)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }} />
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                                <select value={dishCatInput} onChange={(e) => setDishCatInput(e.target.value as Dish["category"])} style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px" }}>
+                                  <option value="Mains">Mains</option>
+                                  <option value="Drinks">Drinks</option>
+                                  <option value="Snacks">Snacks</option>
+                                  <option value="Sides">Sides</option>
+                                  <option value="Soups">Soups</option>
+                                </select>
+                                <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
+                              </div>
+                              <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "6px", fontSize: "11px", boxSizing: "border-box" }} />
+                              <label style={{ fontSize: "11px", color: "#d4d4d8", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <input type="checkbox" checked={dishSuggestedInput} onChange={(e) => setDishSuggestedInput(e.target.checked)} /> ⭐ Mark as Chef's Special
+                              </label>
+                              <div style={{ display: "flex", gap: "6px", paddingTop: "4px" }}>
+                                <button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save Dish</button>
+                                <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          )}
 
-                      {/* Owner Receipt Lookup Bar & Live Order Queue */}
-                      <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
-                        <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>📋 Live Order Queue & Receipt Lookup</h4>
-                        <input
-                          type="text"
-                          placeholder="Search receipts by Order ID, customer, dish..."
-                          value={ownerSearchQuery}
-                          onChange={(e) => setOwnerSearchQuery(e.target.value)}
-                          style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box", marginBottom: "8px" }}
-                        />
-
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto" }}>
-                          {currentShopOrders
-                            .filter(o => o.id.toLowerCase().includes(ownerSearchQuery.toLowerCase()) || o.customerName.toLowerCase().includes(ownerSearchQuery.toLowerCase()))
-                            .map(order => (
-                              <div key={order.id} style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ fontWeight: 900, color: "#ffffff" }}>#{order.id} - {order.customerName}</span>
-                                  <span style={{ color: "#a1a1aa" }}>{order.timestamp}</span>
-                                </div>
-                                <div style={{ color: "#d4d4d8" }}>
-                                  {order.items.map((it, idx) => (
-                                    <div key={idx}>• {it.quantity}x {it.dish.name} [{it.spiceLevel}, {it.gravyLevel}]</div>
-                                  ))}
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "6px", borderTop: "1px solid #27272a" }}>
-                                  <span style={{ fontWeight: 800, color: "#34d399" }}>${order.total} JMD ({order.type})</span>
-                                  <select
-                                    value={order.status}
-                                    onChange={(e) => updateOrderStatus(activeShop.id, order.id, e.target.value as Order["status"])}
-                                    style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: 800, outline: "none" }}
-                                  >
-                                    <option value="Received">Received</option>
-                                    <option value="Preparing">Preparing 🍳</option>
-                                    <option value="Out for Delivery">Out for Delivery 🚚</option>
-                                    <option value="Completed">Completed ✅</option>
-                                    <option value="Cancelled">Cancelled ✕</option>
-                                  </select>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
+                            {(menus[loggedInAdminShopId] || []).map(dish => (
+                              <div key={dish.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
+                                <span><strong style={{ color: "#ffffff" }}>{dish.name}</strong> (${dish.price}) [{dish.category}]</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <button onClick={() => setMenus(prev => ({ ...prev, [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d) }))} style={{ padding: "3px 6px", borderRadius: "4px", fontWeight: 800, fontSize: "9px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#064e3b" : "#7f1d1d", color: dish.inStock ? "#34d399" : "#fca5a5" }}>{dish.inStock ? "In Stock" : "Sold Out"}</button>
+                                  <button onClick={() => { setEditingDish(dish); setDishNameInput(dish.name); setDishPriceInput(dish.price.toString()); setDishDescInput(dish.description); setDishCatInput(dish.category); setDishImageInput(dish.image); setDishSuggestedInput(!!dish.isSuggested); }} style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => deleteDish(dish.id)} style={{ color: "#f87171", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        </div>
+
+                        {/* 📋 CARD 10: RECEIPT LOOKUP */}
+                        <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>📋 Live Order Queue & Receipt Lookup</h4>
+                          <input
+                            type="text"
+                            placeholder="Search receipts by Order ID, customer, dish..."
+                            value={ownerSearchQuery}
+                            onChange={(e) => setOwnerSearchQuery(e.target.value)}
+                            style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px", fontSize: "11px", outline: "none", boxSizing: "border-box", marginBottom: "8px" }}
+                          />
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "180px", overflowY: "auto" }}>
+                            {currentShopOrders
+                              .filter(o => o.id.toLowerCase().includes(ownerSearchQuery.toLowerCase()) || o.customerName.toLowerCase().includes(ownerSearchQuery.toLowerCase()))
+                              .map(order => (
+                                <div key={order.id} style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                    <span style={{ fontWeight: 900, color: "#ffffff" }}>#{order.id} - {order.customerName}</span>
+                                    <span style={{ color: "#a1a1aa" }}>{order.timestamp}</span>
+                                  </div>
+                                  <div style={{ color: "#d4d4d8" }}>
+                                    {order.items.map((it, idx) => (
+                                      <div key={idx}>• {it.quantity}x {it.dish.name} [{it.spiceLevel}, {it.gravyLevel}]</div>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "6px", borderTop: "1px solid #27272a" }}>
+                                    <span style={{ fontWeight: 800, color: "#34d399" }}>${order.total} JMD ({order.type})</span>
+                                    <select
+                                      value={order.status}
+                                      onChange={(e) => updateOrderStatus(activeShop.id, order.id, e.target.value as Order["status"])}
+                                      style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: 800, outline: "none" }}
+                                    >
+                                      <option value="Received">Received</option>
+                                      <option value="Preparing">Preparing 🍳</option>
+                                      <option value="Out for Delivery">Out for Delivery 🚚</option>
+                                      <option value="Completed">Completed ✅</option>
+                                      <option value="Cancelled">Cancelled ✕</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: "right" }}>
+                          <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Admin</button>
                         </div>
                       </div>
-
-                      <div style={{ textAlign: "right" }}>
-                        <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Logout Admin</button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
