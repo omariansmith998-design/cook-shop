@@ -8,7 +8,7 @@ export interface Dish {
   category: string;
   soldOut: boolean;
   desc: string;
-  image?: string; // BASE64 IMAGE DATA
+  image?: string;
 }
 
 export interface ShopTheme {
@@ -170,9 +170,15 @@ const MASTER_PIN = "9999";
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
+  // SAFE LOCALSTORAGE PARSER (PREVENTS WHITE SCREEN ON CORRUPTED/OVERFLOWED STORAGE)
   const [shops, setShops] = useState<Record<string, ShopData>>(() => {
-    const saved = localStorage.getItem('yv_cookshop_shops');
-    return saved ? JSON.parse(saved) : INITIAL_SHOPS;
+    try {
+      const saved = localStorage.getItem('yv_cookshop_shops');
+      return saved ? JSON.parse(saved) : INITIAL_SHOPS;
+    } catch (e) {
+      console.warn("Storage parse error, resetting state:", e);
+      return INITIAL_SHOPS;
+    }
   });
 
   const [currentShopId, setCurrentShopId] = useState<string>('shop1');
@@ -180,16 +186,27 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('yv_cookshop_orders');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('yv_cookshop_orders');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>(() => {
-    const saved = localStorage.getItem('yv_cookshop_suggestions');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
-      { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
-    ];
+    try {
+      const saved = localStorage.getItem('yv_cookshop_suggestions');
+      return saved ? JSON.parse(saved) : [
+        { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
+        { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
+      ];
+    } catch (e) {
+      return [
+        { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
+        { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
+      ];
+    }
   });
 
   const [newSuggestion, setNewSuggestion] = useState('');
@@ -226,16 +243,29 @@ export default function App() {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
+  // SAFE AUTO-SAVE TO LOCALSTORAGE
   useEffect(() => {
-    localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
+    try {
+      localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
+    } catch (e) {
+      console.warn("LocalStorage full, unable to save shop updates.", e);
+    }
   }, [shops]);
 
   useEffect(() => {
-    localStorage.setItem('yv_cookshop_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('yv_cookshop_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.warn("LocalStorage full, unable to save orders.", e);
+    }
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
+    try {
+      localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
+    } catch (e) {
+      console.warn("LocalStorage full, unable to save suggestions.", e);
+    }
   }, [suggestions]);
 
   useEffect(() => {
@@ -289,18 +319,44 @@ export default function App() {
     }
   };
 
-  // HELPER TO CONVERT FILE FROM GALLERY/CAMERA TO BASE64
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setTargetState: (val: string) => void) => {
+  // AUTOMATIC IMAGE COMPRESSOR (REDUCES 10MB PHOTOS DOWN TO ~30KB TO PREVENT MEMORY CRASHES)
+  const handleCompressedImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setTargetState: (val: string) => void
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setTargetState(reader.result);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500; // Resize large camera images
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // Compress to JPEG format with 60% quality
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          setTargetState(compressedBase64);
         }
       };
-      reader.readAsDataURL(file);
-    }
+      if (event.target?.result) {
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const shop = shops[currentShopId] || shops['shop1'];
@@ -1069,7 +1125,7 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* MENU MANAGEMENT WITH GALLERY & CAMERA UPLOAD */}
+                  {/* MENU MANAGEMENT WITH AUTOMATIC AUTO-COMPRESSING PHOTO PICKER */}
                   <div className="space-y-2 border-t border-slate-800 pt-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory & Dish Editor</h4>
                     <div className="max-h-48 overflow-y-auto space-y-2">
@@ -1092,13 +1148,13 @@ export default function App() {
                                 placeholder="Price JMD"
                               />
                               
-                              {/* GALLERY / CAMERA INPUT FOR EDITING */}
+                              {/* AUTO-COMPRESSING CAMERA / GALLERY PICKER */}
                               <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
                                 <input 
                                   type="file" 
                                   accept="image/*"
-                                  onChange={(e) => handleImageUpload(e, setEditDishImg)}
+                                  onChange={(e) => handleCompressedImageUpload(e, setEditDishImg)}
                                   className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
                                 />
                                 {editDishImg && (
@@ -1160,7 +1216,7 @@ export default function App() {
                       ))}
                     </div>
 
-                    {/* ADD NEW DISH WITH FILE SELECTOR */}
+                    {/* ADD NEW DISH WITH COMPRESSION SELECTOR */}
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2 pt-2">
                       <span className="text-[11px] font-bold text-slate-400 block">+ Add New Dish</span>
                       <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
@@ -1171,7 +1227,7 @@ export default function App() {
                         <input 
                           type="file" 
                           accept="image/*"
-                          onChange={(e) => handleImageUpload(e, setNewDishImg)}
+                          onChange={(e) => handleCompressedImageUpload(e, setNewDishImg)}
                           className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
                         />
                         {newDishImg && (
