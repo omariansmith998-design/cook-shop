@@ -36,6 +36,8 @@ export interface ShopData {
   autoCloseEnabled: boolean;
   closeHour: number;
   deliveryEnabled: boolean;
+  onlinePaymentEnabled: boolean; // TOGGLE FOR ONLINE PAYMENTS
+  paymentDetailsNote: string; // INSTRUCTIONS FOR LYNK/BANK
   eventMode: boolean;
   eventTitle: string;
   eventBanner: string;
@@ -89,6 +91,8 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
     autoCloseEnabled: true,
     closeHour: 21,
     deliveryEnabled: true,
+    onlinePaymentEnabled: false, // OFF BY DEFAULT UNTIL ADMIN TOGGLES ON
+    paymentDetailsNote: "Lynk ID: @MamasYard | NCB Acc: 123456789",
     eventMode: false,
     eventTitle: "Weekend Fish Fry & Soup Special!",
     eventBanner: "Live Red Peas Soup & Fried Snapper available today!",
@@ -129,6 +133,8 @@ const INITIAL_SHOPS: Record<string, ShopData> = {
     autoCloseEnabled: true,
     closeHour: 20,
     deliveryEnabled: true,
+    onlinePaymentEnabled: false,
+    paymentDetailsNote: "Lynk ID: @AuntiesItal | Scotiabank Acc: 987654321",
     eventMode: false,
     eventTitle: "Ital Stew Special",
     eventBanner: "Fresh coconut run-down with breadfruit and callaloo.",
@@ -178,6 +184,7 @@ const playChime = () => {
 };
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const [shops, setShops] = useState<Record<string, ShopData>>(INITIAL_SHOPS);
   const [currentShopId, setCurrentShopId] = useState<string>('shop1');
   const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'wishlist'>('menu');
@@ -189,6 +196,7 @@ export default function App() {
   ]);
   const [newSuggestion, setNewSuggestion] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [copiedNotice, setCopiedNotice] = useState(false);
 
   // Customizer Modal State
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -209,7 +217,7 @@ export default function App() {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
 
-  // --- AUTO-INJECT TAILWIND STYLESHEET TO FIX PLAIN WHITE UI ---
+  // --- LOADING SCREEN DISMISSAL & TAILWIND INJECTION ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -217,6 +225,8 @@ export default function App() {
       script.src = 'https://cdn.tailwindcss.com';
       document.head.appendChild(script);
     }
+    const timer = setTimeout(() => setIsLoading(false), 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   const shop = shops[currentShopId] || shops['shop1'];
@@ -246,7 +256,17 @@ export default function App() {
   const deliveryFee = fulfillment === 'delivery' && shop.deliveryEnabled ? shop.deliveryFee : 0;
   const grandTotal = subtotal + deliveryFee;
 
-  const handlePlaceOrder = () => {
+  const formatOrderMessage = () => {
+    const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
+    return `*NEW ORDER - ${shop.name}*\n\n` +
+      `*Items:*\n${orderItemsText}\n\n` +
+      `*Fulfillment:* ${fulfillment.toUpperCase()}\n` +
+      (fulfillment === 'delivery' ? `*Address:* ${deliveryAddress}\n` : '') +
+      `*Payment:* ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
+      `*Total:* $${grandTotal} JMD`;
+  };
+
+  const handlePlaceWhatsAppOrder = () => {
     if (cart.length === 0) return;
     const newOrder: Order = {
       id: Math.floor(1000 + Math.random() * 9000),
@@ -264,14 +284,7 @@ export default function App() {
     setOrders([newOrder, ...orders]);
     playChime();
 
-    const orderItemsText = cart.map(i => `• ${i.name} ($${i.price}) [Spice: ${i.spice}, Gravy: ${i.gravy}${i.note ? `, Note: ${i.note}` : ''}]`).join('\n');
-    const msg = `*NEW ORDER #${newOrder.id} - ${shop.name}*\n\n` +
-      `*Items:*\n${orderItemsText}\n\n` +
-      `*Fulfillment:* ${fulfillment.toUpperCase()}\n` +
-      (fulfillment === 'delivery' ? `*Address:* ${deliveryAddress}\n` : '') +
-      `*Payment:* ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
-      `*Total:* $${grandTotal} JMD`;
-
+    const msg = formatOrderMessage();
     const waUrl = `https://wa.me/${shop.whatsapp}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
 
@@ -279,6 +292,15 @@ export default function App() {
     setBankRef('');
     setDeliveryAddress('');
     setActiveTab('menu');
+  };
+
+  const handleCopyForSocialDM = () => {
+    if (cart.length === 0) return;
+    const msg = formatOrderMessage();
+    navigator.clipboard.writeText(msg);
+    setCopiedNotice(true);
+    playChime();
+    setTimeout(() => setCopiedNotice(false), 3000);
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -292,6 +314,17 @@ export default function App() {
       setAuthError('Incorrect PIN code.');
     }
   };
+
+  // --- INITIAL LOADING SCREEN ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="text-lg font-black tracking-wider uppercase">Loading Cookshop...</h2>
+        <p className="text-xs text-slate-500">Preparing fresh menu & settings</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${t.primaryBg} text-slate-100 font-sans pb-24`}>
@@ -342,7 +375,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* MAIN CONTENT CONTAINER */}
+      {/* MAIN CONTENT AREA */}
       <main className="p-4 max-w-lg mx-auto">
 
         {/* MENU TAB */}
@@ -390,6 +423,12 @@ export default function App() {
         {activeTab === 'cart' && (
           <div className="space-y-4">
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Your Customized Plate</h2>
+
+            {copiedNotice && (
+              <div className="bg-emerald-900 border border-emerald-600 text-emerald-200 p-3 rounded-xl text-xs font-bold text-center animate-bounce">
+                📋 Order copied to clipboard! Ready to paste in Instagram or Facebook DM.
+              </div>
+            )}
 
             {cart.length === 0 ? (
               <div className="bg-slate-900/50 border border-slate-800/60 p-8 text-center rounded-2xl space-y-3">
@@ -448,24 +487,37 @@ export default function App() {
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700">
-                    {shop.paymentMethods.map(pm => (
-                      <option key={pm} value={pm}>{pm}</option>
-                    ))}
+                    <option value="Cash on Delivery/Pickup">Cash on Delivery / Pickup</option>
+                    {shop.onlinePaymentEnabled && (
+                      <>
+                        <option value="Lynk Transfer">Lynk Transfer</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                      </>
+                    )}
                   </select>
 
-                  {paymentMethod !== 'Cash on Delivery/Pickup' && (
-                    <input 
-                      type="text" 
-                      placeholder="Enter Lynk / Bank Transfer Reference..." 
-                      value={bankRef}
-                      onChange={(e) => setBankRef(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700 font-mono"
-                    />
+                  {!shop.onlinePaymentEnabled && (
+                    <p className="text-[10px] text-slate-400 italic">Online transfers (Lynk/Bank) are currently turned off. Pay with cash upon receipt.</p>
+                  )}
+
+                  {shop.onlinePaymentEnabled && paymentMethod !== 'Cash on Delivery/Pickup' && (
+                    <div className="space-y-2">
+                      <div className="bg-slate-950 p-2 rounded border border-slate-800 text-[11px] text-amber-400 font-mono">
+                        {shop.paymentDetailsNote || "Send payment to shop account and enter reference below."}
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="Enter Lynk / Bank Transfer Reference..." 
+                        value={bankRef}
+                        onChange={(e) => setBankRef(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-slate-700 font-mono"
+                      />
+                    </div>
                   )}
                 </div>
 
-                {/* TOTAL & WHATSAPP DISPATCH */}
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 shadow-lg">
+                {/* TOTAL & DUAL CHECKOUT DISPATCH */}
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Subtotal</span>
                     <span>${subtotal} JMD</span>
@@ -481,12 +533,21 @@ export default function App() {
                     <span className={t.accentText}>${grandTotal} JMD</span>
                   </div>
 
-                  <button 
-                    disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
-                    onClick={handlePlaceOrder}
-                    className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-lg ${!shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
-                    📲 Dispatch Order via WhatsApp
-                  </button>
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    <button 
+                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
+                      onClick={handlePlaceWhatsAppOrder}
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition shadow ${!shop.isOpen ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : `${t.accentBg} text-white`}`}>
+                      📲 Dispatch Order via WhatsApp
+                    </button>
+
+                    <button 
+                      disabled={!shop.isOpen || (fulfillment === 'delivery' && !deliveryAddress)}
+                      onClick={handleCopyForSocialDM}
+                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-bold text-xs transition">
+                      📋 Copy Order text for IG / FB DM
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -578,7 +639,7 @@ export default function App() {
         </div>
       )}
 
-      {/* FULL ADMIN DASHBOARD MODAL */}
+      {/* ADMIN DASHBOARD MODAL */}
       {isAdminOpen && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 my-auto shadow-2xl">
@@ -688,7 +749,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* SHIFT & DELIVERY CONTROLS */}
+                {/* SHIFT & ONLINE PAYMENT TOGGLES */}
                 <div className="space-y-2 border-t border-slate-800 pt-3">
                   <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     <span className="text-xs font-bold text-slate-300">Shop Open Status</span>
@@ -703,6 +764,26 @@ export default function App() {
                       {shop.deliveryEnabled ? 'ENABLED' : 'DISABLED'}
                     </button>
                   </div>
+
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-xs font-bold text-slate-300">Online Transfers (Lynk/Bank)</span>
+                    <button onClick={() => setShops({ ...shops, [currentShopId]: { ...shop, onlinePaymentEnabled: !shop.onlinePaymentEnabled } })} className={`px-3 py-1 rounded-lg text-xs font-black ${shop.onlinePaymentEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {shop.onlinePaymentEnabled ? 'ACTIVE' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {shop.onlinePaymentEnabled && (
+                    <div className="space-y-1 bg-slate-950 p-2 rounded-xl border border-slate-800">
+                      <label className="text-[10px] text-slate-400 font-bold">Payment Details Note for Customers</label>
+                      <input 
+                        type="text" 
+                        value={shop.paymentDetailsNote} 
+                        onChange={(e) => setShops({ ...shops, [currentShopId]: { ...shop, paymentDetailsNote: e.target.value } })}
+                        placeholder="e.g. Lynk handle or account #"
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* MENU MANAGEMENT */}
