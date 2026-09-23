@@ -170,13 +170,11 @@ const MASTER_PIN = "9999";
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
-  // SAFE LOCALSTORAGE PARSER (PREVENTS WHITE SCREEN ON CORRUPTED/OVERFLOWED STORAGE)
   const [shops, setShops] = useState<Record<string, ShopData>>(() => {
     try {
       const saved = localStorage.getItem('yv_cookshop_shops');
       return saved ? JSON.parse(saved) : INITIAL_SHOPS;
     } catch (e) {
-      console.warn("Storage parse error, resetting state:", e);
       return INITIAL_SHOPS;
     }
   });
@@ -202,16 +200,14 @@ export default function App() {
         { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
       ];
     } catch (e) {
-      return [
-        { id: 1, text: "Oxtail with Broad Beans", votes: 14 },
-        { id: 2, text: "Curry Mutton Weekend Special", votes: 9 }
-      ];
+      return [];
     }
   });
 
   const [newSuggestion, setNewSuggestion] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Order | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
   const [receiptSearchTerm, setReceiptSearchTerm] = useState('');
   const [linkCopiedNotice, setLinkCopiedNotice] = useState(false);
 
@@ -243,29 +239,22 @@ export default function App() {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // SAFE AUTO-SAVE TO LOCALSTORAGE
   useEffect(() => {
     try {
       localStorage.setItem('yv_cookshop_shops', JSON.stringify(shops));
-    } catch (e) {
-      console.warn("LocalStorage full, unable to save shop updates.", e);
-    }
+    } catch (e) {}
   }, [shops]);
 
   useEffect(() => {
     try {
       localStorage.setItem('yv_cookshop_orders', JSON.stringify(orders));
-    } catch (e) {
-      console.warn("LocalStorage full, unable to save orders.", e);
-    }
+    } catch (e) {}
   }, [orders]);
 
   useEffect(() => {
     try {
       localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
-    } catch (e) {
-      console.warn("LocalStorage full, unable to save suggestions.", e);
-    }
+    } catch (e) {}
   }, [suggestions]);
 
   useEffect(() => {
@@ -314,12 +303,9 @@ export default function App() {
         osc.start();
         osc.stop(ctx.currentTime + 0.5);
       }
-    } catch (e) {
-      console.log("Audio prevented");
-    }
+    } catch (e) {}
   };
 
-  // AUTOMATIC IMAGE COMPRESSOR (REDUCES 10MB PHOTOS DOWN TO ~30KB TO PREVENT MEMORY CRASHES)
   const handleCompressedImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setTargetState: (val: string) => void
@@ -332,7 +318,7 @@ export default function App() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500; // Resize large camera images
+        const MAX_WIDTH = 500;
         let width = img.width;
         let height = img.height;
 
@@ -347,7 +333,6 @@ export default function App() {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          // Compress to JPEG format with 60% quality
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
           setTargetState(compressedBase64);
         }
@@ -604,15 +589,20 @@ export default function App() {
               {shop.menu.map(item => (
                 <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-md hover:border-slate-700 transition">
                   {item.image && (
-                    <div className="h-40 w-full bg-slate-950 overflow-hidden relative">
+                    <div 
+                      onClick={() => setPreviewImage({ src: item.image!, title: item.name })}
+                      className="h-44 w-full bg-slate-950/90 overflow-hidden relative cursor-pointer group flex items-center justify-center">
                       <img 
                         src={item.image} 
                         alt={item.name} 
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain transition group-hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = 'none';
                         }}
                       />
+                      <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded-md border border-white/20 shadow">
+                        🔍 Tap to view photo
+                      </div>
                     </div>
                   )}
                   <div className="p-4 flex justify-between items-center">
@@ -814,6 +804,25 @@ export default function App() {
         )}
 
       </main>
+
+      {/* CLEAN POP-UP IMAGE PREVIEW MODAL */}
+      {previewImage && (
+        <div 
+          onClick={() => setPreviewImage(null)} 
+          className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-3 space-y-3 shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2 px-1">
+              <h3 className="font-black text-white text-sm">{previewImage.title}</h3>
+              <button onClick={() => setPreviewImage(null)} className="text-slate-400 hover:text-white font-bold p-1">✕</button>
+            </div>
+            <div className="max-h-[60vh] flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden p-1">
+              <img src={previewImage.src} alt={previewImage.title} className="max-h-[55vh] w-auto object-contain rounded-lg" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CUSTOMER DIGITAL RECEIPT MODAL */}
       {activeReceipt && (
@@ -1148,7 +1157,6 @@ export default function App() {
                                 placeholder="Price JMD"
                               />
                               
-                              {/* AUTO-COMPRESSING CAMERA / GALLERY PICKER */}
                               <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
                                 <input 
