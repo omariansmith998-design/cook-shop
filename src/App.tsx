@@ -42,6 +42,8 @@ interface ShopProfile {
   isOpen: boolean;
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
+  supabaseUrl?: string;
+  supabaseKey?: string;
 }
 
 // --- INITIAL DEFAULT SHOPS ---
@@ -57,7 +59,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryFee: 300,
     isOpen: true,
     isDeliveryActive: true,
-    deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip. Hills/out-of-town = Pickup only.",
+    deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
   },
   {
     id: "shop2",
@@ -134,6 +136,9 @@ export default function App() {
   const [newMasterPinInput, setNewMasterPinInput] = useState("");
   const [newMasterRecoveryInput, setNewMasterRecoveryInput] = useState("");
   const [currentMasterPassCheck, setCurrentMasterPassCheck] = useState("");
+
+  // Master Developer Panel Search Query for Orders
+  const [masterSearchQuery, setMasterSearchQuery] = useState("");
 
   // New Shop Creator Form State
   const [newShopName, setNewShopName] = useState("");
@@ -289,10 +294,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
     alert("Invalid PIN.");
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
+  const updateOrderStatus = (shopId: string, orderId: string, newStatus: Order["status"]) => {
     setOrders(prev => ({
       ...prev,
-      [activeShop.id]: (prev[activeShop.id] || []).map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+      [shopId]: (prev[shopId] || []).map(o => o.id === orderId ? { ...o, status: newStatus } : o)
     }));
   };
 
@@ -350,40 +355,23 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
       isDeliveryActive: true,
       deliveryZoneNote: "Standard delivery radius applies."
     };
+    setShopAndSwitch(newShop);
+  };
+
+  const setShopAndSwitch = (newShop: ShopProfile) => {
     setShops(prev => [...prev, newShop]);
-    setMenus(prev => ({ ...prev, [shopId]: [] }));
-    setActiveShopId(shopId);
+    setMenus(prev => ({ ...prev, [newShop.id]: [] }));
+    setActiveShopId(newShop.id);
     setNewShopName("");
     setNewShopTagline("");
     setNewShopWhatsapp("");
     setNewShopAddress("");
-    alert(`Shop "${newShop.name}" created!`);
-  };
-
-  const changeMasterCredentials = () => {
-    if (currentMasterPassCheck !== masterRecoveryPass) {
-      alert("Incorrect Recovery Password!");
-      return;
-    }
-    if (!newMasterPinInput || newMasterPinInput.length !== 4) {
-      alert("PIN must be 4 digits.");
-      return;
-    }
-    localStorage.setItem("cookshop_master_pin", newMasterPinInput);
-    setMasterPin(newMasterPinInput);
-    if (newMasterRecoveryInput.trim()) {
-      localStorage.setItem("cookshop_master_recovery", newMasterRecoveryInput);
-      setMasterRecoveryPass(newMasterRecoveryInput);
-    }
-    setNewMasterPinInput("");
-    setNewMasterRecoveryInput("");
-    setCurrentMasterPassCheck("");
-    alert("Master PIN updated successfully!");
+    alert(`Shop "${newShop.name}" created successfully!`);
   };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f4f4f5", color: "#18181b", fontFamily: "system-ui, -apple-system, sans-serif", paddingBottom: "120px" }}>
-      {/* --- HIGH-CONTRAST DARK HEADER --- */}
+      {/* --- HEADER BAR --- */}
       <header style={{ backgroundColor: "#18181b", color: "#ffffff", borderBottom: `4px solid ${activeShop.themeColor}`, boxShadow: "0 4px 6px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ maxWidth: "800px", margin: "0 auto", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -707,7 +695,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                 </button>
                 <button
                   onClick={() => {
-                    updateOrderStatus(activeReceipt.id, "Cancelled");
+                    updateOrderStatus(activeShop.id, activeReceipt.id, "Cancelled");
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20would%20like%20to%20switch%20my%20order%20%23${activeReceipt.id}%20to%20Store%20Pickup.`, "_blank");
                     setActiveReceipt(null);
                   }}
@@ -717,7 +705,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                 </button>
                 <button
                   onClick={() => {
-                    updateOrderStatus(activeReceipt.id, "Cancelled");
+                    updateOrderStatus(activeShop.id, activeReceipt.id, "Cancelled");
                     window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=Hi,%20I%20need%20to%20CANCEL%20my%20order%20%23${activeReceipt.id}.`, "_blank");
                     setActiveReceipt(null);
                   }}
@@ -738,120 +726,174 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
         </div>
       )}
 
-      {/* --- ADMIN MODAL --- */}
+      {/* --- RESTORED MASTER DEVELOPER PANEL & ADMIN MODAL --- */}
       {adminModalOpen && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "600px", width: "100%", padding: "20px", boxShadow: "0 20px 25px rgba(0,0,0,0.2)", margin: "32px 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #e4e4e7", paddingBottom: "12px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#18181b", margin: 0 }}>
-                {isMasterSession ? "⚡ Master Developer Panel" : loggedInAdminShopId ? `🛠️ Admin: ${shops.find(s => s.id === loggedInAdminShopId)?.name}` : "🔐 Enter Admin PIN"}
+          <div style={{ backgroundColor: "#121215", color: "#ffffff", borderRadius: "16px", maxWidth: "620px", width: "100%", padding: "20px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #27272a", margin: "32px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #27272a", paddingBottom: "12px" }}>
+              <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
+                {isMasterSession ? "👑 Master Developer Panel" : loggedInAdminShopId ? `🛠️ Admin Panel: ${shops.find(s => s.id === loggedInAdminShopId)?.name}` : "🔐 Enter Admin PIN"}
               </h3>
-              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#71717a", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
+              <button onClick={() => { setAdminModalOpen(false); setLoggedInAdminShopId(null); setIsMasterSession(false); }} style={{ color: "#a1a1aa", background: "none", border: "none", fontWeight: 900, fontSize: "18px", cursor: "pointer" }}>✕</button>
             </div>
 
             {!isMasterSession && !loggedInAdminShopId && (
               <div style={{ padding: "20px 0", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "#52525b", marginBottom: "16px" }}>Enter your 4-digit shop PIN or Master PIN ($9999$).</p>
+                <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>Enter your 4-digit shop PIN or Master PIN ($9999$).</p>
                 <input
                   type="password"
                   maxLength={4}
                   placeholder="••••"
                   value={adminPinInput}
                   onChange={(e) => setAdminPinInput(e.target.value)}
-                  style={{ width: "130px", textAlign: "center", letterSpacing: "8px", fontSize: "22px", backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "10px", padding: "12px", margin: "0 auto 16px auto", outline: "none", fontFamily: "monospace", display: "block" }}
+                  style={{ width: "130px", textAlign: "center", letterSpacing: "8px", fontSize: "22px", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "10px", padding: "12px", margin: "0 auto 16px auto", outline: "none", fontFamily: "monospace", display: "block" }}
                 />
                 <button
                   onClick={handleAdminLogin}
-                  style={{ backgroundColor: "#18181b", color: "#ffffff", fontWeight: 800, padding: "12px 24px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}
+                  style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "12px 24px", borderRadius: "8px", fontSize: "13px", border: "none", cursor: "pointer" }}
                 >
                   Unlock Admin Access
                 </button>
               </div>
             )}
 
+            {/* --- RESTORED EXACT MASTER DEVELOPER PORTAL LAYOUT --- */}
             {isMasterSession && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
-                  <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: "0 0 8px 0" }}>⚡ Master Controls & Security</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#52525b", marginBottom: "4px" }}>Master Recovery Password</label>
-                      <input
-                        type="password"
-                        placeholder="Recovery password"
-                        value={currentMasterPassCheck}
-                        onChange={(e) => setCurrentMasterPassCheck(e.target.value)}
-                        style={{ width: "100%", backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#52525b", marginBottom: "4px" }}>New 4-Digit Master PIN</label>
-                      <input
-                        type="text"
-                        maxLength={4}
-                        placeholder="New PIN"
-                        value={newMasterPinInput}
-                        onChange={(e) => setNewMasterPinInput(e.target.value)}
-                        style={{ width: "100%", backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", fontFamily: "monospace", boxSizing: "border-box" }}
-                      />
-                    </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#18181b", padding: "12px 16px", borderRadius: "10px", border: "1px solid #27272a" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#a1a1aa" }}>
+                    <span>🔗</span>
+                    <span style={{ fontFamily: "monospace" }}>{window.location.origin}?shop={activeShop.id}</span>
                   </div>
                   <button
-                    onClick={changeMasterCredentials}
-                    style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}?shop=${activeShop.id}`);
+                      alert("Shop URL copied!");
+                    }}
+                    style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "6px 12px", borderRadius: "6px", fontSize: "11px", border: "none", cursor: "pointer" }}
                   >
-                    Update Master PIN Securely
+                    Copy Link
                   </button>
                 </div>
 
-                <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
-                  <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: "0 0 12px 0" }}>➕ Spin Up New Cookshop</h4>
-                  <form onSubmit={createNewShop} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                      <input
-                        type="text"
-                        placeholder="Shop Name"
-                        value={newShopName}
-                        onChange={(e) => setNewShopName(e.target.value)}
-                        style={{ backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Tagline"
-                        value={newShopTagline}
-                        onChange={(e) => setNewShopTagline(e.target.value)}
-                        style={{ backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="WhatsApp (18765550000)"
-                        value={newShopWhatsapp}
-                        onChange={(e) => setNewShopWhatsapp(e.target.value)}
-                        style={{ backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="4-Digit PIN"
-                        maxLength={4}
-                        value={newShopPin}
-                        onChange={(e) => setNewShopPin(e.target.value)}
-                        style={{ backgroundColor: "#ffffff", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", fontFamily: "monospace" }}
-                      />
-                    </div>
-                    <button type="submit" style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "10px 16px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer", alignSelf: "flex-start" }}>
-                      Launch Shop Instantly
-                    </button>
-                  </form>
+                {/* Developer & Shop Info Editor Box */}
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <h4 style={{ fontWeight: 800, color: "#f59e0b", fontSize: "13px", margin: 0 }}>DEVELOPER & SHOP INFO EDITOR</h4>
+                  
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#a1a1aa", marginBottom: "4px" }}>Update Active Shop PIN (Operational PIN)</label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={activeShop.pin}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, pin: val } : s));
+                      }}
+                      style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+                    />
+                    <span style={{ fontSize: "10px", color: "#71717a", marginTop: "2px", display: "block" }}>This controls the 4-digit PIN the shop admins/cousins use to log in.</span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#a1a1aa", marginBottom: "4px" }}>Edit Active Shop Name</label>
+                    <input
+                      type="text"
+                      value={activeShop.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, name: val } : s));
+                      }}
+                      style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#a1a1aa", marginBottom: "4px" }}>Edit Active Shop Location / Address</label>
+                    <input
+                      type="text"
+                      value={activeShop.address}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, address: val } : s));
+                      }}
+                      style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#a1a1aa", marginBottom: "4px" }}>Supabase Database URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://xxxxxx.supabase.co"
+                      value={activeShop.supabaseUrl || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, supabaseUrl: val } : s));
+                      }}
+                      style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#a1a1aa", marginBottom: "4px" }}>Supabase Anon Key</label>
+                    <input
+                      type="password"
+                      placeholder="eyJhGciOi..."
+                      value={activeShop.supabaseKey || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShops(prev => prev.map(s => s.id === activeShop.id ? { ...s, supabaseKey: val } : s));
+                      }}
+                      style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "13px", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Reset all shop state to default configuration?")) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    }}
+                    style={{ backgroundColor: "#991b1b", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer", marginTop: "4px" }}
+                  >
+                    ⚠️ Reset State to Master Configuration
+                  </button>
                 </div>
 
-                <div style={{ textAlign: "center", paddingTop: "8px" }}>
-                  <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ color: "#e11d48", background: "none", border: "none", fontSize: "12px", fontWeight: 800, cursor: "pointer" }}>
-                    Log Out of Master Panel
+                {/* Master Search Queue & Receipt History Bar */}
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                  <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 8px 0" }}>Shop Operational Controls & Order Queue</h4>
+                  <input
+                    type="text"
+                    placeholder="Search receipts by ID, dish, address..."
+                    value={masterSearchQuery}
+                    onChange={(e) => setMasterSearchQuery(e.target.value)}
+                    style={{ width: "100%", backgroundColor: "#121215", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box", marginBottom: "10px" }}
+                  />
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "150px", overflowY: "auto" }}>
+                    {currentShopOrders
+                      .filter(o => o.id.toLowerCase().includes(masterSearchQuery.toLowerCase()) || o.customerName.toLowerCase().includes(masterSearchQuery.toLowerCase()))
+                      .map(o => (
+                        <div key={o.id} style={{ backgroundColor: "#121215", padding: "8px 10px", borderRadius: "6px", border: "1px solid #27272a", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>#{o.id} - {o.customerName} (${o.total})</span>
+                          <span style={{ color: "#10b981", fontWeight: 800 }}>{o.status}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right", paddingTop: "4px" }}>
+                  <button onClick={() => { setIsMasterSession(false); setLoggedInAdminShopId(null); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>
+                    Logout
                   </button>
                 </div>
               </div>
             )}
 
+            {/* SHOP OWNER ADMIN PANEL */}
             {loggedInAdminShopId && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {(() => {
@@ -862,10 +904,10 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
 
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+                      <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
                         <div>
-                          <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: 0 }}>Operational Status</h4>
-                          <p style={{ fontSize: "11px", color: "#52525b", margin: "2px 0 0 0" }}>Toggle whether your shop is accepting orders.</p>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Operational Status</h4>
+                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 0 0" }}>Toggle whether your shop is accepting orders.</p>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button
@@ -884,13 +926,13 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                       </div>
 
                       {/* QR Code & Copy Direct URL Section */}
-                      <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-                        <img src={qrCodeUrl} alt="QR Code" style={{ width: "90px", height: "90px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #d4d4d8", flexShrink: 0 }} />
+                      <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                        <img src={qrCodeUrl} alt="QR Code" style={{ width: "90px", height: "90px", backgroundColor: "#ffffff", padding: "4px", borderRadius: "8px", border: "1px solid #3f3f46", flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: "180px" }}>
-                          <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: 0 }}>Counter QR & Direct URL</h4>
-                          <p style={{ fontSize: "11px", color: "#52525b", margin: "2px 0 8px 0" }}>Print your QR code or copy your direct shop link to share on WhatsApp & IG.</p>
+                          <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>Counter QR & Direct URL</h4>
+                          <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "2px 0 8px 0" }}>Print your QR code or copy your direct shop link to share on WhatsApp & IG.</p>
                           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                            <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "11px", fontWeight: 800, color: "#2563eb", textDecoration: "none", padding: "6px 10px", backgroundColor: "#eff6ff", borderRadius: "6px", border: "1px solid #bfdbfe" }}>
+                            <a href={qrCodeUrl} target="_blank" rel="noreferrer" style={{ fontSize: "11px", fontWeight: 800, color: "#60a5fa", textDecoration: "none", padding: "6px 10px", backgroundColor: "#1e3a8a", borderRadius: "6px", border: "1px solid #3b82f6" }}>
                               📥 Download QR
                             </a>
                             <button
@@ -898,45 +940,20 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                                 navigator.clipboard.writeText(shopUrl);
                                 alert("Direct shop URL copied to clipboard!");
                               }}
-                              style={{ fontSize: "11px", fontWeight: 800, color: "#059669", backgroundColor: "#ecfdf5", padding: "6px 10px", borderRadius: "6px", border: "1px solid #a7f3d0", cursor: "pointer" }}
+                              style={{ fontSize: "11px", fontWeight: 800, color: "#34d399", backgroundColor: "#064e3b", padding: "6px 10px", borderRadius: "6px", border: "1px solid #059669", cursor: "pointer" }}
                             >
                               📋 Copy Store URL
                             </button>
                           </div>
                         </div>
                       </div>
-
-                      <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
-                        <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: "0 0 10px 0" }}>🛵 Driver Logistics & Turnaround</h4>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                          <button
-                            onClick={() => setDriverStatus(prev => prev === "ready" ? "out" : "ready")}
-                            style={{ padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer", backgroundColor: driverStatus === "ready" ? "#059669" : "#d97706", color: "#ffffff" }}
-                          >
-                            {driverStatus === "ready" ? "🟢 Driver Ready" : "🛵 Driver Out on Run"}
-                          </button>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontSize: "11px", color: "#52525b", fontWeight: 800 }}>Quick ETA:</span>
-                            {["+15 mins", "+30 mins", "+45 mins"].map(time => (
-                              <button
-                                key={time}
-                                onClick={() => setDriverEta(time)}
-                                style={{ padding: "6px 10px", fontSize: "11px", fontWeight: 800, borderRadius: "6px", border: driverEta === time ? "none" : "1px solid #d4d4d8", backgroundColor: driverEta === time ? "#18181b" : "#ffffff", color: driverEta === time ? "#ffffff" : "#27272a", cursor: "pointer" }}
-                              >
-                                {time}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {driverEta && <p style={{ fontSize: "11px", color: "#52525b", margin: "8px 0 0 0" }}>Estimated Driver Return: <strong style={{ color: "#18181b" }}>{driverEta}</strong></p>}
-                      </div>
                     </div>
                   );
                 })()}
 
-                <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
+                    <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: 0 }}>🍽️ Menu Management</h4>
                     <button
                       onClick={() => {
                         setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true });
@@ -952,22 +969,22 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                   </div>
 
                   {editingDish !== null && (
-                    <div style={{ backgroundColor: "#ffffff", padding: "14px", borderRadius: "10px", border: "1px solid #d4d4d8", marginBottom: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                      <h5 style={{ fontWeight: 800, fontSize: "12px", color: "#18181b", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
+                    <div style={{ backgroundColor: "#121215", padding: "14px", borderRadius: "10px", border: "1px solid #3f3f46", marginBottom: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <h5 style={{ fontWeight: 800, fontSize: "12px", color: "#ffffff", margin: 0 }}>{editingDish.id ? "Edit Dish" : "Create New Dish"}</h5>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         <input
                           type="text"
                           placeholder="Dish Name"
                           value={dishNameInput}
                           onChange={(e) => setDishNameInput(e.target.value)}
-                          style={{ backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
+                          style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
                         />
                         <input
                           type="number"
                           placeholder="Price ($ JMD)"
                           value={dishPriceInput}
                           onChange={(e) => setDishPriceInput(e.target.value)}
-                          style={{ backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
+                          style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none" }}
                         />
                       </div>
                       <input
@@ -975,29 +992,29 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                         placeholder="Description"
                         value={dishDescInput}
                         onChange={(e) => setDishDescInput(e.target.value)}
-                        style={{ width: "100%", backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
+                        style={{ width: "100%", backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "8px 10px", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
                       />
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <label style={{ fontSize: "11px", fontWeight: 800, color: "#3f3f46" }}>Photo:</label>
+                        <label style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa" }}>Photo:</label>
                         <input
                           type="file"
                           accept="image/*"
                           onChange={(e) => handleImageCompression(e, (base64) => setDishImageInput(base64))}
-                          style={{ fontSize: "11px", color: "#52525b" }}
+                          style={{ fontSize: "11px", color: "#a1a1aa" }}
                         />
                       </div>
                       <div style={{ display: "flex", gap: "8px", paddingTop: "4px" }}>
-                        <button onClick={saveEditedDish} style={{ backgroundColor: "#18181b", color: "#ffffff", fontWeight: 800, padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>Save Dish</button>
-                        <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#e4e4e7", color: "#27272a", fontWeight: 800, padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>Cancel</button>
+                        <button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#ffffff", fontWeight: 800, padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>Save Dish</button>
+                        <button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#ffffff", fontWeight: 800, padding: "8px 14px", borderRadius: "6px", fontSize: "12px", border: "none", cursor: "pointer" }}>Cancel</button>
                       </div>
                     </div>
                   )}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto" }}>
                     {(menus[loggedInAdminShopId] || []).map(dish => (
-                      <div key={dish.id} style={{ backgroundColor: "#ffffff", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e4e4e7", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+                      <div key={dish.id} style={{ backgroundColor: "#121215", padding: "10px 14px", borderRadius: "8px", border: "1px solid #27272a", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
                         <div>
-                          <span style={{ fontWeight: 800, color: "#18181b" }}>{dish.name}</span> - <span style={{ fontWeight: 800, color: "#059669" }}>${dish.price} JMD</span>
+                          <span style={{ fontWeight: 800, color: "#ffffff" }}>{dish.name}</span> - <span style={{ fontWeight: 800, color: "#34d399" }}>${dish.price} JMD</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           <button
@@ -1007,7 +1024,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                                 [loggedInAdminShopId]: (prev[loggedInAdminShopId] || []).map(d => d.id === dish.id ? { ...d, inStock: !d.inStock } : d)
                               }));
                             }}
-                            style={{ padding: "4px 8px", borderRadius: "6px", fontWeight: 800, fontSize: "10px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#d1fae5" : "#ffe4e6", color: dish.inStock ? "#065f46" : "#881337" }}
+                            style={{ padding: "4px 8px", borderRadius: "6px", fontWeight: 800, fontSize: "10px", border: "none", cursor: "pointer", backgroundColor: dish.inStock ? "#064e3b" : "#7f1d1d", color: dish.inStock ? "#34d399" : "#fca5a5" }}
                           >
                             {dish.inStock ? "In Stock" : "Sold Out"}
                           </button>
@@ -1019,40 +1036,40 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                               setDishDescInput(dish.description);
                               setDishImageInput(dish.image);
                             }}
-                            style={{ color: "#2563eb", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}
+                            style={{ color: "#60a5fa", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}
                           >
                             Edit
                           </button>
-                          <button onClick={() => deleteDish(dish.id)} style={{ color: "#e11d48", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
+                          <button onClick={() => deleteDish(dish.id)} style={{ color: "#f87171", fontWeight: 800, background: "none", border: "none", cursor: "pointer" }}>Delete</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
-                  <h4 style={{ fontWeight: 800, color: "#18181b", fontSize: "13px", margin: "0 0 10px 0" }}>📋 Live Order Queue ({currentShopOrders.length})</h4>
+                <div style={{ backgroundColor: "#18181b", padding: "16px", borderRadius: "12px", border: "1px solid #27272a" }}>
+                  <h4 style={{ fontWeight: 800, color: "#ffffff", fontSize: "13px", margin: "0 0 10px 0" }}>📋 Live Order Queue ({currentShopOrders.length})</h4>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "220px", overflowY: "auto" }}>
                     {currentShopOrders.length === 0 ? (
-                      <p style={{ fontSize: "12px", color: "#71717a", fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>No active orders in queue.</p>
+                      <p style={{ fontSize: "12px", color: "#a1a1aa", fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>No active orders in queue.</p>
                     ) : (
                       currentShopOrders.map(order => (
-                        <div key={order.id} style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e4e4e7", fontSize: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div key={order.id} style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #27272a", fontSize: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontWeight: 900, color: "#18181b" }}>#{order.id} - {order.customerName}</span>
-                            <span style={{ color: "#71717a", fontSize: "11px" }}>{order.timestamp}</span>
+                            <span style={{ fontWeight: 900, color: "#ffffff" }}>#{order.id} - {order.customerName}</span>
+                            <span style={{ color: "#a1a1aa", fontSize: "11px" }}>{order.timestamp}</span>
                           </div>
-                          <div style={{ color: "#3f3f46" }}>
+                          <div style={{ color: "#d4d4d8" }}>
                             {order.items.map((it, idx) => (
                               <div key={idx}>• {it.quantity}x {it.dish.name} ({it.spiceLevel})</div>
                             ))}
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #f4f4f5" }}>
-                            <span style={{ fontWeight: 800, color: "#059669" }}>${order.total} JMD ({order.type})</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #27272a" }}>
+                            <span style={{ fontWeight: 800, color: "#34d399" }}>${order.total} JMD ({order.type})</span>
                             <select
                               value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
-                              style={{ backgroundColor: "#f4f4f5", border: "1px solid #d4d4d8", borderRadius: "6px", padding: "4px 8px", fontSize: "11px", fontWeight: 800, outline: "none", cursor: "pointer" }}
+                              onChange={(e) => updateOrderStatus(activeShop.id, order.id, e.target.value as Order["status"])}
+                              style={{ backgroundColor: "#18181b", color: "#ffffff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px 8px", fontSize: "11px", fontWeight: 800, outline: "none", cursor: "pointer" }}
                             >
                               <option value="Received">Received</option>
                               <option value="Preparing">Preparing 🍳</option>
@@ -1067,9 +1084,9 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}*TOTA
                   </div>
                 </div>
 
-                <div style={{ textAlign: "center", paddingTop: "8px" }}>
-                  <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ color: "#e11d48", background: "none", border: "none", fontSize: "12px", fontWeight: 800, cursor: "pointer" }}>
-                    Log Out of Admin Dashboard
+                <div style={{ textAlign: "right", paddingTop: "4px" }}>
+                  <button onClick={() => { setLoggedInAdminShopId(null); setAdminModalOpen(false); }} style={{ backgroundColor: "#3f3f46", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>
+                    Logout
                   </button>
                 </div>
               </div>
