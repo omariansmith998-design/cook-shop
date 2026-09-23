@@ -8,7 +8,7 @@ export interface Dish {
   category: string;
   soldOut: boolean;
   desc: string;
-  image?: string; // OPTIONAL DISH IMAGE
+  image?: string;
 }
 
 export interface ShopTheme {
@@ -216,7 +216,13 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
-  const [newDishImg, setNewDishImg] = useState(''); // OPTIONAL IMAGE INPUT
+  const [newDishImg, setNewDishImg] = useState('');
+
+  // EDIT DISH STATE
+  const [editingDishId, setEditingDishId] = useState<number | null>(null);
+  const [editDishName, setEditDishName] = useState('');
+  const [editDishPrice, setEditDishPrice] = useState('');
+  const [editDishImg, setEditDishImg] = useState('');
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -414,6 +420,31 @@ export default function App() {
     }
   };
 
+  const handleStartEditingDish = (dish: Dish) => {
+    setEditingDishId(dish.id);
+    setEditDishName(dish.name);
+    setEditDishPrice(dish.price.toString());
+    setEditDishImg(dish.image || '');
+  };
+
+  const handleSaveEditedDish = (dishId: number) => {
+    if (!editDishName || !editDishPrice) return;
+    const updatedMenu = shop.menu.map(item => item.id === dishId ? {
+      ...item,
+      name: editDishName,
+      price: Number(editDishPrice),
+      image: editDishImg.trim() ? editDishImg.trim() : undefined
+    } : item);
+
+    setShops({ ...shops, [currentShopId]: { ...shop, menu: updatedMenu } });
+    setEditingDishId(null);
+  };
+
+  const handleDeleteDish = (dishId: number) => {
+    const updatedMenu = shop.menu.filter(item => item.id !== dishId);
+    setShops({ ...shops, [currentShopId]: { ...shop, menu: updatedMenu } });
+  };
+
   const filteredOrders = orders.filter(o => {
     const term = receiptSearchTerm.toLowerCase();
     return o.id.toString().includes(term) ||
@@ -502,7 +533,6 @@ export default function App() {
             <div className="space-y-3">
               {shop.menu.map(item => (
                 <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-md hover:border-slate-700 transition">
-                  {/* SAFE OPTIONAL IMAGE WITH ERROR FALLBACK */}
                   {item.image && (
                     <div className="h-32 w-full bg-slate-950 overflow-hidden relative">
                       <img 
@@ -851,7 +881,6 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* QUICK COPY LINK BADGE FOR ADMINS */}
                 {linkCopiedNotice && (
                   <div className="bg-emerald-900 border border-emerald-600 text-emerald-200 p-2.5 rounded-xl text-xs font-bold text-center animate-bounce">
                     🔗 Live Shop URL copied to clipboard!
@@ -1026,26 +1055,82 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* MENU MANAGEMENT WITH PICTURE URL INPUT */}
+                  {/* MENU MANAGEMENT WITH FULL EDIT/DELETE SUPPORT */}
                   <div className="space-y-2 border-t border-slate-800 pt-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory</h4>
-                    <div className="max-h-28 overflow-y-auto space-y-1.5">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory & Dish Editor</h4>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
                       {shop.menu.map(m => (
-                        <div key={m.id} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
-                          <span className="text-slate-200 font-medium">{m.name}</span>
-                          <button 
-                            onClick={() => {
-                              const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
-                              setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
-                            }}
-                            className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
-                            {m.soldOut ? 'Sold Out' : 'In Stock'}
-                          </button>
+                        <div key={m.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs space-y-2">
+                          {editingDishId === m.id ? (
+                            <div className="space-y-2 bg-slate-900 p-2 rounded-lg border border-slate-700">
+                              <input 
+                                type="text" 
+                                value={editDishName} 
+                                onChange={(e) => setEditDishName(e.target.value)} 
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white"
+                                placeholder="Dish Name"
+                              />
+                              <input 
+                                type="number" 
+                                value={editDishPrice} 
+                                onChange={(e) => setEditDishPrice(e.target.value)} 
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white"
+                                placeholder="Price JMD"
+                              />
+                              <input 
+                                type="text" 
+                                value={editDishImg} 
+                                onChange={(e) => setEditDishImg(e.target.value)} 
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white font-mono"
+                                placeholder="Image URL (optional)"
+                              />
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => handleSaveEditedDish(m.id)} 
+                                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1 rounded text-[11px]">
+                                  Save
+                                </button>
+                                <button 
+                                  onClick={() => setEditingDishId(null)} 
+                                  className="bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-[11px]">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <span className="text-slate-200 font-bold block">{m.name}</span>
+                                <span className="text-amber-400 font-mono text-[11px]">${m.price} JMD</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <button 
+                                  onClick={() => {
+                                    const updated = shop.menu.map(item => item.id === m.id ? { ...item, soldOut: !item.soldOut } : item);
+                                    setShops({ ...shops, [currentShopId]: { ...shop, menu: updated } });
+                                  }}
+                                  className={`px-2 py-1 rounded font-bold text-[10px] ${m.soldOut ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
+                                  {m.soldOut ? 'Sold Out' : 'In Stock'}
+                                </button>
+                                <button 
+                                  onClick={() => handleStartEditingDish(m)} 
+                                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2 py-1 rounded text-[10px] border border-slate-700">
+                                  ✏️ Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteDish(m.id)} 
+                                  className="bg-red-950 hover:bg-red-900 text-red-300 font-bold px-2 py-1 rounded text-[10px] border border-red-800">
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
 
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2 pt-2">
+                      <span className="text-[11px] font-bold text-slate-400 block">+ Add New Dish</span>
                       <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
                       <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
                       <input type="text" placeholder="Optional Image URL (e.g. https://...)" value={newDishImg} onChange={(e) => setNewDishImg(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none font-mono" />
