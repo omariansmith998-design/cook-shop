@@ -229,7 +229,7 @@ export default function App() {
     localStorage.setItem('yv_cookshop_suggestions', JSON.stringify(suggestions));
   }, [suggestions]);
 
-  // --- SAFE MOBILE WEB AUDIO INITIALIZATION ---
+  // --- SAFE MOBILE WEB AUDIO INITIALIZATION & TAILWIND CDN INJECTION ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -366,7 +366,6 @@ export default function App() {
       `Payment: ${paymentMethod}${bankRef ? ` (Ref: ${bankRef})` : ''}\n` +
       `Total: $${grandTotal} JMD`;
 
-    // FALLBACK SAFE CLIPBOARD COPY
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(msg);
     } else {
