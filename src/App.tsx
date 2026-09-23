@@ -8,7 +8,7 @@ export interface Dish {
   category: string;
   soldOut: boolean;
   desc: string;
-  image?: string;
+  image?: string; // BASE64 IMAGE DATA
 }
 
 export interface ShopTheme {
@@ -289,6 +289,20 @@ export default function App() {
     }
   };
 
+  // HELPER TO CONVERT FILE FROM GALLERY/CAMERA TO BASE64
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setTargetState: (val: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setTargetState(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const shop = shops[currentShopId] || shops['shop1'];
   const t = shop.theme;
 
@@ -534,7 +548,7 @@ export default function App() {
               {shop.menu.map(item => (
                 <div key={item.id} className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-md hover:border-slate-700 transition">
                   {item.image && (
-                    <div className="h-32 w-full bg-slate-950 overflow-hidden relative">
+                    <div className="h-40 w-full bg-slate-950 overflow-hidden relative">
                       <img 
                         src={item.image} 
                         alt={item.name} 
@@ -1055,14 +1069,14 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* MENU MANAGEMENT WITH FULL EDIT/DELETE SUPPORT */}
+                  {/* MENU MANAGEMENT WITH GALLERY & CAMERA UPLOAD */}
                   <div className="space-y-2 border-t border-slate-800 pt-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Inventory & Dish Editor</h4>
                     <div className="max-h-48 overflow-y-auto space-y-2">
                       {shop.menu.map(m => (
                         <div key={m.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs space-y-2">
                           {editingDishId === m.id ? (
-                            <div className="space-y-2 bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <div className="space-y-2 bg-slate-900 p-2.5 rounded-lg border border-slate-700">
                               <input 
                                 type="text" 
                                 value={editDishName} 
@@ -1077,31 +1091,48 @@ export default function App() {
                                 className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white"
                                 placeholder="Price JMD"
                               />
-                              <input 
-                                type="text" 
-                                value={editDishImg} 
-                                onChange={(e) => setEditDishImg(e.target.value)} 
-                                className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-white font-mono"
-                                placeholder="Image URL (optional)"
-                              />
-                              <div className="flex gap-2">
+                              
+                              {/* GALLERY / CAMERA INPUT FOR EDITING */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
+                                <input 
+                                  type="file" 
+                                  accept="image/*"
+                                  onChange={(e) => handleImageUpload(e, setEditDishImg)}
+                                  className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
+                                />
+                                {editDishImg && (
+                                  <div className="h-16 w-16 rounded-lg overflow-hidden mt-1 border border-slate-700">
+                                    <img src={editDishImg} alt="Preview" className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2 pt-1">
                                 <button 
                                   onClick={() => handleSaveEditedDish(m.id)} 
-                                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1 rounded text-[11px]">
-                                  Save
+                                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded text-[11px]">
+                                  Save Dish
                                 </button>
                                 <button 
                                   onClick={() => setEditingDishId(null)} 
-                                  className="bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-[11px]">
+                                  className="bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded text-[11px]">
                                   Cancel
                                 </button>
                               </div>
                             </div>
                           ) : (
                             <div className="flex justify-between items-center">
-                              <div>
-                                <span className="text-slate-200 font-bold block">{m.name}</span>
-                                <span className="text-amber-400 font-mono text-[11px]">${m.price} JMD</span>
+                              <div className="flex items-center gap-2">
+                                {m.image && (
+                                  <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-900 flex-shrink-0">
+                                    <img src={m.image} alt={m.name} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-slate-200 font-bold block">{m.name}</span>
+                                  <span className="text-amber-400 font-mono text-[11px]">${m.price} JMD</span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <button 
@@ -1129,17 +1160,43 @@ export default function App() {
                       ))}
                     </div>
 
+                    {/* ADD NEW DISH WITH FILE SELECTOR */}
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2 pt-2">
                       <span className="text-[11px] font-bold text-slate-400 block">+ Add New Dish</span>
                       <input type="text" placeholder="New Dish Name" value={newDishName} onChange={(e) => setNewDishName(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
                       <input type="number" placeholder="Price ($)" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none" />
-                      <input type="text" placeholder="Optional Image URL (e.g. https://...)" value={newDishImg} onChange={(e) => setNewDishImg(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none font-mono" />
+                      
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-bold block">📷 Photo (Gallery or Camera)</label>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, setNewDishImg)}
+                          className="w-full text-slate-400 text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-white"
+                        />
+                        {newDishImg && (
+                          <div className="h-16 w-16 rounded-lg overflow-hidden mt-1 border border-slate-700">
+                            <img src={newDishImg} alt="Preview" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+
                       <button 
                         onClick={() => {
                           if (!newDishName || !newDishPrice) return;
-                          const newItem: Dish = { id: Date.now(), name: newDishName, price: Number(newDishPrice), category: 'Mains', soldOut: false, desc: 'Freshly prepared daily.', image: newDishImg || undefined };
+                          const newItem: Dish = { 
+                            id: Date.now(), 
+                            name: newDishName, 
+                            price: Number(newDishPrice), 
+                            category: 'Mains', 
+                            soldOut: false, 
+                            desc: 'Freshly prepared daily.', 
+                            image: newDishImg || undefined 
+                          };
                           setShops({ ...shops, [currentShopId]: { ...shop, menu: [...shop.menu, newItem] } });
-                          setNewDishName(''); setNewDishPrice(''); setNewDishImg('');
+                          setNewDishName(''); 
+                          setNewDishPrice(''); 
+                          setNewDishImg('');
                         }}
                         className={`w-full ${t.accentBg} text-white font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow`}>
                         + Add Dish
