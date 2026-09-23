@@ -980,6 +980,23 @@ export default function App() {
                   <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-3 shadow-inner">
                     <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">Developer & Shop Info Editor</h4>
 
+                    {/* NEW: DEVELOPER PIN CHANGER */}
+                    <div className="space-y-1 bg-amber-950/30 p-2 rounded-lg border border-amber-800/50">
+                      <label className="text-[11px] text-amber-300 font-bold block">🔐 Update Active Shop PIN (Operational PIN)</label>
+                      <input 
+                        type="text" 
+                        maxLength={4}
+                        value={shop.pin}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setShops({ ...shops, [currentShopId]: { ...shop, pin: val } });
+                        }}
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-amber-500"
+                        placeholder="e.g. 1234"
+                      />
+                      <p className="text-[10px] text-slate-400">This controls the 4-digit PIN the shop admins/cousins use to log in.</p>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-300 font-bold">Edit Active Shop Name</label>
                       <input 
