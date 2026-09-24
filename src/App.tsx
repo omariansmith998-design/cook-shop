@@ -190,8 +190,11 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
 
-  // Track liked dishes for 1-like per session
+  // Track liked dishes for toggle like/unlike
   const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>({});
+
+  // Share & QR Code Modal State
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   // Item Customization Modal State
   const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(null);
@@ -310,14 +313,22 @@ export default function App() {
     }
   }, [shops]);
 
-  // Handle Like Button
+  // Handle Like / Unlike Toggle
   const handleToggleLike = (dishId: string) => {
-    if (likedDishIds[dishId]) {
-      alert("You have already liked this item!");
-      return;
-    }
-    setLikedDishIds((prev) => ({ ...prev, [dishId]: true }));
-    setMenu((prev) => prev.map((d) => (d.id === dishId ? { ...d, likes: d.likes + 1 } : d)));
+    const isLiked = likedDishIds[dishId];
+
+    setLikedDishIds((prev) => ({
+      ...prev,
+      [dishId]: !isLiked,
+    }));
+
+    setMenu((prev) =>
+      prev.map((d) =>
+        d.id === dishId
+          ? { ...d, likes: isLiked ? d.likes - 1 : d.likes + 1 }
+          : d
+      )
+    );
   };
 
   const handleSaveSupabaseConfig = () => {
@@ -626,21 +637,38 @@ export default function App() {
             <h1 style={{ margin: 0, fontSize: "20px", color: "#fff" }}>{currentShop.name}</h1>
             <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#aaa" }}>{currentShop.tagline}</p>
           </div>
-          <button
-            onClick={() => setShowAdminModal(true)}
-            style={{
-              backgroundColor: currentShop.themeColor,
-              color: "#fff",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: "4px",
-              fontSize: "12px",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-          >
-            🔒 Admin
-          </button>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={() => setShowShareModal(true)}
+              style={{
+                backgroundColor: "#2a2a2a",
+                color: "#fff",
+                border: "1px solid #333",
+                padding: "6px 12px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              📲 Share / QR
+            </button>
+            <button
+              onClick={() => setShowAdminModal(true)}
+              style={{
+                backgroundColor: currentShop.themeColor,
+                color: "#fff",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              🔒 Admin
+            </button>
+          </div>
         </div>
 
         {!currentShop.isOpenManual && (
@@ -915,6 +943,42 @@ export default function App() {
           )}
         </footer>
       </main>
+
+      {/* SHARE & QR CODE MODAL */}
+      {showShareModal && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1500 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "360px", textAlign: "center" }}>
+            <h3 style={{ margin: "0 0 8px" }}>📲 Share {currentShop.name}</h3>
+            <p style={{ fontSize: "11px", color: "#aaa", margin: "0 0 16px" }}>Scan this QR code or copy the link to open your menu.</p>
+            
+            <div style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "8px", display: "inline-block", marginBottom: "16px" }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(window.location.href)}`}
+                alt="Menu QR Code"
+                style={{ width: "180px", height: "180px", display: "block" }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gap: "8px" }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert("Menu link copied to clipboard!");
+                }}
+                style={{ padding: "10px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", cursor: "pointer" }}
+              >
+                📋 Copy Menu Link
+              </button>
+              <button
+                onClick={() => setShowShareModal(false)}
+                style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DISH CUSTOMIZATION MODAL */}
       {selectedDishForCart && (
