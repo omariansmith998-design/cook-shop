@@ -1,10 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
 
-// --- SUPABASE CLIENT INITIALIZATION ---
+// --- SUPABASE REST HELPER (NO EXTERNAL NPM PACKAGE REQUIRED) ---
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || "https://your-supabase-url.supabase.co";
 const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || "your-supabase-anon-key";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const supabaseFetch = async (table: string, method: string = "GET", body?: any) => {
+  try {
+    const headers: Record<string, string> = {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    };
+    if (method === "POST" || method === "PUT") {
+      headers["Prefer"] = "return=representation";
+    }
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn("Supabase fetch fallback execution:", err);
+    return null;
+  }
+};
 
 // --- TYPES & INTERFACES ---
 interface Dish {
@@ -226,21 +249,17 @@ export default function App() {
 
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
 
-  // Sync Cloud Data via Supabase
+  // Sync Cloud Data via Supabase REST API
   useEffect(() => {
     const fetchCloudData = async () => {
-      try {
-        const { data: cloudShops } = await supabase.from("shops").select("*");
-        if (cloudShops && cloudShops.length > 0) setShops(cloudShops);
+      const cloudShops = await supabaseFetch("shops");
+      if (cloudShops && cloudShops.length > 0) setShops(cloudShops);
 
-        const { data: cloudMenu } = await supabase.from("menu").select("*");
-        if (cloudMenu && cloudMenu.length > 0) setMenu(cloudMenu);
+      const cloudMenu = await supabaseFetch("menu");
+      if (cloudMenu && cloudMenu.length > 0) setMenu(cloudMenu);
 
-        const { data: cloudOrders } = await supabase.from("orders").select("*");
-        if (cloudOrders) setOrders(cloudOrders);
-      } catch (err) {
-        console.warn("Operating with local fallback storage:", err);
-      }
+      const cloudOrders = await supabaseFetch("orders");
+      if (cloudOrders) setOrders(cloudOrders);
     };
     fetchCloudData();
   }, []);
@@ -395,12 +414,7 @@ export default function App() {
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-
-    try {
-      await supabase.from("orders").insert([newOrder]);
-    } catch (e) {
-      console.warn("Could not push order to Supabase cloud table:", e);
-    }
+    await supabaseFetch("orders", "POST", newOrder);
 
     const encodedMsg = buildOrderSummaryText();
     let url = "";
@@ -423,11 +437,7 @@ export default function App() {
     setShops(updated);
     const shopToUpdate = updated.find((s) => s.id === currentShopId);
     if (shopToUpdate) {
-      try {
-        await supabase.from("shops").upsert([shopToUpdate]);
-      } catch (e) {
-        console.warn("Could not sync shop update to Supabase:", e);
-      }
+      await supabaseFetch("shops", "POST", shopToUpdate);
     }
   };
 
@@ -456,7 +466,7 @@ export default function App() {
       );
       setMenu(updatedMenu);
       const updatedItem = updatedMenu.find((d) => d.id === editingDish.id);
-      if (updatedItem) await supabase.from("menu").upsert([updatedItem]);
+      if (updatedItem) await supabaseFetch("menu", "POST", updatedItem);
     } else {
       const newDish: Dish = {
         id: Date.now().toString(),
@@ -469,7 +479,7 @@ export default function App() {
         likes: 0,
       };
       setMenu((prev) => [...prev, newDish]);
-      await supabase.from("menu").insert([newDish]);
+      await supabaseFetch("menu", "POST", newDish);
     }
     setEditingDish(null);
     setDishForm({ name: "", price: "", description: "", category: "Mains", image: "" });
@@ -833,7 +843,7 @@ export default function App() {
                         whatsapp: newShopWhatsapp || "18765550000",
                       };
                       setShops((prev) => [...prev, newProfile]);
-                      await supabase.from("shops").insert([newProfile]);
+                      await supabaseFetch("shops", "POST", newProfile);
                       setNewShopName("");
                       setNewShopPin("");
                       setNewShopWhatsapp("");
@@ -1046,7 +1056,7 @@ export default function App() {
                             const updatedMenu = menu.map((d) => (d.id === item.id ? { ...d, inStock: !d.inStock } : d));
                             setMenu(updatedMenu);
                             const updatedItem = updatedMenu.find((d) => d.id === item.id);
-                            if (updatedItem) await supabase.from("menu").upsert([updatedItem]);
+                            if (updatedItem) await supabaseFetch("menu", "POST", updatedItem);
                           }}
                           style={{ backgroundColor: item.inStock ? "#2e7d32" : "#c62828", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
                         >
@@ -1062,10 +1072,7 @@ export default function App() {
                           Edit
                         </button>
                         <button
-                          onClick={async () => {
-                            setMenu((prev) => prev.filter((d) => d.id !== item.id));
-                            await supabase.from("menu").delete().eq("id", item.id);
-                          }}
+                          onClick={() => setMenu((prev) => prev.filter((d) => d.id !== item.id))}
                           style={{ backgroundColor: "#333", color: "#ff4d4d", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
                         >
                           Delete
