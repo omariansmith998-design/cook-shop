@@ -10,6 +10,7 @@ interface Dish {
   image: string;
   inStock: boolean;
   likes: number;
+  isSpecial?: boolean;
 }
 
 interface CartItem {
@@ -94,7 +95,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
     weeklySchedule: DEFAULT_SCHEDULE,
     themeColor: "#fe0000",
-    fontStyle: "Monospace",
+    fontStyle: "monospace",
     adminPin: "1234",
   },
   {
@@ -115,7 +116,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZoneNote: "Local Montego Bay delivery.",
     weeklySchedule: DEFAULT_SCHEDULE,
     themeColor: "#2e7d32",
-    fontStyle: "Sans-Serif",
+    fontStyle: "sans-serif",
     adminPin: "5678",
   },
 ];
@@ -130,6 +131,7 @@ const INITIAL_MENU: Dish[] = [
     image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 12,
+    isSpecial: true,
   },
   {
     id: "2",
@@ -140,6 +142,7 @@ const INITIAL_MENU: Dish[] = [
     image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 24,
+    isSpecial: false,
   },
   {
     id: "3",
@@ -150,6 +153,7 @@ const INITIAL_MENU: Dish[] = [
     image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 18,
+    isSpecial: false,
   },
   {
     id: "4",
@@ -160,6 +164,7 @@ const INITIAL_MENU: Dish[] = [
     image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 15,
+    isSpecial: false,
   },
 ];
 
@@ -170,6 +175,9 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
+
+  // Track liked dishes for the user to enforce 1-like per item
+  const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>({});
 
   // Supabase Configuration State
   const [supabaseUrl, setSupabaseUrl] = useState<string>(() => localStorage.getItem("SUPABASE_URL") || "");
@@ -198,12 +206,13 @@ export default function App() {
 
   // Menu Editor Modal State
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
-  const [dishForm, setDishForm] = useState<{ name: string; price: string; description: string; category: Dish["category"]; image: string }>({
+  const [dishForm, setDishForm] = useState<{ name: string; price: string; description: string; category: Dish["category"]; image: string; isSpecial: boolean }>({
     name: "",
     price: "",
     description: "",
     category: "Mains",
     image: "",
+    isSpecial: false,
   });
 
   // Master Control New Shop Registration Form
@@ -224,7 +233,7 @@ export default function App() {
 
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
 
-  // Helper for REST Supabase calls using Master Config
+  // Helper for REST Supabase calls
   const supabaseFetch = async (table: string, method: string = "GET", body?: any) => {
     if (!supabaseUrl || !supabaseAnonKey) return null;
     try {
@@ -276,14 +285,24 @@ export default function App() {
     }
   }, [shops]);
 
-  // Save Supabase Configuration to LocalStorage
+  // Handle Like Button Enforcing 1-Like Limit
+  const handleToggleLike = (dishId: string) => {
+    if (likedDishIds[dishId]) {
+      alert("You have already liked this item!");
+      return;
+    }
+    setLikedDishIds((prev) => ({ ...prev, [dishId]: true }));
+    setMenu((prev) =>
+      prev.map((d) => (d.id === dishId ? { ...d, likes: d.likes + 1 } : d))
+    );
+  };
+
   const handleSaveSupabaseConfig = () => {
     localStorage.setItem("SUPABASE_URL", supabaseUrl);
     localStorage.setItem("SUPABASE_ANON_KEY", supabaseAnonKey);
     alert("Supabase URL and Anon Key saved successfully!");
   };
 
-  // Fetch Exact GPS Coordinates and Attach Live Map Link
   const handleFetchGPS = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -305,7 +324,6 @@ export default function App() {
     );
   };
 
-  // Authentication Pin Login (FIXED: Keeps modal active on success)
   const handleAdminLogin = () => {
     const input = adminPinInput.trim();
     if (input === masterPin) {
@@ -329,7 +347,6 @@ export default function App() {
     setAdminPinInput("");
   };
 
-  // Cart Management Functions
   const addToCart = (dish: Dish, spiceLevel = "Medium", gravyType = "Normal") => {
     setCart((prev) => {
       const existing = prev.find((i) => i.dish.id === dish.id && i.spiceLevel === spiceLevel && i.gravyType === gravyType);
@@ -347,7 +364,6 @@ export default function App() {
   const subtotal = cart.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
   const total = subtotal + (orderType === "Delivery" ? currentShop.deliveryFee : 0) + driverTip;
 
-  // Custom Dish Submission
   const handleAddCustomDish = () => {
     if (!customDishName || !customDishPrice) {
       alert("Please provide a name and price for the custom dish.");
@@ -362,6 +378,7 @@ export default function App() {
       image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
       inStock: true,
       likes: 0,
+      isSpecial: false,
     };
     addToCart(newDish);
     setShowCustomDishModal(false);
@@ -370,7 +387,6 @@ export default function App() {
     setCustomDishNotes("");
   };
 
-  // Dispatch Order, Store to Supabase, and Redirect to Messaging Platform
   const buildOrderSummaryText = () => {
     let msg = `*New Order - ${currentShop.name}*\n\n`;
     cart.forEach((item, i) => {
@@ -470,7 +486,15 @@ export default function App() {
     if (editingDish) {
       const updatedMenu = menu.map((d) =>
         d.id === editingDish.id
-          ? { ...d, name: dishForm.name, price: parseFloat(dishForm.price) || 0, description: dishForm.description, category: dishForm.category, image: dishForm.image || d.image }
+          ? {
+              ...d,
+              name: dishForm.name,
+              price: parseFloat(dishForm.price) || 0,
+              description: dishForm.description,
+              category: dishForm.category,
+              image: dishForm.image || d.image,
+              isSpecial: dishForm.isSpecial,
+            }
           : d
       );
       setMenu(updatedMenu);
@@ -486,12 +510,13 @@ export default function App() {
         image: dishForm.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
         inStock: true,
         likes: 0,
+        isSpecial: dishForm.isSpecial,
       };
       setMenu((prev) => [...prev, newDish]);
       await supabaseFetch("menu", "POST", newDish);
     }
     setEditingDish(null);
-    setDishForm({ name: "", price: "", description: "", category: "Mains", image: "" });
+    setDishForm({ name: "", price: "", description: "", category: "Mains", image: "", isSpecial: false });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -596,7 +621,7 @@ export default function App() {
         <h2 style={{ fontSize: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>Today's Menu</h2>
         <div style={{ display: "grid", gap: "12px" }}>
           {filteredMenu.map((item) => (
-            <div key={item.id} style={{ backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "12px", display: "flex", gap: "12px" }}>
+            <div key={item.id} style={{ backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "12px", display: "flex", gap: "12px", border: item.isSpecial ? "1px solid #ffd700" : "none" }}>
               <img
                 src={item.image}
                 alt={item.name}
@@ -604,8 +629,11 @@ export default function App() {
                 style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", cursor: "pointer" }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <h3 style={{ margin: 0, fontSize: "14px" }}>{item.name}</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <h3 style={{ margin: 0, fontSize: "14px" }}>{item.name}</h3>
+                    {item.isSpecial && <span style={{ backgroundColor: "#ffd700", color: "#000", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold" }}>⭐ Special</span>}
+                  </div>
                   <span style={{ color: "#4caf50", fontWeight: "bold", fontSize: "14px" }}>${item.price} JMD</span>
                 </div>
                 <p style={{ fontSize: "11px", color: "#aaa", margin: "4px 0 8px" }}>{item.description}</p>
@@ -629,8 +657,15 @@ export default function App() {
                     <span style={{ fontSize: "11px", color: "#ff4d4d" }}>Out of Stock</span>
                   )}
                   <button
-                    onClick={() => setMenu((prev) => prev.map((d) => (d.id === item.id ? { ...d, likes: d.likes + 1 } : d)))}
-                    style={{ backgroundColor: "transparent", border: "none", color: "#aaa", cursor: "pointer", fontSize: "11px" }}
+                    onClick={() => handleToggleLike(item.id)}
+                    style={{
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: likedDishIds[item.id] ? "#e1306c" : "#aaa",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: likedDishIds[item.id] ? "bold" : "normal",
+                    }}
                   >
                     ❤️ {item.likes}
                   </button>
@@ -835,7 +870,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* SHOPS MANAGER TAB (FIXED: CLEAN DROPDOWN MENU) */}
+            {/* SHOPS MANAGER TAB */}
             {activeMasterTab === "shops" && (
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>Register New Cookshop</h4>
@@ -1080,7 +1115,7 @@ export default function App() {
               </div>
             )}
 
-            {/* MENU EDITOR TAB */}
+            {/* MENU EDITOR TAB (WITH FEATURED SPECIAL TOGGLE) */}
             {activeAdminTab === "menu" && (
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>{editingDish ? "Edit Dish" : "Add New Dish"}</h4>
@@ -1095,6 +1130,10 @@ export default function App() {
                     <option value="Sides">Sides</option>
                     <option value="Soups">Soups</option>
                   </select>
+                  <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input type="checkbox" checked={dishForm.isSpecial} onChange={(e) => setDishForm((p) => ({ ...p, isSpecial: e.target.checked }))} />
+                    Mark as ⭐ Special / Featured Item
+                  </label>
                   <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: "12px" }} />
                   <button onClick={handleSaveDish} style={{ padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>
                     {editingDish ? "Update Dish" : "Add Dish"}
@@ -1106,7 +1145,9 @@ export default function App() {
                   {menu.map((item) => (
                     <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#121212", padding: "8px 12px", borderRadius: "4px" }}>
                       <div>
-                        <div style={{ fontWeight: "bold", fontSize: "13px" }}>{item.name} (${item.price} JMD)</div>
+                        <div style={{ fontWeight: "bold", fontSize: "13px" }}>
+                          {item.name} (${item.price} JMD) {item.isSpecial && "⭐"}
+                        </div>
                         <div style={{ fontSize: "10px", color: "#aaa" }}>{item.category}</div>
                       </div>
                       <div style={{ display: "flex", gap: "6px" }}>
@@ -1124,7 +1165,7 @@ export default function App() {
                         <button
                           onClick={() => {
                             setEditingDish(item);
-                            setDishForm({ name: item.name, price: item.price.toString(), description: item.description, category: item.category, image: item.image });
+                            setDishForm({ name: item.name, price: item.price.toString(), description: item.description, category: item.category, image: item.image, isSpecial: item.isSpecial || false });
                           }}
                           style={{ backgroundColor: "#0288d1", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
                         >
@@ -1143,12 +1184,23 @@ export default function App() {
               </div>
             )}
 
-            {/* SETTINGS TAB */}
+            {/* SETTINGS TAB (WITH CUSTOM FONTS & THEME COLORS) */}
             {activeAdminTab === "settings" && (
               <div style={{ display: "grid", gap: "8px" }}>
-                <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Socials & Location Settings</h4>
+                <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Fonts & Theme Settings</h4>
                 <label style={{ fontSize: "11px", color: "#aaa" }}>Cookshop Name:</label>
                 <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Font Style:</label>
+                <select value={currentShop.fontStyle} onChange={(e) => updateCurrentShop("fontStyle", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }}>
+                  <option value="monospace">Monospace</option>
+                  <option value="sans-serif">Sans-Serif</option>
+                  <option value="serif">Serif</option>
+                  <option value="cursive">Cursive / Handwritten</option>
+                </select>
+
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Theme Color:</label>
+                <input type="color" value={currentShop.themeColor} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} style={{ width: "100%", height: "40px", border: "none", cursor: "pointer" }} />
 
                 <label style={{ fontSize: "11px", color: "#aaa" }}>WhatsApp Number:</label>
                 <input type="text" value={currentShop.whatsapp} onChange={(e) => updateCurrentShop("whatsapp", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
@@ -1167,9 +1219,6 @@ export default function App() {
 
                 <label style={{ fontSize: "11px", color: "#aaa" }}>Google Maps Link:</label>
                 <input type="text" value={currentShop.mapLink} onChange={(e) => updateCurrentShop("mapLink", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Theme Color:</label>
-                <input type="color" value={currentShop.themeColor} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} style={{ width: "100%", height: "40px", border: "none", cursor: "pointer" }} />
 
                 <label style={{ fontSize: "11px", color: "#aaa" }}>Admin Access PIN:</label>
                 <input type="text" value={currentShop.adminPin} onChange={(e) => updateCurrentShop("adminPin", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
