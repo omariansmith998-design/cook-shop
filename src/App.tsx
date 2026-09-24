@@ -20,6 +20,7 @@ interface CartItem {
   gravyType: string;
   addKetchup: boolean;
   addPepper: boolean;
+  isItemCompleted?: boolean; // Track individual item preparation state
 }
 
 interface ChatMessage {
@@ -43,7 +44,8 @@ interface Order {
   deliveryZone: string;
   paymentMethod: string;
   createdAt: string;
-  status: "Pending" | "Preparing" | "Completed" | "Cancelled";
+  estimatedTime?: string; // Estimated ready time set by admin
+  status: "Pending" | "Preparing" | "Ready" | "Completed" | "Cancelled";
 }
 
 interface DeliveryZoneOption {
@@ -400,6 +402,7 @@ export default function App() {
         gravyType: optGravy,
         addKetchup: optKetchup,
         addPepper: optPepper,
+        isItemCompleted: false,
       },
     ]);
     setSelectedDishForCart(null);
@@ -430,12 +433,59 @@ export default function App() {
     };
     setCart((prev) => [
       ...prev,
-      { dish: newDish, quantity: 1, spiceLevel: "Normal", gravyType: "Normal", addKetchup: false, addPepper: false },
+      { dish: newDish, quantity: 1, spiceLevel: "Normal", gravyType: "Normal", addKetchup: false, addPepper: false, isItemCompleted: false },
     ]);
     setShowCustomDishModal(false);
     setCustomDishName("");
     setCustomDishPrice("");
     setCustomDishNotes("");
+  };
+
+  // Admin order status update & customer alert generator
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order["status"], estimatedTime?: string) => {
+    const updatedOrders = orders.map((o) =>
+      o.id === orderId
+        ? { ...o, status: newStatus, estimatedTime: estimatedTime || o.estimatedTime }
+        : o
+    );
+    setOrders(updatedOrders);
+    const updatedOrder = updatedOrders.find((o) => o.id === orderId);
+    if (updatedOrder) {
+      await supabaseFetch("orders", "POST", updatedOrder);
+
+      // Generate notification message for customer
+      let statusMsg = `*Order Update - ${currentShop.name}*\n`;
+      statusMsg += `Hi ${updatedOrder.customerName}, your Order #${updatedOrder.id.slice(-4)} status has changed:\n\n`;
+      statusMsg += `📌 *Status:* ${newStatus.toUpperCase()}\n`;
+      if (estimatedTime) {
+        statusMsg += `⏱️ *Estimated Time:* Ready in approx ${estimatedTime}\n`;
+      }
+      if (newStatus === "Ready") {
+        statusMsg += updatedOrder.orderType === "Delivery" ? `🚚 Your order is cooked and on its way!` : `🏪 Your order is fresh & ready for pickup at our counter!`;
+      } else if (newStatus === "Completed") {
+        statusMsg += `🎉 Order completed! Thank you for dining with us!`;
+      }
+      
+      const encoded = encodeURIComponent(statusMsg);
+      window.open(`https://wa.me/?text=${encoded}`, "_blank");
+    }
+  };
+
+  // Toggle individual item complete state on an active order
+  const handleToggleItemCompleted = async (orderId: string, itemIndex: number) => {
+    const updatedOrders = orders.map((o) => {
+      if (o.id === orderId) {
+        const updatedItems = o.items.map((it, idx) =>
+          idx === itemIndex ? { ...it, isItemCompleted: !it.isItemCompleted } : it
+        );
+        return { ...o, items: updatedItems };
+      }
+      return o;
+    });
+
+    setOrders(updatedOrders);
+    const updatedOrder = updatedOrders.find((o) => o.id === orderId);
+    if (updatedOrder) await supabaseFetch("orders", "POST", updatedOrder);
   };
 
   const buildOrderSummaryText = () => {
@@ -1287,7 +1337,7 @@ export default function App() {
               </div>
             )}
 
-            {/* ORDERS & RECEIPTS */}
+            {/* ORDERS, PREPARATION STATUS & DISH TICKETS */}
             {activeAdminTab === "orders" && (
               <div>
                 <h4 style={{ margin: "0 0 12px" }}>🧾 Incoming Orders & Digital Receipts</h4>
@@ -1303,20 +1353,78 @@ export default function App() {
                             <span style={{ fontWeight: "bold", fontSize: "13px" }}>Order #{ord.id.slice(-4)}</span>
                             <span style={{ color: "#4caf50", fontSize: "12px", fontWeight: "bold" }}>${ord.total} JMD</span>
                           </div>
+                          
                           <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
                             👤 {ord.customerName} | 🚚 {ord.orderType} ({ord.deliveryZone}) | ⏰ {ord.createdAt}
                           </div>
+                          
                           {ord.customerAddress && (
                             <div style={{ fontSize: "11px", color: "#64b5f6", marginBottom: "8px" }}>
                               📍 {ord.customerAddress}
                             </div>
                           )}
+
+                          {/* ORDER STATUS CONTROL & TIME NOTIFIER */}
+                          <div style={{ backgroundColor: "#1e1e1e", padding: "8px", borderRadius: "4px", marginBottom: "10px", display: "grid", gap: "6px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
+                              <span>Status: <strong style={{ color: ord.status === "Ready" ? "#4caf50" : ord.status === "Preparing" ? "#ff9800" : "#fff" }}>{ord.status}</strong></span>
+                              {ord.estimatedTime && <span style={{ color: "#ffd700" }}>⏱️ {ord.estimatedTime}</span>}
+                            </div>
+
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(ord.id, "Preparing", "15-20 mins")}
+                                style={{ backgroundColor: "#ff9800", color: "#000", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
+                              >
+                                ⏳ Preparing (15m)
+                              </button>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(ord.id, "Preparing", "30-40 mins")}
+                                style={{ backgroundColor: "#ff9800", color: "#000", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
+                              >
+                                ⏳ Preparing (30m)
+                              </button>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(ord.id, "Ready")}
+                                style={{ backgroundColor: "#4caf50", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
+                              >
+                                ✅ Mark Ready & Alert
+                              </button>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(ord.id, "Completed")}
+                                style={{ backgroundColor: "#0288d1", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
+                              >
+                                🎉 Complete
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* DISH ITEM-LEVEL CHECKLIST */}
                           <div style={{ borderTop: "1px dashed #333", paddingTop: "6px", fontSize: "11px" }}>
+                            <div style={{ fontSize: "10px", color: "#888", marginBottom: "4px" }}>Item Checklist (Tap item to toggle done):</div>
                             {ord.items.map((it, i) => (
-                              <div key={i}>
-                                {it.quantity}x {it.dish.name} (${it.dish.price * it.quantity})
-                                <span style={{ color: "#aaa" }}>
-                                  {" "}[Spice: {it.spiceLevel}, Gravy: {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]
+                              <div
+                                key={i}
+                                onClick={() => handleToggleItemCompleted(ord.id, i)}
+                                style={{
+                                  display: "flex",
+                                  justify: "space-between",
+                                  alignItems: "center",
+                                  padding: "4px 0",
+                                  cursor: "pointer",
+                                  textDecoration: it.isItemCompleted ? "line-through" : "none",
+                                  color: it.isItemCompleted ? "#4caf50" : "#fff",
+                                }}
+                              >
+                                <div>
+                                  {it.isItemCompleted ? "✅ " : "🍳 "}
+                                  {it.quantity}x {it.dish.name} (${it.dish.price * it.quantity})
+                                  <span style={{ color: "#aaa" }}>
+                                    {" "}[Spice: {it.spiceLevel}, Gravy: {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]
+                                  </span>
+                                </div>
+                                <span style={{ fontSize: "9px", backgroundColor: it.isItemCompleted ? "#2e7d32" : "#333", color: "#fff", padding: "2px 6px", borderRadius: "3px" }}>
+                                  {it.isItemCompleted ? "Done" : "Cooking"}
                                 </span>
                               </div>
                             ))}
