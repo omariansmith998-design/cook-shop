@@ -106,10 +106,10 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
-    deliveryZoneNote: "Delivering within Montego Bay main town & surrounding areas.",
+    deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
     weeklySchedule: DEFAULT_SCHEDULE,
-    themeColor: "#ff3b30",
-    fontStyle: "sans-serif",
+    themeColor: "#fe0000",
+    fontStyle: "Monospace",
     adminPin: "1234",
   },
   {
@@ -127,10 +127,10 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
-    deliveryZoneNote: "Local Montego Bay delivery area.",
+    deliveryZoneNote: "Local Montego Bay delivery.",
     weeklySchedule: DEFAULT_SCHEDULE,
-    themeColor: "#34c759",
-    fontStyle: "sans-serif",
+    themeColor: "#2e7d32",
+    fontStyle: "Sans-Serif",
     adminPin: "5678",
   },
 ];
@@ -370,7 +370,6 @@ export default function App() {
     setAdminPinInput("");
   };
 
-  // Open customization modal before adding item to plate
   const handleOpenCustomizeModal = (dish: Dish) => {
     setSelectedDishForCart(dish);
     setOptSpice("Medium");
@@ -432,9 +431,9 @@ export default function App() {
     let msg = `*New Order - ${currentShop.name}*\n\n`;
     cart.forEach((item, i) => {
       msg += `${i + 1}. *${item.dish.name}* (x${item.quantity}) - $${item.dish.price * item.quantity} JMD\n`;
-      msg += `   Options: Spice: ${item.spiceLevel} | Gravy: ${item.gravyType}`;
+      msg += `   Spice: ${item.spiceLevel} | Gravy: ${item.gravyType}`;
       if (item.addKetchup) msg += ` | +Ketchup`;
-      if (item.addPepper) msg += ` | +Scotch Bonnet Pepper`;
+      if (item.addPepper) msg += ` | +Pepper`;
       msg += `\n`;
     });
     msg += `\n*Order Type:* ${orderType}\n`;
@@ -444,7 +443,7 @@ export default function App() {
       msg += `*Address / Landmark:* ${customerAddress}\n`;
     }
     if (driverTip > 0) {
-      msg += `*Driver Tip:* $${driverTip} JMD\n`;
+      msg += `*Tip:* $${driverTip} JMD\n`;
     }
     msg += `*Total Amount:* $${total} JMD\n`;
     msg += `*Customer Name:* ${customerName}\n`;
@@ -593,30 +592,28 @@ export default function App() {
       : menu.filter((item) => item.category === selectedCategory);
 
   return (
-    <div style={{ backgroundColor: "#0e0e10", color: "#f5f5f7", minHeight: "100vh", fontFamily: currentShop.fontStyle }}>
-      {/* HEADER BANNER WITH GLASS GLOW */}
-      <header style={{ position: "relative", backgroundColor: "#18181b", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "14px 18px", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
+    <div style={{ backgroundColor: "#121212", color: "#fff", minHeight: "100vh", fontFamily: currentShop.fontStyle }}>
+      {/* HEADER BANNER */}
+      <header style={{ position: "relative", backgroundColor: "#1e1e1e", borderBottom: "1px solid #333", padding: "12px 16px" }}>
         {currentShop.headerBanner && (
-          <div style={{ position: "relative", overflow: "hidden", borderRadius: "10px", marginBottom: "10px" }}>
+          <div style={{ position: "relative" }}>
             <img
               src={currentShop.headerBanner}
               alt="Header Banner"
               onClick={() => setZoomedImage(currentShop.headerBanner)}
-              style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "10px", cursor: "pointer", transition: "transform 0.2s ease" }}
+              style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "6px", marginBottom: "8px", cursor: "pointer" }}
             />
             <span
               onClick={() => setZoomedImage(currentShop.headerBanner)}
               style={{
                 position: "absolute",
-                bottom: "10px",
-                right: "10px",
-                backgroundColor: "rgba(0,0,0,0.75)",
-                backdropFilter: "blur(4px)",
+                bottom: "14px",
+                right: "8px",
+                backgroundColor: "rgba(0,0,0,0.7)",
                 color: "#fff",
-                fontSize: "11px",
-                padding: "4px 10px",
-                borderRadius: "20px",
-                border: "1px solid rgba(255,255,255,0.15)",
+                fontSize: "10px",
+                padding: "3px 8px",
+                borderRadius: "4px",
                 cursor: "pointer",
               }}
             >
@@ -626,8 +623,8 @@ export default function App() {
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 800, letterSpacing: "-0.5px" }}>{currentShop.name}</h1>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#a1a1aa" }}>{currentShop.tagline}</p>
+            <h1 style={{ margin: 0, fontSize: "20px", color: "#fff" }}>{currentShop.name}</h1>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#aaa" }}>{currentShop.tagline}</p>
           </div>
           <button
             onClick={() => setShowAdminModal(true)}
@@ -635,12 +632,11 @@ export default function App() {
               backgroundColor: currentShop.themeColor,
               color: "#fff",
               border: "none",
-              padding: "8px 14px",
-              borderRadius: "8px",
+              padding: "6px 12px",
+              borderRadius: "4px",
               fontSize: "12px",
               fontWeight: "bold",
               cursor: "pointer",
-              boxShadow: `0 4px 12px ${currentShop.themeColor}55`,
             }}
           >
             🔒 Admin
@@ -648,32 +644,30 @@ export default function App() {
         </div>
 
         {!currentShop.isOpenManual && (
-          <div style={{ marginTop: "12px", backgroundColor: "#3f0f15", color: "#ff6b6b", border: "1px solid #ff4d4d44", padding: "10px", borderRadius: "8px", textAlign: "center", fontSize: "12px", fontWeight: 600 }}>
+          <div style={{ marginTop: "10px", backgroundColor: "#3a0d0d", color: "#ff6b6b", border: "1px solid #ff4d4d", padding: "8px", borderRadius: "4px", textAlign: "center", fontSize: "12px" }}>
             ⛔ Cookshop closed right now. Check back during business hours.
           </div>
         )}
       </header>
 
-      {/* MAIN CONTENT CONTAINER */}
-      <main style={{ padding: "18px 16px", maxWidth: "600px", margin: "0 auto" }}>
+      {/* MAIN CONTENT AREA */}
+      <main style={{ padding: "16px", maxWidth: "600px", margin: "0 auto" }}>
         {/* CATEGORY SELECTOR & CUSTOM DISH */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
           <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
             {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 style={{
-                  backgroundColor: selectedCategory === cat ? currentShop.themeColor : "#27272a",
+                  backgroundColor: selectedCategory === cat ? currentShop.themeColor : "#2a2a2a",
                   color: "#fff",
                   border: "none",
-                  padding: "7px 14px",
-                  borderRadius: "20px",
+                  padding: "6px 12px",
+                  borderRadius: "16px",
                   fontSize: "12px",
-                  fontWeight: 600,
                   whiteSpace: "nowrap",
                   cursor: "pointer",
-                  boxShadow: selectedCategory === cat ? `0 4px 10px ${currentShop.themeColor}44` : "none",
                 }}
               >
                 {cat}
@@ -686,13 +680,11 @@ export default function App() {
               backgroundColor: "#2e7d32",
               color: "#fff",
               border: "none",
-              padding: "7px 14px",
-              borderRadius: "20px",
+              padding: "6px 12px",
+              borderRadius: "16px",
               fontSize: "12px",
-              fontWeight: 600,
               cursor: "pointer",
               marginLeft: "8px",
-              boxShadow: "0 4px 10px rgba(46,125,50,0.4)",
             }}
           >
             + Custom Dish
@@ -700,38 +692,25 @@ export default function App() {
         </div>
 
         {/* MENU LIST */}
-        <h2 style={{ fontSize: "17px", fontWeight: 700, borderBottom: "1px solid #27272a", paddingBottom: "8px", marginBottom: "14px" }}>Today's Menu</h2>
+        <h2 style={{ fontSize: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>Today's Menu</h2>
         <div style={{ display: "grid", gap: "12px" }}>
           {filteredMenu.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                backgroundColor: "#18181b",
-                borderRadius: "12px",
-                padding: "14px",
-                display: "flex",
-                gap: "14px",
-                border: item.isSpecial ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.06)",
-                boxShadow: item.isSpecial ? "0 4px 16px rgba(255,215,0,0.15)" : "0 4px 12px rgba(0,0,0,0.3)",
-              }}
-            >
+            <div key={item.id} style={{ backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "12px", display: "flex", gap: "12px", border: item.isSpecial ? "1px solid #ffd700" : "none" }}>
               <img
                 src={item.image}
                 alt={item.name}
                 onClick={() => setZoomedImage(item.image)}
-                style={{ width: "85px", height: "85px", objectFit: "cover", borderRadius: "10px", cursor: "pointer" }}
+                style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", cursor: "pointer" }}
               />
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                      <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>{item.name}</h3>
-                      {item.isSpecial && <span style={{ backgroundColor: "#ffd700", color: "#000", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", fontWeight: 800 }}>⭐ SPECIAL</span>}
-                    </div>
-                    <span style={{ color: "#4caf50", fontWeight: 800, fontSize: "14px" }}>${item.price} JMD</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <h3 style={{ margin: 0, fontSize: "14px" }}>{item.name}</h3>
+                    {item.isSpecial && <span style={{ backgroundColor: "#ffd700", color: "#000", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold" }}>⭐ Special</span>}
                   </div>
-                  <p style={{ fontSize: "11px", color: "#a1a1aa", margin: "4px 0 8px", lineHeight: "1.4" }}>{item.description}</p>
+                  <span style={{ color: "#4caf50", fontWeight: "bold", fontSize: "14px" }}>${item.price} JMD</span>
                 </div>
+                <p style={{ fontSize: "11px", color: "#aaa", margin: "4px 0 8px" }}>{item.description}</p>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   {item.inStock ? (
                     <button
@@ -740,26 +719,25 @@ export default function App() {
                         backgroundColor: currentShop.themeColor,
                         color: "#fff",
                         border: "none",
-                        padding: "6px 14px",
-                        borderRadius: "6px",
+                        padding: "4px 12px",
+                        borderRadius: "4px",
                         fontSize: "12px",
-                        fontWeight: "bold",
                         cursor: "pointer",
                       }}
                     >
                       + Add to Plate
                     </button>
                   ) : (
-                    <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: 600 }}>Out of Stock</span>
+                    <span style={{ fontSize: "11px", color: "#ff4d4d" }}>Out of Stock</span>
                   )}
                   <button
                     onClick={() => handleToggleLike(item.id)}
                     style={{
                       backgroundColor: "transparent",
                       border: "none",
-                      color: likedDishIds[item.id] ? "#e1306c" : "#71717a",
+                      color: likedDishIds[item.id] ? "#e1306c" : "#aaa",
                       cursor: "pointer",
-                      fontSize: "12px",
+                      fontSize: "11px",
                       fontWeight: likedDishIds[item.id] ? "bold" : "normal",
                     }}
                   >
@@ -771,28 +749,28 @@ export default function App() {
           ))}
         </div>
 
-        {/* ORDER PLATE / CART WITH KETCHUP, PEPPER & DYNAMIC DELIVERY */}
-        <div style={{ marginTop: "28px", backgroundColor: "#18181b", borderRadius: "14px", padding: "18px", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-          <h2 style={{ fontSize: "17px", fontWeight: 700, margin: "0 0 14px" }}>🛒 Your Order Plate ({cart.length} items)</h2>
+        {/* ORDER PLATE / CART */}
+        <div style={{ marginTop: "24px", backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "16px" }}>
+          <h2 style={{ fontSize: "16px", margin: "0 0 12px" }}>🛒 Your Order Plate ({cart.length} items)</h2>
           {cart.length === 0 ? (
-            <p style={{ fontSize: "12px", color: "#71717a" }}>Your plate is empty. Pick a dish above to get started!</p>
+            <p style={{ fontSize: "12px", color: "#888" }}>Your plate is empty.</p>
           ) : (
             <div>
               {cart.map((item, idx) => (
-                <div key={idx} style={{ padding: "10px 0", borderBottom: "1px solid #27272a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <div>
-                    <div style={{ fontSize: "13px", fontWeight: 700 }}>
+                    <div style={{ fontSize: "13px", fontWeight: "bold" }}>
                       {item.quantity}x {item.dish.name}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#a1a1aa", marginTop: "2px" }}>
+                    <div style={{ fontSize: "10px", color: "#aaa" }}>
                       Spice: {item.spiceLevel} | Gravy: {item.gravyType}
-                      {item.addKetchup && <span style={{ color: "#ef4444" }}> | +Ketchup</span>}
-                      {item.addPepper && <span style={{ color: "#f59e0b" }}> | +Scotch Bonnet</span>}
+                      {item.addKetchup && " | +Ketchup"}
+                      {item.addPepper && " | +Pepper"}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 700 }}>${item.dish.price * item.quantity} JMD</span>
-                    <button onClick={() => removeFromCart(idx)} style={{ backgroundColor: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontSize: "15px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "13px" }}>${item.dish.price * item.quantity} JMD</span>
+                    <button onClick={() => removeFromCart(idx)} style={{ backgroundColor: "transparent", color: "#ff4d4d", border: "none", cursor: "pointer", fontSize: "14px" }}>
                       ❌
                     </button>
                   </div>
@@ -800,18 +778,17 @@ export default function App() {
               ))}
 
               {/* SERVICE TOGGLES */}
-              <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
                   onClick={() => setOrderType("Delivery")}
                   style={{
                     flex: 1,
-                    padding: "10px",
+                    padding: "8px",
                     border: "none",
-                    borderRadius: "8px",
-                    backgroundColor: orderType === "Delivery" ? currentShop.themeColor : "#27272a",
+                    borderRadius: "4px",
+                    backgroundColor: orderType === "Delivery" ? currentShop.themeColor : "#2a2a2a",
                     color: "#fff",
                     fontSize: "12px",
-                    fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
@@ -821,13 +798,12 @@ export default function App() {
                   onClick={() => setOrderType("Pickup")}
                   style={{
                     flex: 1,
-                    padding: "10px",
+                    padding: "8px",
                     border: "none",
-                    borderRadius: "8px",
-                    backgroundColor: orderType === "Pickup" ? currentShop.themeColor : "#27272a",
+                    borderRadius: "4px",
+                    backgroundColor: orderType === "Pickup" ? currentShop.themeColor : "#2a2a2a",
                     color: "#fff",
                     fontSize: "12px",
-                    fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
@@ -837,14 +813,14 @@ export default function App() {
 
               {/* DYNAMIC DELIVERY ZONE SELECTOR */}
               {orderType === "Delivery" && (
-                <div style={{ marginTop: "12px", backgroundColor: "#27272a", padding: "12px", borderRadius: "8px" }}>
-                  <label style={{ fontSize: "11px", color: "#a1a1aa", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-                    📍 Select Delivery Area / Zone:
+                <div style={{ marginTop: "12px" }}>
+                  <label style={{ fontSize: "11px", color: "#aaa", display: "block", marginBottom: "4px" }}>
+                    Delivery Zone:
                   </label>
                   <select
                     value={selectedZoneIndex}
                     onChange={(e) => setSelectedZoneIndex(parseInt(e.target.value, 10))}
-                    style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #3f3f46", backgroundColor: "#18181b", color: "#fff", fontSize: "12px" }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                   >
                     {currentShop.deliveryZones.map((zone, i) => (
                       <option key={i} value={i}>
@@ -852,20 +828,17 @@ export default function App() {
                       </option>
                     ))}
                   </select>
-                  {currentShop.deliveryZoneNote && (
-                    <p style={{ fontSize: "10px", color: "#a1a1aa", margin: "6px 0 0" }}>ℹ️ {currentShop.deliveryZoneNote}</p>
-                  )}
                 </div>
               )}
 
-              {/* CUSTOMER INPUTS & GPS BUTTON */}
+              {/* CUSTOMER INPUTS WITH GPS BUTTON */}
               <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
                 <input
                   type="text"
                   placeholder="Your Name / Nickname *"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }}
+                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                 />
                 {orderType === "Delivery" && (
                   <div style={{ display: "flex", gap: "6px" }}>
@@ -874,7 +847,7 @@ export default function App() {
                       placeholder="Delivery Address / Landmark *"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }}
+                      style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                     />
                     <button
                       onClick={handleFetchGPS}
@@ -883,8 +856,8 @@ export default function App() {
                         backgroundColor: "#0288d1",
                         color: "#fff",
                         border: "none",
-                        padding: "10px 14px",
-                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        borderRadius: "4px",
                         fontSize: "12px",
                         fontWeight: "bold",
                         cursor: "pointer",
@@ -897,22 +870,22 @@ export default function App() {
               </div>
 
               {/* TOTAL & DISPATCH BUTTONS */}
-              <div style={{ marginTop: "18px", borderTop: "1px solid #27272a", paddingTop: "14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "15px", fontWeight: 800 }}>
-                  <span>Total Amount</span>
-                  <span style={{ color: "#4caf50" }}>${total} JMD</span>
+              <div style={{ marginTop: "16px", borderTop: "1px solid #333", paddingTop: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold" }}>
+                  <span>Total</span>
+                  <span>${total} JMD</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "14px" }}>
-                  <button onClick={() => handleDispatchOrder("whatsapp")} style={{ backgroundColor: "#25D366", color: "#fff", border: "none", padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 12px rgba(37,211,102,0.3)" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
+                  <button onClick={() => handleDispatchOrder("whatsapp")} style={{ backgroundColor: "#25D366", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     📱 WhatsApp
                   </button>
-                  <button onClick={() => handleDispatchOrder("instagram")} style={{ backgroundColor: "#E1306C", color: "#fff", border: "none", padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 12px rgba(225,48,108,0.3)" }}>
+                  <button onClick={() => handleDispatchOrder("instagram")} style={{ backgroundColor: "#E1306C", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     📸 Instagram DM
                   </button>
-                  <button onClick={() => handleDispatchOrder("tiktok")} style={{ backgroundColor: "#00f2fe", color: "#000", border: "none", padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,242,254,0.3)" }}>
+                  <button onClick={() => handleDispatchOrder("tiktok")} style={{ backgroundColor: "#00f2fe", color: "#000", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     🎵 TikTok DM
                   </button>
-                  <button onClick={() => handleDispatchOrder("facebook")} style={{ backgroundColor: "#1877F2", color: "#fff", border: "none", padding: "12px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 12px rgba(24,119,242,0.3)" }}>
+                  <button onClick={() => handleDispatchOrder("facebook")} style={{ backgroundColor: "#1877F2", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
                     📘 Facebook DM
                   </button>
                 </div>
@@ -921,48 +894,48 @@ export default function App() {
           )}
         </div>
 
-        {/* FOOTER */}
-        <footer style={{ marginTop: "36px", padding: "18px 0", borderTop: "1px solid #27272a", textAlign: "center" }}>
-          <p style={{ fontSize: "11px", color: "#71717a", marginBottom: "8px" }}>Visit our social channels:</p>
+        {/* FOOTER SOCIAL PORTALS */}
+        <footer style={{ marginTop: "32px", padding: "16px 0", borderTop: "1px solid #222", textAlign: "center" }}>
+          <p style={{ fontSize: "11px", color: "#888", marginBottom: "8px" }}>Visit our social channels:</p>
           <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "12px" }}>
             <a href={`https://instagram.com/${currentShop.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" style={{ color: "#E1306C", textDecoration: "none" }}>
-              Instagram
+              Instagram ({currentShop.instagram})
             </a>
             <a href={`https://tiktok.com/${currentShop.tiktok.replace("@", "")}`} target="_blank" rel="noreferrer" style={{ color: "#00f2fe", textDecoration: "none" }}>
-              TikTok
+              TikTok ({currentShop.tiktok})
             </a>
             <a href={`https://facebook.com/${currentShop.facebook}`} target="_blank" rel="noreferrer" style={{ color: "#1877F2", textDecoration: "none" }}>
               Facebook
             </a>
           </div>
           {currentShop.address && (
-            <p style={{ fontSize: "11px", color: "#a1a1aa", marginTop: "12px" }}>
+            <p style={{ fontSize: "10px", color: "#666", marginTop: "12px" }}>
               📍 {currentShop.address} {currentShop.mapLink && <a href={currentShop.mapLink} target="_blank" rel="noreferrer" style={{ color: "#4caf50" }}>(Map Link)</a>}
             </p>
           )}
         </footer>
       </main>
 
-      {/* DISH CUSTOMIZATION MODAL (KETCHUP, PEPPER, SPICE, GRAVY) */}
+      {/* DISH CUSTOMIZATION MODAL */}
       {selectedDishForCart && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }}>
-          <div style={{ backgroundColor: "#18181b", padding: "22px", borderRadius: "14px", width: "90%", maxWidth: "420px", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: "17px" }}>🍲 Customize: {selectedDishForCart.name}</h3>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px" }}>Customize: {selectedDishForCart.name}</h3>
             
             <div style={{ display: "grid", gap: "12px", marginBottom: "16px" }}>
               <div>
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Gravy Level:</label>
-                <select value={optGravy} onChange={(e) => setOptGravy(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #3f3f46", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Gravy Level:</label>
+                <select value={optGravy} onChange={(e) => setOptGravy(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
                   <option value="Normal">Normal Gravy</option>
                   <option value="Extra Gravy">Extra Gravy</option>
                   <option value="No Gravy / Dry">No Gravy (Dry)</option>
-                  <option value="Gravy on Side">Gravy on the Side</option>
+                  <option value="Gravy on Side">Gravy on Side</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Spice Level:</label>
-                <select value={optSpice} onChange={(e) => setOptSpice(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #3f3f46", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Spice Level:</label>
+                <select value={optSpice} onChange={(e) => setOptSpice(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
                   <option value="Mild">Mild</option>
                   <option value="Medium">Medium</option>
                   <option value="Hot & Spicy">Hot & Spicy</option>
@@ -970,22 +943,22 @@ export default function App() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingTop: "4px" }}>
-                <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={optKetchup} onChange={(e) => setOptKetchup(e.target.checked)} style={{ width: "16px", height: "16px" }} />
+                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input type="checkbox" checked={optKetchup} onChange={(e) => setOptKetchup(e.target.checked)} />
                   Add Ketchup
                 </label>
-                <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={optPepper} onChange={(e) => setOptPepper(e.target.checked)} style={{ width: "16px", height: "16px" }} />
+                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input type="checkbox" checked={optPepper} onChange={(e) => setOptPepper(e.target.checked)} />
                   Add Scotch Bonnet Pepper
                 </label>
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={handleConfirmAddToCart} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleConfirmAddToCart} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", cursor: "pointer" }}>
                 Add to Plate
               </button>
-              <button onClick={() => setSelectedDishForCart(null)} style={{ padding: "10px 16px", backgroundColor: "#27272a", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+              <button onClick={() => setSelectedDishForCart(null)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -995,21 +968,21 @@ export default function App() {
 
       {/* LOGIN MODAL */}
       {showAdminModal && !isAdminLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#18181b", padding: "22px", borderRadius: "14px", width: "90%", maxWidth: "380px", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <h3 style={{ margin: "0 0 14px", textAlign: "center" }}>🔐 Enter Admin PIN</h3>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
+            <h3 style={{ margin: "0 0 12px" }}>🔐 Enter Admin PIN</h3>
             <input
               type="password"
               placeholder="****"
               value={adminPinInput}
               onChange={(e) => setAdminPinInput(e.target.value)}
-              style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", backgroundColor: "#0e0e10", color: "#fff", fontSize: "18px", textAlign: "center", marginBottom: "14px" }}
+              style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "16px", textAlign: "center", marginBottom: "12px" }}
             />
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={handleAdminLogin} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleAdminLogin} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                 Unlock Panel
               </button>
-              <button onClick={() => setShowAdminModal(false)} style={{ padding: "10px 16px", backgroundColor: "#27272a", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+              <button onClick={() => setShowAdminModal(false)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -1019,26 +992,26 @@ export default function App() {
 
       {/* MASTER CONTROL CENTER */}
       {showAdminModal && isMasterLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ backgroundColor: "#18181b", padding: "22px", borderRadius: "14px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0, color: "#ef4444" }}>👑 Master Control Center</h3>
-              <button onClick={() => { setIsMasterLoggedIn(false); setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#27272a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+              <h3 style={{ margin: 0, color: "#e53935" }}>👑 Master Control Center</h3>
+              <button onClick={() => { setIsMasterLoggedIn(false); setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#333", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>
                 Logout Master
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #27272a", paddingBottom: "8px", overflowX: "auto" }}>
-              <button onClick={() => setActiveMasterTab("shops")} style={{ backgroundColor: activeMasterTab === "shops" ? "#ef4444" : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px", overflowX: "auto" }}>
+              <button onClick={() => setActiveMasterTab("shops")} style={{ backgroundColor: activeMasterTab === "shops" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 Shops Manager
               </button>
-              <button onClick={() => setActiveMasterTab("supabase")} style={{ backgroundColor: activeMasterTab === "supabase" ? "#ef4444" : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveMasterTab("supabase")} style={{ backgroundColor: activeMasterTab === "supabase" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 ⚡ Supabase Config
               </button>
-              <button onClick={() => setActiveMasterTab("devChat")} style={{ backgroundColor: activeMasterTab === "devChat" ? "#ef4444" : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveMasterTab("devChat")} style={{ backgroundColor: activeMasterTab === "devChat" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 Dev Chat
               </button>
-              <button onClick={() => setActiveMasterTab("masterPin")} style={{ backgroundColor: activeMasterTab === "masterPin" ? "#ef4444" : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveMasterTab("masterPin")} style={{ backgroundColor: activeMasterTab === "masterPin" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 Master PIN
               </button>
             </div>
@@ -1048,9 +1021,9 @@ export default function App() {
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>Register New Cookshop</h4>
                 <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
-                  <input type="text" placeholder="Cookshop Name" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <input type="text" placeholder="Access PIN (4 digits)" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <input type="text" placeholder="WhatsApp Number" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                  <input type="text" placeholder="Cookshop Name" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <input type="text" placeholder="Access PIN (4 digits)" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <input type="text" placeholder="WhatsApp Number" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
                   <button
                     onClick={async () => {
                       if (!newShopName || !newShopPin) return;
@@ -1069,7 +1042,7 @@ export default function App() {
                       setNewShopPin("");
                       setNewShopWhatsapp("");
                     }}
-                    style={{ padding: "10px", backgroundColor: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+                    style={{ padding: "8px", backgroundColor: "#e53935", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
                   >
                     Create Shop
                   </button>
@@ -1085,9 +1058,9 @@ export default function App() {
                   style={{
                     width: "100%",
                     padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #27272a",
-                    backgroundColor: "#0e0e10",
+                    borderRadius: "4px",
+                    border: "1px solid #333",
+                    backgroundColor: "#121212",
                     color: "#fff",
                     fontSize: "14px",
                     cursor: "pointer",
@@ -1106,30 +1079,30 @@ export default function App() {
             {activeMasterTab === "supabase" && (
               <div style={{ display: "grid", gap: "12px" }}>
                 <h4 style={{ margin: "0 0 4px" }}>⚡ Connect Database (Supabase)</h4>
-                <p style={{ fontSize: "11px", color: "#a1a1aa", margin: 0 }}>
+                <p style={{ fontSize: "11px", color: "#aaa", margin: 0 }}>
                   Enter your project API URL and public Anon key below. These will persist in browser storage and connect your app directly to your cloud tables.
                 </p>
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Supabase Project URL:</label>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Project URL:</label>
                 <input
                   type="text"
                   placeholder="https://xyz.supabase.co"
                   value={supabaseUrl}
                   onChange={(e) => setSupabaseUrl(e.target.value)}
-                  style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }}
+                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                 />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Supabase Anon API Key:</label>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Anon API Key:</label>
                 <textarea
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   value={supabaseAnonKey}
                   onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                  style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px", height: "80px" }}
+                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", height: "80px" }}
                 />
 
                 <button
                   onClick={handleSaveSupabaseConfig}
-                  style={{ padding: "10px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+                  style={{ padding: "10px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
                 >
                   Save Supabase Settings
                 </button>
@@ -1139,19 +1112,19 @@ export default function App() {
             {/* DEV CHAT */}
             {activeMasterTab === "devChat" && (
               <div>
-                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #27272a", borderRadius: "6px", padding: "8px", marginBottom: "8px", backgroundColor: "#0e0e10" }}>
+                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #333", borderRadius: "4px", padding: "8px", marginBottom: "8px", backgroundColor: "#121212" }}>
                   {(chatMessages[currentShopId] || []).map((msg) => (
                     <div key={msg.id} style={{ textAlign: msg.sender === "master" ? "right" : "left", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", color: "#71717a" }}>{msg.timestamp}</span>
-                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "master" ? "#ef4444" : "#27272a", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
+                      <span style={{ fontSize: "10px", color: "#aaa" }}>{msg.timestamp}</span>
+                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "master" ? "#e53935" : "#333", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
                         {msg.text}
                       </div>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <input type="text" placeholder="Message shop admin..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <button onClick={() => handleSendMessage("master")} style={{ backgroundColor: "#ef4444", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>
+                  <input type="text" placeholder="Message shop admin..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <button onClick={() => handleSendMessage("master")} style={{ backgroundColor: "#e53935", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "4px", cursor: "pointer" }}>
                     Send
                   </button>
                 </div>
@@ -1162,8 +1135,8 @@ export default function App() {
             {activeMasterTab === "masterPin" && (
               <div style={{ display: "grid", gap: "8px" }}>
                 <h4 style={{ margin: "0 0 8px" }}>Update Master PIN</h4>
-                <input type="text" placeholder="New Master PIN (4 digits)" value={masterPin} onChange={(e) => setMasterPin(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                <button onClick={() => alert("Master PIN updated successfully.")} style={{ padding: "8px", backgroundColor: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+                <input type="text" placeholder="New Master PIN (4 digits)" value={masterPin} onChange={(e) => setMasterPin(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                <button onClick={() => alert("Master PIN updated successfully.")} style={{ padding: "8px", backgroundColor: "#e53935", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                   Save Master PIN
                 </button>
               </div>
@@ -1174,29 +1147,29 @@ export default function App() {
 
       {/* SHOP ADMIN PANEL */}
       {showAdminModal && isAdminLoggedIn && !isMasterLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ backgroundColor: "#18181b", padding: "22px", borderRadius: "14px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h3 style={{ margin: 0 }}>⚙️ {currentShop.name} Admin Panel</h3>
-              <button onClick={() => { setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#27272a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => { setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#333", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>
                 Logout Admin
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #27272a", paddingBottom: "8px", overflowX: "auto" }}>
-              <button onClick={() => setActiveAdminTab("control")} style={{ backgroundColor: activeAdminTab === "control" ? currentShop.themeColor : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>
+              <button onClick={() => setActiveAdminTab("control")} style={{ backgroundColor: activeAdminTab === "control" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 🎛️ Control
               </button>
-              <button onClick={() => setActiveAdminTab("orders")} style={{ backgroundColor: activeAdminTab === "orders" ? currentShop.themeColor : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveAdminTab("orders")} style={{ backgroundColor: activeAdminTab === "orders" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 📋 Orders ({orders.filter((o) => o.shopId === currentShopId).length})
               </button>
-              <button onClick={() => setActiveAdminTab("menu")} style={{ backgroundColor: activeAdminTab === "menu" ? currentShop.themeColor : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveAdminTab("menu")} style={{ backgroundColor: activeAdminTab === "menu" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 📜 Menu
               </button>
-              <button onClick={() => setActiveAdminTab("settings")} style={{ backgroundColor: activeAdminTab === "settings" ? currentShop.themeColor : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveAdminTab("settings")} style={{ backgroundColor: activeAdminTab === "settings" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 ⚙️ Settings
               </button>
-              <button onClick={() => setActiveAdminTab("devChat")} style={{ backgroundColor: activeAdminTab === "devChat" ? currentShop.themeColor : "#27272a", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setActiveAdminTab("devChat")} style={{ backgroundColor: activeAdminTab === "devChat" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 💬 Dev Chat
               </button>
             </div>
@@ -1206,10 +1179,10 @@ export default function App() {
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>⏰ Operational Toggles</h4>
                 <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.isOpenManual ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
+                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.isOpenManual ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                     {currentShop.isOpenManual ? "STORE OPEN" : "STORE CLOSED"}
                   </button>
-                  <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.isDeliveryActive ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
+                  <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.isDeliveryActive ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                     {currentShop.isDeliveryActive ? "DELIVERY ACTIVE" : "DELIVERY OFF"}
                   </button>
                 </div>
@@ -1233,7 +1206,7 @@ export default function App() {
                         const updated = { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], openTime: e.target.value } };
                         updateCurrentShop("weeklySchedule", updated);
                       }}
-                      style={{ backgroundColor: "#0e0e10", color: "#fff", border: "1px solid #27272a", borderRadius: "4px" }}
+                      style={{ backgroundColor: "#121212", color: "#fff", border: "1px solid #333", borderRadius: "4px" }}
                     />
                     <span>to</span>
                     <input
@@ -1243,7 +1216,7 @@ export default function App() {
                         const updated = { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], closeTime: e.target.value } };
                         updateCurrentShop("weeklySchedule", updated);
                       }}
-                      style={{ backgroundColor: "#0e0e10", color: "#fff", border: "1px solid #27272a", borderRadius: "4px" }}
+                      style={{ backgroundColor: "#121212", color: "#fff", border: "1px solid #333", borderRadius: "4px" }}
                     />
                   </div>
                 ))}
@@ -1255,18 +1228,18 @@ export default function App() {
               <div>
                 <h4 style={{ margin: "0 0 12px" }}>🧾 Incoming Orders & Digital Receipts</h4>
                 {orders.filter((o) => o.shopId === currentShopId).length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "#71717a" }}>No active orders found for this shop.</p>
+                  <p style={{ fontSize: "12px", color: "#888" }}>No active orders found for this shop.</p>
                 ) : (
                   <div style={{ display: "grid", gap: "12px" }}>
                     {orders
                       .filter((o) => o.shopId === currentShopId)
                       .map((ord) => (
-                        <div key={ord.id} style={{ backgroundColor: "#0e0e10", border: "1px solid #27272a", padding: "12px", borderRadius: "8px" }}>
+                        <div key={ord.id} style={{ backgroundColor: "#121212", border: "1px solid #333", padding: "12px", borderRadius: "6px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                             <span style={{ fontWeight: "bold", fontSize: "13px" }}>Order #{ord.id.slice(-4)}</span>
                             <span style={{ color: "#4caf50", fontSize: "12px", fontWeight: "bold" }}>${ord.total} JMD</span>
                           </div>
-                          <div style={{ fontSize: "11px", color: "#a1a1aa", marginBottom: "6px" }}>
+                          <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
                             👤 {ord.customerName} | 🚚 {ord.orderType} ({ord.deliveryZone}) | ⏰ {ord.createdAt}
                           </div>
                           {ord.customerAddress && (
@@ -1274,11 +1247,11 @@ export default function App() {
                               📍 {ord.customerAddress}
                             </div>
                           )}
-                          <div style={{ borderTop: "1px dashed #27272a", paddingTop: "6px", fontSize: "11px" }}>
+                          <div style={{ borderTop: "1px dashed #333", paddingTop: "6px", fontSize: "11px" }}>
                             {ord.items.map((it, i) => (
                               <div key={i}>
                                 {it.quantity}x {it.dish.name} (${it.dish.price * it.quantity})
-                                <span style={{ color: "#71717a" }}>
+                                <span style={{ color: "#aaa" }}>
                                   {" "}[Spice: {it.spiceLevel}, Gravy: {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]
                                 </span>
                               </div>
@@ -1296,10 +1269,10 @@ export default function App() {
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>{editingDish ? "Edit Dish" : "Add New Dish"}</h4>
                 <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
-                  <input type="text" placeholder="Dish Name" value={dishForm.name} onChange={(e) => setDishForm((p) => ({ ...p, name: e.target.value }))} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <input type="number" placeholder="Price (JMD)" value={dishForm.price} onChange={(e) => setDishForm((p) => ({ ...p, price: e.target.value }))} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <textarea placeholder="Description" value={dishForm.description} onChange={(e) => setDishForm((p) => ({ ...p, description: e.target.value }))} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <select value={dishForm.category} onChange={(e) => setDishForm((p) => ({ ...p, category: e.target.value as Dish["category"] }))} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }}>
+                  <input type="text" placeholder="Dish Name" value={dishForm.name} onChange={(e) => setDishForm((p) => ({ ...p, name: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <input type="number" placeholder="Price (JMD)" value={dishForm.price} onChange={(e) => setDishForm((p) => ({ ...p, price: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <textarea placeholder="Description" value={dishForm.description} onChange={(e) => setDishForm((p) => ({ ...p, description: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <select value={dishForm.category} onChange={(e) => setDishForm((p) => ({ ...p, category: e.target.value as Dish["category"] }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }}>
                     <option value="Mains">Mains</option>
                     <option value="Drinks">Drinks</option>
                     <option value="Snacks">Snacks</option>
@@ -1311,7 +1284,7 @@ export default function App() {
                     Mark as ⭐ Special / Featured Item
                   </label>
                   <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: "12px" }} />
-                  <button onClick={handleSaveDish} style={{ padding: "10px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>
+                  <button onClick={handleSaveDish} style={{ padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>
                     {editingDish ? "Update Dish" : "Add Dish"}
                   </button>
                 </div>
@@ -1319,12 +1292,12 @@ export default function App() {
                 <h4 style={{ margin: "16px 0 8px" }}>Current Items</h4>
                 <div style={{ display: "grid", gap: "8px" }}>
                   {menu.map((item) => (
-                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#0e0e10", padding: "8px 12px", borderRadius: "6px" }}>
+                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#121212", padding: "8px 12px", borderRadius: "4px" }}>
                       <div>
                         <div style={{ fontWeight: "bold", fontSize: "13px" }}>
                           {item.name} (${item.price} JMD) {item.isSpecial && "⭐"}
                         </div>
-                        <div style={{ fontSize: "10px", color: "#71717a" }}>{item.category}</div>
+                        <div style={{ fontSize: "10px", color: "#aaa" }}>{item.category}</div>
                       </div>
                       <div style={{ display: "flex", gap: "6px" }}>
                         <button
@@ -1349,7 +1322,7 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => setMenu((prev) => prev.filter((d) => d.id !== item.id))}
-                          style={{ backgroundColor: "#27272a", color: "#ef4444", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
+                          style={{ backgroundColor: "#333", color: "#ff4d4d", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
                         >
                           Delete
                         </button>
@@ -1362,27 +1335,27 @@ export default function App() {
 
             {/* SETTINGS (DELIVERY ZONES & BRANDING) */}
             {activeAdminTab === "settings" && (
-              <div style={{ display: "grid", gap: "10px" }}>
+              <div style={{ display: "grid", gap: "8px" }}>
                 <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Delivery & Location Settings</h4>
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Upload Header Banner Image:</label>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Upload Header Banner Image:</label>
                 <input type="file" accept="image/*" onChange={handleHeaderBannerUpload} style={{ fontSize: "12px" }} />
                 {currentShop.headerBanner && (
-                  <img src={currentShop.headerBanner} alt="Header Preview" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px", marginTop: "4px" }} />
+                  <img src={currentShop.headerBanner} alt="Header Preview" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "4px", marginTop: "4px" }} />
                 )}
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Cookshop Name:</label>
-                <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Cookshop Name:</label>
+                <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Font Style:</label>
-                <select value={currentShop.fontStyle} onChange={(e) => updateCurrentShop("fontStyle", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }}>
-                  <option value="sans-serif">Sans-Serif (Clean)</option>
-                  <option value="monospace">Monospace (Tech)</option>
-                  <option value="serif">Serif (Classic)</option>
-                  <option value="cursive">Cursive (Handwritten)</option>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Font Style:</label>
+                <select value={currentShop.fontStyle} onChange={(e) => updateCurrentShop("fontStyle", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }}>
+                  <option value="Monospace">Monospace</option>
+                  <option value="Sans-Serif">Sans-Serif</option>
+                  <option value="Serif">Serif</option>
+                  <option value="Cursive">Cursive</option>
                 </select>
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Theme Accent Color:</label>
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Theme Color:</label>
                 <input type="color" value={currentShop.themeColor} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} style={{ width: "100%", height: "40px", border: "none", cursor: "pointer" }} />
 
                 <h4 style={{ margin: "10px 0 0", fontSize: "13px" }}>🚚 Delivery Pricing Zones</h4>
@@ -1396,7 +1369,7 @@ export default function App() {
                         updated[zIdx].name = e.target.value;
                         updateCurrentShop("deliveryZones", updated);
                       }}
-                      style={{ flex: 1, padding: "6px", borderRadius: "4px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }}
+                      style={{ flex: 1, padding: "6px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                     />
                     <input
                       type="number"
@@ -1406,53 +1379,53 @@ export default function App() {
                         updated[zIdx].price = parseFloat(e.target.value) || 0;
                         updateCurrentShop("deliveryZones", updated);
                       }}
-                      style={{ width: "90px", padding: "6px", borderRadius: "4px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }}
+                      style={{ width: "90px", padding: "6px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
                     />
                   </div>
                 ))}
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Delivery Zone Coverage Note:</label>
-                <input type="text" value={currentShop.deliveryZoneNote} onChange={(e) => updateCurrentShop("deliveryZoneNote", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Delivery Zone Coverage Note:</label>
+                <input type="text" value={currentShop.deliveryZoneNote} onChange={(e) => updateCurrentShop("deliveryZoneNote", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>WhatsApp Number:</label>
-                <input type="text" value={currentShop.whatsapp} onChange={(e) => updateCurrentShop("whatsapp", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>WhatsApp Number:</label>
+                <input type="text" value={currentShop.whatsapp} onChange={(e) => updateCurrentShop("whatsapp", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Instagram Handle:</label>
-                <input type="text" value={currentShop.instagram} onChange={(e) => updateCurrentShop("instagram", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Instagram Handle:</label>
+                <input type="text" value={currentShop.instagram} onChange={(e) => updateCurrentShop("instagram", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>TikTok Handle:</label>
-                <input type="text" value={currentShop.tiktok} onChange={(e) => updateCurrentShop("tiktok", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>TikTok Handle:</label>
+                <input type="text" value={currentShop.tiktok} onChange={(e) => updateCurrentShop("tiktok", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Facebook Name:</label>
-                <input type="text" value={currentShop.facebook} onChange={(e) => updateCurrentShop("facebook", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Facebook Name:</label>
+                <input type="text" value={currentShop.facebook} onChange={(e) => updateCurrentShop("facebook", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Physical Address / Location:</label>
-                <input type="text" value={currentShop.address} onChange={(e) => updateCurrentShop("address", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Physical Address / Location:</label>
+                <input type="text" value={currentShop.address} onChange={(e) => updateCurrentShop("address", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Google Maps Link:</label>
-                <input type="text" value={currentShop.mapLink} onChange={(e) => updateCurrentShop("mapLink", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Google Maps Link:</label>
+                <input type="text" value={currentShop.mapLink} onChange={(e) => updateCurrentShop("mapLink", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
-                <label style={{ fontSize: "11px", color: "#a1a1aa" }}>Admin Access PIN:</label>
-                <input type="text" value={currentShop.adminPin} onChange={(e) => updateCurrentShop("adminPin", e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Admin Access PIN:</label>
+                <input type="text" value={currentShop.adminPin} onChange={(e) => updateCurrentShop("adminPin", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
               </div>
             )}
 
             {/* DEV CHAT */}
             {activeAdminTab === "devChat" && (
               <div>
-                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #27272a", borderRadius: "6px", padding: "8px", marginBottom: "8px", backgroundColor: "#0e0e10" }}>
+                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #333", borderRadius: "4px", padding: "8px", marginBottom: "8px", backgroundColor: "#121212" }}>
                   {(chatMessages[currentShopId] || []).map((msg) => (
                     <div key={msg.id} style={{ textAlign: msg.sender === "admin" ? "right" : "left", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", color: "#71717a" }}>{msg.timestamp}</span>
-                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "admin" ? currentShop.themeColor : "#27272a", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
+                      <span style={{ fontSize: "10px", color: "#aaa" }}>{msg.timestamp}</span>
+                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "admin" ? currentShop.themeColor : "#333", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
                         {msg.text}
                       </div>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <input type="text" placeholder="Message developer..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff" }} />
-                  <button onClick={() => handleSendMessage("admin")} style={{ backgroundColor: currentShop.themeColor, color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>
+                  <input type="text" placeholder="Message developer..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
+                  <button onClick={() => handleSendMessage("admin")} style={{ backgroundColor: currentShop.themeColor, color: "#fff", border: "none", padding: "8px 16px", borderRadius: "4px", cursor: "pointer" }}>
                     Send
                   </button>
                 </div>
@@ -1464,19 +1437,19 @@ export default function App() {
 
       {/* CUSTOM DISH OVERLAY */}
       {showCustomDishModal && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#18181b", padding: "22px", borderRadius: "14px", width: "90%", maxWidth: "400px", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
             <h3 style={{ margin: "0 0 12px" }}>🍲 Order Custom Dish</h3>
             <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-              <input type="text" placeholder="Dish Name (e.g. Steamed Fish)" value={customDishName} onChange={(e) => setCustomDishName(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }} />
-              <input type="number" placeholder="Agreed Price ($ JMD)" value={customDishPrice} onChange={(e) => setCustomDishPrice(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }} />
-              <textarea placeholder="Special instructions or notes..." value={customDishNotes} onChange={(e) => setCustomDishNotes(e.target.value)} style={{ padding: "8px", borderRadius: "6px", border: "1px solid #27272a", backgroundColor: "#0e0e10", color: "#fff", fontSize: "12px" }} />
+              <input type="text" placeholder="Dish Name (e.g. Steamed Fish)" value={customDishName} onChange={(e) => setCustomDishName(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
+              <input type="number" placeholder="Agreed Price ($ JMD)" value={customDishPrice} onChange={(e) => setCustomDishPrice(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
+              <textarea placeholder="Special instructions or notes..." value={customDishNotes} onChange={(e) => setCustomDishNotes(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={handleAddCustomDish} style={{ flex: 1, padding: "8px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>
+              <button onClick={handleAddCustomDish} style={{ flex: 1, padding: "8px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                 Add to Plate
               </button>
-              <button onClick={() => setShowCustomDishModal(false)} style={{ padding: "8px", backgroundColor: "#27272a", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+              <button onClick={() => setShowCustomDishModal(false)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -1486,8 +1459,8 @@ export default function App() {
 
       {/* FULLSCREEN LIGHTBOX */}
       {zoomedImage && (
-        <div onClick={() => setZoomedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <img src={zoomedImage} alt="Full View" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain", borderRadius: "10px" }} />
+        <div onClick={() => setZoomedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <img src={zoomedImage} alt="Full View" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain", borderRadius: "8px" }} />
         </div>
       )}
     </div>
