@@ -1,34 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-// --- SUPABASE REST HELPER (NO EXTERNAL NPM PACKAGE REQUIRED) ---
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || "https://your-supabase-url.supabase.co";
-const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || "your-supabase-anon-key";
-
-const supabaseFetch = async (table: string, method: string = "GET", body?: any) => {
-  try {
-    const headers: Record<string, string> = {
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-    };
-    if (method === "POST" || method === "PUT") {
-      headers["Prefer"] = "return=representation";
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn("Supabase fetch fallback execution:", err);
-    return null;
-  }
-};
-
 // --- TYPES & INTERFACES ---
 interface Dish {
   id: string;
@@ -200,6 +171,10 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
 
+  // Supabase Configuration State
+  const [supabaseUrl, setSupabaseUrl] = useState<string>(() => localStorage.getItem("SUPABASE_URL") || "");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(() => localStorage.getItem("SUPABASE_ANON_KEY") || "");
+
   // Admin & Master Access States
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [adminPinInput, setAdminPinInput] = useState<string>("");
@@ -207,7 +182,7 @@ export default function App() {
   const [isMasterLoggedIn, setIsMasterLoggedIn] = useState<boolean>(false);
   const [masterPin, setMasterPin] = useState<string>("9999");
   const [activeAdminTab, setActiveAdminTab] = useState<"control" | "orders" | "menu" | "settings" | "devChat">("control");
-  const [activeMasterTab, setActiveMasterTab] = useState<"shops" | "devChat" | "masterPin">("shops");
+  const [activeMasterTab, setActiveMasterTab] = useState<"shops" | "supabase" | "devChat" | "masterPin">("shops");
 
   // Chat State
   const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({
@@ -249,6 +224,33 @@ export default function App() {
 
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
 
+  // Helper for REST Supabase calls using Master Config
+  const supabaseFetch = async (table: string, method: string = "GET", body?: any) => {
+    if (!supabaseUrl || !supabaseAnonKey) return null;
+    try {
+      const headers: Record<string, string> = {
+        "apikey": supabaseAnonKey,
+        "Authorization": `Bearer ${supabaseAnonKey}`,
+        "Content-Type": "application/json",
+      };
+      if (method === "POST" || method === "PUT") {
+        headers["Prefer"] = "return=representation";
+      }
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn("Supabase fetch fallback execution:", err);
+      return null;
+    }
+  };
+
   // Sync Cloud Data via Supabase REST API
   useEffect(() => {
     const fetchCloudData = async () => {
@@ -262,7 +264,7 @@ export default function App() {
       if (cloudOrders) setOrders(cloudOrders);
     };
     fetchCloudData();
-  }, []);
+  }, [supabaseUrl, supabaseAnonKey]);
 
   // Sync Active Shop from URL Parameters
   useEffect(() => {
@@ -273,6 +275,13 @@ export default function App() {
       if (match) setCurrentShopId(match.id);
     }
   }, [shops]);
+
+  // Save Supabase Configuration to LocalStorage
+  const handleSaveSupabaseConfig = () => {
+    localStorage.setItem("SUPABASE_URL", supabaseUrl);
+    localStorage.setItem("SUPABASE_ANON_KEY", supabaseAnonKey);
+    alert("Supabase URL and Anon Key saved successfully!");
+  };
 
   // Fetch Exact GPS Coordinates and Attach Live Map Link
   const handleFetchGPS = () => {
@@ -811,9 +820,12 @@ export default function App() {
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px", overflowX: "auto" }}>
               <button onClick={() => setActiveMasterTab("shops")} style={{ backgroundColor: activeMasterTab === "shops" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 Shops Manager
+              </button>
+              <button onClick={() => setActiveMasterTab("supabase")} style={{ backgroundColor: activeMasterTab === "supabase" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
+                ⚡ Supabase Config
               </button>
               <button onClick={() => setActiveMasterTab("devChat")} style={{ backgroundColor: activeMasterTab === "devChat" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
                 Dev Chat
@@ -823,6 +835,7 @@ export default function App() {
               </button>
             </div>
 
+            {/* SHOPS MANAGER TAB */}
             {activeMasterTab === "shops" && (
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>Register New Cookshop</h4>
@@ -871,6 +884,41 @@ export default function App() {
               </div>
             )}
 
+            {/* SUPABASE CONFIG TAB */}
+            {activeMasterTab === "supabase" && (
+              <div style={{ display: "grid", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 4px" }}>⚡ Connect Database (Supabase)</h4>
+                <p style={{ fontSize: "11px", color: "#aaa", margin: 0 }}>
+                  Enter your project API URL and public Anon key below. These will persist in browser storage and connect your app directly to your cloud tables.
+                </p>
+
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Project URL:</label>
+                <input
+                  type="text"
+                  placeholder="https://xyz.supabase.co"
+                  value={supabaseUrl}
+                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
+                />
+
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Anon API Key:</label>
+                <textarea
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={supabaseAnonKey}
+                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", height: "80px" }}
+                />
+
+                <button
+                  onClick={handleSaveSupabaseConfig}
+                  style={{ padding: "10px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
+                >
+                  Save Supabase Settings
+                </button>
+              </div>
+            )}
+
+            {/* DEV CHAT TAB */}
             {activeMasterTab === "devChat" && (
               <div>
                 <div style={{ height: "200px", overflowY: "auto", border: "1px solid #333", borderRadius: "4px", padding: "8px", marginBottom: "8px", backgroundColor: "#121212" }}>
@@ -892,6 +940,7 @@ export default function App() {
               </div>
             )}
 
+            {/* MASTER PIN TAB */}
             {activeMasterTab === "masterPin" && (
               <div style={{ display: "grid", gap: "8px" }}>
                 <h4 style={{ margin: "0 0 8px" }}>Update Master PIN</h4>
