@@ -88,7 +88,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     address: "Hip Strip, Montego Bay, St. James",
     mapLink: "https://maps.google.com",
     pin: "1234",
-    headerBanner: "",
+    headerBanner: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
     deliveryFee: 300,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -109,7 +109,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     address: "Downtown, Montego Bay",
     mapLink: "https://maps.google.com",
     pin: "5678",
-    headerBanner: "",
+    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
     deliveryFee: 250,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -530,6 +530,17 @@ export default function App() {
     }
   };
 
+  const handleHeaderBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateCurrentShop("headerBanner", reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const filteredMenu =
     selectedCategory === "All Items"
       ? menu
@@ -537,15 +548,33 @@ export default function App() {
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#fff", minHeight: "100vh", fontFamily: currentShop.fontStyle }}>
-      {/* HEADER BANNER */}
+      {/* HEADER BANNER WITH TAP TO VIEW */}
       <header style={{ position: "relative", backgroundColor: "#1e1e1e", borderBottom: "1px solid #333", padding: "12px 16px" }}>
         {currentShop.headerBanner && (
-          <img
-            src={currentShop.headerBanner}
-            alt="Header Banner"
-            onClick={() => setZoomedImage(currentShop.headerBanner)}
-            style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "6px", marginBottom: "8px", cursor: "pointer" }}
-          />
+          <div style={{ position: "relative" }}>
+            <img
+              src={currentShop.headerBanner}
+              alt="Header Banner"
+              onClick={() => setZoomedImage(currentShop.headerBanner)}
+              style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "6px", marginBottom: "8px", cursor: "pointer" }}
+            />
+            <span
+              onClick={() => setZoomedImage(currentShop.headerBanner)}
+              style={{
+                position: "absolute",
+                bottom: "14px",
+                right: "8px",
+                backgroundColor: "rgba(0,0,0,0.7)",
+                color: "#fff",
+                fontSize: "10px",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              🔍 Tap to View
+            </span>
+          </div>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -1115,7 +1144,7 @@ export default function App() {
               </div>
             )}
 
-            {/* MENU EDITOR TAB (WITH FEATURED SPECIAL TOGGLE) */}
+            {/* MENU EDITOR TAB */}
             {activeAdminTab === "menu" && (
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>{editingDish ? "Edit Dish" : "Add New Dish"}</h4>
@@ -1184,10 +1213,17 @@ export default function App() {
               </div>
             )}
 
-            {/* SETTINGS TAB (WITH CUSTOM FONTS & THEME COLORS) */}
+            {/* SETTINGS TAB (WITH HEADER BANNER UPLOADER) */}
             {activeAdminTab === "settings" && (
               <div style={{ display: "grid", gap: "8px" }}>
-                <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Fonts & Theme Settings</h4>
+                <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Header Banner & Theme Settings</h4>
+                
+                <label style={{ fontSize: "11px", color: "#aaa" }}>Upload Header Banner Image:</label>
+                <input type="file" accept="image/*" onChange={handleHeaderBannerUpload} style={{ fontSize: "12px" }} />
+                {currentShop.headerBanner && (
+                  <img src={currentShop.headerBanner} alt="Header Preview" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "4px", marginTop: "4px" }} />
+                )}
+
                 <label style={{ fontSize: "11px", color: "#aaa" }}>Cookshop Name:</label>
                 <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
 
@@ -1272,7 +1308,7 @@ export default function App() {
         </div>
       )}
 
-      {/* FULLSCREEN LIGHTBOX */}
+      {/* FULLSCREEN LIGHTBOX (WORKS FOR DISHES & HEADER BANNERS) */}
       {zoomedImage && (
         <div onClick={() => setZoomedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
           <img src={zoomedImage} alt="Full View" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain", borderRadius: "8px" }} />
