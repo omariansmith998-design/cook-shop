@@ -181,7 +181,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // NEW: 2-Way Chat State (Replaces DevNotes)
   const [chats, setChats] = useState<Record<string, ChatMessage[]>>(() => {
     const saved = localStorage.getItem("cookshop_shop_chats");
     return saved ? JSON.parse(saved) : {};
@@ -246,7 +245,7 @@ export default function App() {
   const [dishImageInput, setDishImageInput] = useState("");
   const [dishSuggestedInput, setDishSuggestedInput] = useState(false);
 
-  // Viewport Fix (React Dynamic Injector)
+  // Dynamic Viewport Injector
   useEffect(() => {
     let meta = document.querySelector("meta[name='viewport']");
     if (!meta) {
@@ -267,7 +266,7 @@ export default function App() {
       localStorage.setItem("cookshop_master_pin", masterPin);
       const prunedOrders: Record<string, Order[]> = {};
       Object.keys(orders).forEach(id => {
-        prunedOrders[id] = (orders[id] || []).slice(0, 50); // Keep last 50
+        prunedOrders[id] = (orders[id] || []).slice(0, 50);
       });
       localStorage.setItem("cookshop_all_orders", JSON.stringify(prunedOrders));
     } catch (err) {
@@ -275,7 +274,6 @@ export default function App() {
     }
   }, [shops, menus, orders, chats, likedDishes, masterPin]);
 
-  // Scroll Chat to Bottom
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -299,7 +297,8 @@ export default function App() {
 
   const currentComputedOpenState = isShopOpenNow(activeShop);
 
-  const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+  // Gallery Image Compressor
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -307,14 +306,14 @@ export default function App() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 500;
+        const MAX_WIDTH = 600;
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          callback(canvas.toDataURL("image/jpeg", 0.5));
+          callback(canvas.toDataURL("image/jpeg", 0.6));
         }
       };
       if (event.target?.result) img.src = event.target.result as string;
@@ -386,7 +385,7 @@ export default function App() {
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const dispatchOrder = (method: "whatsapp" | "social") => {
+  const dispatchOrder = (method: "whatsapp" | "ig" | "tiktok" | "fb") => {
     if (!customerName.trim()) {
       alert("Please enter your name or nickname!");
       return;
@@ -451,7 +450,8 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
       window.open(`https://wa.me/${activeShop.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(fullText)}`, "_blank");
     } else {
       navigator.clipboard.writeText(fullText);
-      alert("Order receipt copied! Paste into Instagram, TikTok, or Facebook DM.");
+      const platformName = method === "ig" ? "Instagram" : method === "tiktok" ? "TikTok" : "Facebook";
+      alert(`Order receipt copied! Open ${platformName} and paste into ${activeShop.name}'s DM.`);
     }
   };
 
@@ -578,16 +578,19 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
   const deliveryCost = orderType === "delivery" && activeShop.isDeliveryActive ? activeShop.deliveryFee : 0;
   const cartTotal = cartSubtotal + deliveryCost + tipAmount;
 
+  const currentShopUrl = `${window.location.origin}${window.location.pathname}?shop=${activeShop.id}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(currentShopUrl)}`;
+
   return (
     <div style={{ minHeight: "100vh", width: "100%", maxWidth: "100vw", overflowX: "hidden", backgroundColor: "#121215", color: "#ffffff", fontFamily: activeShop.fontFamily || "Poppins, sans-serif", paddingBottom: "120px", boxSizing: "border-box" }}>
       <style>{`
         * { box-sizing: border-box !important; }
         body, html { margin: 0; padding: 0; width: 100%; overflow-x: hidden; background-color: #121215; }
-        .force-active-btn { background-color: #059669 !important; color: #ffffff !important; opacity: 1 !important; border: 1px solid #34d399 !important; }
+        .force-active-btn { background-color: ${activeShop.themeColor} !important; color: #ffffff !important; opacity: 1 !important; border: 1px solid ${activeShop.themeColor} !important; }
         .force-inactive-btn { background-color: #27272a !important; color: #d4d4d8 !important; border: 1px solid #3f3f46 !important; }
-        .force-primary-action { background-color: #059669 !important; color: #ffffff !important; font-weight: 900 !important; border: none !important; }
+        .force-primary-action { background-color: ${activeShop.themeColor} !important; color: #ffffff !important; font-weight: 900 !important; border: none !important; }
         .tab-btn { padding: 8px 12px; font-size: 11px; font-weight: 800; border-radius: 6px; border: 1px solid #3f3f46; cursor: pointer; background-color: #18181b; color: #a1a1aa; white-space: nowrap; }
-        .tab-btn.active { background-color: #059669; color: #ffffff; border-color: #34d399; }
+        .tab-btn.active { background-color: ${activeShop.themeColor}; color: #ffffff; border-color: ${activeShop.themeColor}; }
       `}</style>
 
       {/* --- PUBLIC SHOP HEADER --- */}
@@ -623,6 +626,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           </div>
         )}
 
+        {/* Category Tabs */}
         <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "12px", marginBottom: "16px", width: "100%" }}>
           {["All", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)} className={activeCategory === cat ? "force-active-btn" : "force-inactive-btn"} style={{ padding: "8px 16px", borderRadius: "999px", fontSize: "12px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -638,6 +642,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
           </button>
         </div>
 
+        {/* Dishes Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", width: "100%" }}>
           {filteredMenu.map(dish => {
             const isLiked = likedDishes.includes(dish.id);
@@ -750,13 +755,23 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
               <div style={{ display: "flex", justifyContent: "space-between", color: "#ffffff", fontWeight: 900, fontSize: "16px", paddingTop: "8px", borderTop: "1px dashed #27272a" }}><span>Total</span><span>${cartTotal} JMD</span></div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <button onClick={() => dispatchOrder("whatsapp")} className="force-primary-action" style={{ padding: "12px", borderRadius: "10px", fontSize: "12px", cursor: "pointer" }}>📲 Dispatch WhatsApp</button>
-              <button onClick={() => dispatchOrder("social")} style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "12px", borderRadius: "10px", fontSize: "12px", cursor: "pointer", border: "1px solid #3f3f46" }}>📋 Copy for IG / DM</button>
+            {/* Multi-Platform Social Dispatch Buttons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              <button onClick={() => dispatchOrder("whatsapp")} className="force-primary-action" style={{ padding: "10px", borderRadius: "8px", fontSize: "11px", cursor: "pointer" }}>📲 WhatsApp</button>
+              <button onClick={() => dispatchOrder("ig")} style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "11px", cursor: "pointer", border: "1px solid #3f3f46" }}>📸 Instagram DM</button>
+              <button onClick={() => dispatchOrder("tiktok")} style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "11px", cursor: "pointer", border: "1px solid #3f3f46" }}>🎵 TikTok DM</button>
+              <button onClick={() => dispatchOrder("fb")} style={{ backgroundColor: "#27272a", color: "#ffffff", fontWeight: 800, padding: "10px", borderRadius: "8px", fontSize: "11px", cursor: "pointer", border: "1px solid #3f3f46" }}>📘 Facebook DM</button>
             </div>
           </div>
         )}
       </main>
+
+      {/* --- TAP-TO-VIEW IMAGE LIGHTBOX --- */}
+      {zoomedImageUrl && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }} onClick={() => setZoomedImageUrl(null)}>
+          <img src={zoomedImageUrl} alt="Full view" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: "12px", border: "1px solid #3f3f46" }} />
+        </div>
+      )}
 
       {/* --- MODALS --- */}
       {selectedDish && (
@@ -905,14 +920,11 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                     </div>
                   )}
 
-                  {/* MASTER DEV CHAT */}
                   {masterTab === "chat" && (
                     <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "400px" }}>
                       <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>💬 Dev Chat: <span style={{ color: "#34d399" }}>{activeShop.name}</span></h4>
                       </div>
-                      
-                      {/* Chat Messages Area */}
                       <div ref={chatScrollRef} style={{ flex: 1, backgroundColor: "#121215", borderRadius: "8px", border: "1px solid #27272a", padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "10px" }}>
                         {(!chats[activeShopId] || chats[activeShopId].length === 0) ? (
                           <p style={{ fontSize: "11px", color: "#a1a1aa", textAlign: "center", margin: "auto" }}>No messages yet for this shop.</p>
@@ -922,7 +934,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                             return (
                               <div key={msg.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "80%", display: "flex", flexDirection: "column" }}>
                                 <span style={{ fontSize: "9px", color: "#a1a1aa", marginBottom: "2px", textAlign: isMe ? "right" : "left" }}>{isMe ? "You (Dev)" : "Shop Admin"} • {msg.timestamp}</span>
-                                <div style={{ backgroundColor: isMe ? "#059669" : "#27272a", color: "#fff", padding: "8px 12px", borderRadius: "12px", borderBottomRightRadius: isMe ? "0px" : "12px", borderBottomLeftRadius: isMe ? "12px" : "0px", fontSize: "12px", border: isMe ? "none" : "1px solid #3f3f46" }}>
+                                <div style={{ backgroundColor: isMe ? activeShop.themeColor : "#27272a", color: "#fff", padding: "8px 12px", borderRadius: "12px", borderBottomRightRadius: isMe ? "0px" : "12px", borderBottomLeftRadius: isMe ? "12px" : "0px", fontSize: "12px", border: isMe ? "none" : "1px solid #3f3f46" }}>
                                   {msg.text}
                                 </div>
                               </div>
@@ -930,8 +942,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           })
                         )}
                       </div>
-
-                      {/* Chat Input */}
                       <div style={{ display: "flex", gap: "8px" }}>
                         <input type="text" placeholder="Message shop admin..." value={chatInputText} onChange={(e) => setChatInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChatMessage("developer", activeShopId)} style={{ flex: 1, backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px", fontSize: "12px", outline: "none" }} />
                         <button onClick={() => sendChatMessage("developer", activeShopId)} className="force-primary-action" style={{ padding: "0 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer" }}>Send</button>
@@ -973,7 +983,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                             <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #059669" }}>
                               <h4 style={{ fontSize: "13px", fontWeight: 900, color: "#34d399", margin: "0 0 10px 0" }}>⚡ OPERATIONAL TOGGLES</h4>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                                <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))} className="force-primary-action" style={{ padding: "10px", borderRadius: "6px", fontSize: "11px", backgroundColor: shop.isOpenManual ? "#059669" : "#e11d48", cursor: "pointer" }}>{shop.isOpenManual ? "🟢 STORE OPEN" : "🔴 STORE CLOSED"}</button>
+                                <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isOpenManual: !s.isOpenManual } : s))} className="force-primary-action" style={{ padding: "10px", borderRadius: "6px", fontSize: "11px", backgroundColor: shop.isOpenManual ? shop.themeColor : "#e11d48", cursor: "pointer" }}>{shop.isOpenManual ? "🟢 STORE OPEN" : "🔴 STORE CLOSED"}</button>
                                 <button onClick={() => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isDeliveryActive: !s.isDeliveryActive } : s))} className="force-primary-action" style={{ padding: "10px", borderRadius: "6px", fontSize: "11px", backgroundColor: shop.isDeliveryActive ? "#2563eb" : "#52525b", cursor: "pointer" }}>{shop.isDeliveryActive ? "🚚 DELIVERY ACTIVE" : "🛑 DELIVERY OFF"}</button>
                               </div>
                             </div>
@@ -1017,21 +1027,24 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
                         {adminTab === "menu" && (
                           <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}><h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>🍽️ Menu Editor</h4><button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: "#059669", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>+ Add Dish</button></div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}><h4 style={{ fontSize: "13px", fontWeight 800, margin: 0 }}>🍽️ Menu Editor</h4><button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: shop.themeColor, color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>+ Add Dish</button></div>
                             {editingDish !== null && (
                               <div style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "6px", border: "1px solid #3f3f46", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
                                   <input type="text" placeholder="Dish Name" value={dishNameInput} onChange={(e) => setDishNameInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px", fontSize: "11px" }} />
-                                  <input type="number" placeholder="Price ($)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px", fontSize: "11px" }} />
+                                  <input type="number" placeholder="Price ($ JMD)" value={dishPriceInput} onChange={(e) => setDishPriceInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px", fontSize: "11px" }} />
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
                                   <select value={dishCatInput} onChange={(e) => setDishCatInput(e.target.value as Dish["category"])} style={{ backgroundColor: "#18181b", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px", fontSize: "11px" }}>
                                     <option value="Mains">Mains</option><option value="Drinks">Drinks</option><option value="Snacks">Snacks</option><option value="Sides">Sides</option><option value="Soups">Soups</option>
                                   </select>
-                                  <input type="file" accept="image/*" onChange={(e) => handleImageCompression(e, (b) => setDishImageInput(b))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
+                                  <div>
+                                    <label style={{ display: "block", fontSize: "10px", color: "#a1a1aa", marginBottom: "2px" }}>📸 Dish Photo (Gallery)</label>
+                                    <input type="file" accept="image/*" onChange={(e) => handleGalleryUpload(e, (base64) => setDishImageInput(base64))} style={{ fontSize: "10px", color: "#a1a1aa" }} />
+                                  </div>
                                 </div>
                                 <input type="text" placeholder="Description" value={dishDescInput} onChange={(e) => setDishDescInput(e.target.value)} style={{ backgroundColor: "#18181b", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px", fontSize: "11px" }} />
-                                <div style={{ display: "flex", gap: "6px" }}><button onClick={saveEditedDish} style={{ backgroundColor: "#059669", color: "#fff", padding: "6px 12px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save</button><button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#fff", padding: "6px 12px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button></div>
+                                <div style={{ display: "flex", gap: "6px" }}><button onClick={saveEditedDish} style={{ backgroundColor: shop.themeColor, color: "#fff", padding: "6px 12px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>Save</button><button onClick={() => setEditingDish(null)} style={{ backgroundColor: "#3f3f46", color: "#fff", padding: "6px 12px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>Cancel</button></div>
                               </div>
                             )}
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
@@ -1049,24 +1062,57 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           </div>
                         )}
 
+                        {/* TAB 4: SETTINGS, SOCIALS & THEME CUSTOMIZER */}
                         {adminTab === "settings" && (
-                          <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "8px", fontSize: "12px" }}>
-                            <h4 style={{ fontSize: "13px", fontWeight: 800, margin: "0 0 6px 0" }}>⚙️ Shop Profile</h4>
-                            <input type="text" placeholder="Shop Name" value={shop.name} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, name: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px" }} />
-                            <input type="text" placeholder="WhatsApp Number" value={shop.whatsapp} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px" }} />
-                            <input type="text" placeholder="Access PIN" value={shop.pin} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, pin: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px" }} />
-                            <input type="number" placeholder="Delivery Fee ($ JMD)" value={shop.deliveryFee} onChange={(e) => { const v = parseFloat(e.target.value) || 0; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, deliveryFee: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "6px", borderRadius: "4px" }} />
+                          <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px" }}>
+                            <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0, color: "#34d399" }}>⚙️ Branding, Socials & QR Links</h4>
+                            
+                            {/* QR Code & Copy Link */}
+                            <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", textAlign: "center" }}>
+                              <img src={qrCodeUrl} alt="Menu QR Code" style={{ borderRadius: "8px", border: "2px solid #fff", width: "120px", height: "120px", marginBottom: "8px" }} />
+                              <button onClick={() => { navigator.clipboard.writeText(currentShopUrl); alert("Unique shop menu link copied to clipboard!"); }} className="force-primary-action" style={{ display: "block", width: "100%", padding: "8px", borderRadius: "6px", fontSize: "11px", cursor: "pointer" }}>🔗 Copy Shareable Shop Link</button>
+                            </div>
+
+                            {/* Gallery Banner Upload */}
+                            <div>
+                              <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>🖼️ Header Banner (Upload from Gallery)</label>
+                              <input type="file" accept="image/*" onChange={(e) => handleGalleryUpload(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa" }} />
+                            </div>
+
+                            {/* Theme Customizer */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>🎨 Theme Color</label>
+                                <input type="color" value={shop.themeColor} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, themeColor: v } : s)); }} style={{ width: "100%", height: "36px", backgroundColor: "#121215", border: "1px solid #3f3f46", borderRadius: "6px", cursor: "pointer" }} />
+                              </div>
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>🔤 Font Style</label>
+                                <select value={shop.fontFamily} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, fontFamily: v } : s)); }} style={{ width: "100%", height: "36px", backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", borderRadius: "6px", padding: "4px", fontSize: "11px" }}>
+                                  <option value="Poppins, sans-serif">Poppins</option>
+                                  <option value="Inter, sans-serif">Inter</option>
+                                  <option value="Roboto, sans-serif">Roboto</option>
+                                  <option value="Courier New, monospace">Monospace</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Social Handles */}
+                            <input type="text" placeholder="Shop Name" value={shop.name} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, name: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="text" placeholder="WhatsApp Number" value={shop.whatsapp} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="text" placeholder="Instagram Handle (@mamas_yard)" value={shop.instagram} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, instagram: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="text" placeholder="TikTok Handle (@mamas_yard)" value={shop.tiktok} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, tiktok: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="text" placeholder="Facebook Handle" value={shop.facebook} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, facebook: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="text" placeholder="Access PIN (4 digits)" value={shop.pin} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, pin: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
+                            <input type="number" placeholder="Delivery Fee ($ JMD)" value={shop.deliveryFee} onChange={(e) => { const v = parseFloat(e.target.value) || 0; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, deliveryFee: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
                           </div>
                         )}
 
-                        {/* SHOP ADMIN DEV CHAT */}
+                        {/* DEV CHAT */}
                         {adminTab === "chat" && (
                           <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "400px" }}>
                             <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>💬 Chat with Developer</h4>
                             </div>
-                            
-                            {/* Chat Messages Area */}
                             <div ref={chatScrollRef} style={{ flex: 1, backgroundColor: "#121215", borderRadius: "8px", border: "1px solid #27272a", padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "10px" }}>
                               {(!chats[shop.id] || chats[shop.id].length === 0) ? (
                                 <p style={{ fontSize: "11px", color: "#a1a1aa", textAlign: "center", margin: "auto" }}>Send a message to the master developer.</p>
@@ -1084,8 +1130,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                                 })
                               )}
                             </div>
-
-                            {/* Chat Input */}
                             <div style={{ display: "flex", gap: "8px" }}>
                               <input type="text" placeholder="Type message..." value={chatInputText} onChange={(e) => setChatInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChatMessage("admin", shop.id)} style={{ flex: 1, backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", borderRadius: "8px", padding: "10px", fontSize: "12px", outline: "none" }} />
                               <button onClick={() => sendChatMessage("admin", shop.id)} style={{ backgroundColor: "#2563eb", color: "#fff", padding: "0 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "none", cursor: "pointer" }}>Send</button>
