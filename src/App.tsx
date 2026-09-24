@@ -921,7 +921,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                   )}
 
                   {masterTab === "chat" && (
-                    <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "400px" }}>
+                    <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "350px" }}>
                       <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>💬 Dev Chat: <span style={{ color: "#34d399" }}>{activeShop.name}</span></h4>
                       </div>
@@ -1027,7 +1027,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
                         {adminTab === "menu" && (
                           <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}><h4 style={{ fontSize: "13px", fontWeight 800, margin: 0 }}>🍽️ Menu Editor</h4><button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: shop.themeColor, color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>+ Add Dish</button></div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}><h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>🍽️ Menu Editor</h4><button onClick={() => { setEditingDish({ id: "", name: "", price: 0, description: "", category: "Mains", image: "", inStock: true }); setDishNameInput(""); setDishPriceInput(""); setDishDescInput(""); setDishCatInput("Mains"); setDishImageInput(""); setDishSuggestedInput(false); }} style={{ backgroundColor: shop.themeColor, color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", border: "none", cursor: "pointer" }}>+ Add Dish</button></div>
                             {editingDish !== null && (
                               <div style={{ backgroundColor: "#121215", padding: "10px", borderRadius: "6px", border: "1px solid #3f3f46", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
@@ -1067,19 +1067,16 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                           <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px" }}>
                             <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0, color: "#34d399" }}>⚙️ Branding, Socials & QR Links</h4>
                             
-                            {/* QR Code & Copy Link */}
                             <div style={{ backgroundColor: "#121215", padding: "12px", borderRadius: "8px", border: "1px solid #3f3f46", textAlign: "center" }}>
                               <img src={qrCodeUrl} alt="Menu QR Code" style={{ borderRadius: "8px", border: "2px solid #fff", width: "120px", height: "120px", marginBottom: "8px" }} />
                               <button onClick={() => { navigator.clipboard.writeText(currentShopUrl); alert("Unique shop menu link copied to clipboard!"); }} className="force-primary-action" style={{ display: "block", width: "100%", padding: "8px", borderRadius: "6px", fontSize: "11px", cursor: "pointer" }}>🔗 Copy Shareable Shop Link</button>
                             </div>
 
-                            {/* Gallery Banner Upload */}
                             <div>
                               <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>🖼️ Header Banner (Upload from Gallery)</label>
                               <input type="file" accept="image/*" onChange={(e) => handleGalleryUpload(e, (base64) => setShops(prev => prev.map(s => s.id === shop.id ? { ...s, headerPhoto: base64 } : s)))} style={{ fontSize: "11px", color: "#a1a1aa" }} />
                             </div>
 
-                            {/* Theme Customizer */}
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                               <div>
                                 <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#d4d4d8", marginBottom: "4px" }}>🎨 Theme Color</label>
@@ -1096,7 +1093,6 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
                               </div>
                             </div>
 
-                            {/* Social Handles */}
                             <input type="text" placeholder="Shop Name" value={shop.name} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, name: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
                             <input type="text" placeholder="WhatsApp Number" value={shop.whatsapp} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, whatsapp: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
                             <input type="text" placeholder="Instagram Handle (@mamas_yard)" value={shop.instagram} onChange={(e) => { const v = e.target.value; setShops(prev => prev.map(s => s.id === shop.id ? { ...s, instagram: v } : s)); }} style={{ backgroundColor: "#121215", color: "#fff", border: "1px solid #3f3f46", padding: "8px", borderRadius: "4px" }} />
@@ -1109,7 +1105,7 @@ ${orderType === "delivery" ? `*Delivery Fee:* $${deliveryCost} JMD\n` : ""}${tip
 
                         {/* DEV CHAT */}
                         {adminTab === "chat" && (
-                          <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "400px" }}>
+                          <div style={{ backgroundColor: "#18181b", padding: "14px", borderRadius: "10px", border: "1px solid #27272a", display: "flex", flexDirection: "column", height: "350px" }}>
                             <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <h4 style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>💬 Chat with Developer</h4>
                             </div>
