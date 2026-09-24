@@ -305,13 +305,13 @@ export default function App() {
     );
   };
 
-  // Authentication Pin Login
+  // Authentication Pin Login (FIXED: Keeps modal active on success)
   const handleAdminLogin = () => {
     const input = adminPinInput.trim();
     if (input === masterPin) {
       setIsMasterLoggedIn(true);
       setIsAdminLoggedIn(true);
-      setShowAdminModal(false);
+      setShowAdminModal(true);
       setAdminPinInput("");
       return;
     }
@@ -320,7 +320,7 @@ export default function App() {
     if (matchedShop) {
       setCurrentShopId(matchedShop.id);
       setIsAdminLoggedIn(true);
-      setShowAdminModal(false);
+      setShowAdminModal(true);
       setAdminPinInput("");
       return;
     }
@@ -835,7 +835,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* SHOPS MANAGER TAB */}
+            {/* SHOPS MANAGER TAB (FIXED: CLEAN DROPDOWN MENU) */}
             {activeMasterTab === "shops" && (
               <div>
                 <h4 style={{ margin: "0 0 8px" }}>Register New Cookshop</h4>
@@ -867,20 +867,30 @@ export default function App() {
                   </button>
                 </div>
 
-                <h4 style={{ margin: "16px 0 8px" }}>Existing Cookshops ({shops.length})</h4>
-                <div style={{ display: "grid", gap: "8px" }}>
+                <h4 style={{ margin: "16px 0 8px" }}>Select Active Cookshop ({shops.length})</h4>
+                <select
+                  value={currentShopId}
+                  onChange={(e) => {
+                    setCurrentShopId(e.target.value);
+                    setIsMasterLoggedIn(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "4px",
+                    border: "1px solid #333",
+                    backgroundColor: "#121212",
+                    color: "#fff",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
                   {shops.map((s) => (
-                    <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#121212", padding: "8px 12px", borderRadius: "4px" }}>
-                      <div>
-                        <div style={{ fontWeight: "bold", fontSize: "13px" }}>{s.name}</div>
-                        <div style={{ fontSize: "10px", color: "#aaa" }}>PIN: {s.pin} | WhatsApp: {s.whatsapp}</div>
-                      </div>
-                      <button onClick={() => { setCurrentShopId(s.id); setIsMasterLoggedIn(false); }} style={{ backgroundColor: "#2e7d32", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}>
-                        Manage
-                      </button>
-                    </div>
+                    <option key={s.id} value={s.id}>
+                      {s.name} (PIN: {s.pin} | WA: {s.whatsapp})
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
             )}
 
