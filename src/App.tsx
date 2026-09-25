@@ -70,7 +70,10 @@ interface ShopProfile {
   isOpenManual: boolean;
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
-  weeklySchedule: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>;
+  weeklySchedule: Record<
+    string,
+    { isOpen: boolean; openTime: string; closeTime: string }
+  >;
   themeColor: string;
   fontStyle: string;
   adminPin: string;
@@ -85,7 +88,7 @@ interface AdminSession {
 
 // --- SECURITY HELPERS ---
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-const PIN_SALT = "cookshop_2024"; // In production, use bcrypt or argon2
+const PIN_SALT = "cookshop_2024_secure";
 
 // Basic PIN hashing (for demo - use proper bcrypt in production)
 const hashPin = (pin: string): string => {
@@ -151,7 +154,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     address: "Downtown, Montego Bay",
     mapLink: "https://maps.google.com",
     pin: hashPin("5678"),
-    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
+⁸    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -168,9 +171,11 @@ const INITIAL_MENU: Dish[] = [
     id: "1",
     name: "Brown Stew Chicken",
     price: 1200,
-    description: "Slow-braised chicken in rich savory spices with carrots and butter beans.",
+    description:
+      "Slow-braised chicken in rich savory spices with carrots and butter beans.",
     category: "Mains",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 12,
     isSpecial: true,
@@ -179,9 +184,11 @@ const INITIAL_MENU: Dish[] = [
     id: "2",
     name: "Ackee & Saltfish",
     price: 1400,
-    description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
+    description:
+      "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
     category: "Mains",
-    image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 24,
     isSpecial: false,
@@ -192,7 +199,8 @@ const INITIAL_MENU: Dish[] = [
     price: 500,
     description: "Creamy soursop blended with nutmeg and condensed milk.",
     category: "Drinks",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 18,
     isSpecial: false,
@@ -203,9 +211,34 @@ const INITIAL_MENU: Dish[] = [
     price: 400,
     description: "Golden, crispy traditional fried Johnny cakes.",
     category: "Sides",
-    image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 15,
+    isSpecial: false,
+  },
+  {
+    id: "5",
+    name: "Callaloo & Saltfish",
+    price: 1100,
+    description: "Traditional Caribbean green leafy dish with saltfish.",
+    category: "Mains",
+    image:
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
+    inStock: true,
+    likes: 9,
+    isSpecial: false,
+  },
+  {
+    id: "6",
+    name: "Ginger Beer",
+    price: 350,
+    description: "Homemade spiced ginger beer with a kick.",
+    category: "Drinks",
+    image:
+      "https://images.unsplash.com/photo-1554866585-ad674172aa8a?auto=format&fit=crop&q=80&w=300",
+    inStock: true,
+    likes: 7,
     isSpecial: false,
   },
 ];
@@ -371,23 +404,24 @@ export default function App() {
 
   const handleOpenCustomizeModal = (dish: Dish) => {
     setSelectedDishForCart(dish);
-    setOptSpice("Medium");
-    setOptGravy("Normal");
-    setOptKetchup(false);
-    setOptPepper(false);
   };
 
-  const handleConfirmAddToCart = () => {
+  const handleConfirmAddToCart = (options: {
+    spiceLevel: string;
+    gravyType: string;
+    addKetchup: boolean;
+    addPepper: boolean;
+  }) => {
     if (!selectedDishForCart) return;
     setCart((prev) => [
       ...prev,
       {
         dish: selectedDishForCart,
         quantity: 1,
-        spiceLevel: optSpice,
-        gravyType: optGravy,
-        addKetchup: optKetchup,
-        addPepper: optPepper,
+        spiceLevel: options.spiceLevel,
+        gravyType: options.gravyType,
+        addKetchup: options.addKetchup,
+        addPepper: options.addPepper,
         isItemCompleted: false,
       },
     ]);
@@ -398,7 +432,19 @@ export default function App() {
     setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDispatchOrder = async (platform: "whatsapp" | "instagram" | "tiktok" | "facebook") => {
+  const updateCartQuantity = (index: number, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(index);
+      return;
+    }
+    setCart((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, quantity } : item))
+    );
+  };
+
+  const handleDispatchOrder = async (
+    platform: "whatsapp" | "instagram" | "tiktok" | "facebook"
+  ) => {
     if (!customerName.trim()) {
       alert("Please enter your name/nickname.");
       return;
@@ -425,7 +471,10 @@ export default function App() {
       orderType,
       deliveryZone: currentShop.deliveryZones[selectedZoneIndex]?.name || "Standard",
       paymentMethod,
-      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      createdAt: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       status: "Pending",
     };
 
