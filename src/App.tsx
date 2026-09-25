@@ -1,21 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  ShoppingCart,
-  Settings,
-  Lock,
-  LogOut,
-  Plus,
-  X,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Zap,
-  Menu,
-  Home,
-  Phone,
-  MapPin,
-  Heart,
-} from "lucide-react";
+import { ShoppingCart, Settings, Lock, LogOut, Plus, Search, Home, MoreVertical, AlertCircle, CheckCircle2, Clock, Zap } from "lucide-react";
 
 // --- TYPES & INTERFACES ---
 interface Dish {
@@ -149,8 +133,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     address: "Hip Strip, Montego Bay, St. James",
     mapLink: "https://maps.google.com",
     pin: hashPin("1234"),
-    headerBanner:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
+    headerBanner: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -171,8 +154,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     address: "Downtown, Montego Bay",
     mapLink: "https://maps.google.com",
     pin: hashPin("5678"),
-    headerBanner:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
+⁸    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -262,13 +244,7 @@ const INITIAL_MENU: Dish[] = [
 ];
 
 // --- COMPONENT: Login Modal ---
-function LoginModal({
-  onLogin,
-  onClose,
-}: {
-  onLogin: (role: "admin" | "master", shopId: string) => void;
-  onClose: () => void;
-}) {
+function LoginModal({ onLogin, onClose }: { onLogin: (role: "admin" | "master", shopId: string) => void; onClose: () => void }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [masterPin] = useState("9999");
@@ -294,8 +270,8 @@ function LoginModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg p-8 w-full max-w-sm shadow-xl">
         <div className="flex items-center gap-3 mb-6">
           <Lock className="w-6 h-6 text-orange-600" />
           <h2 className="text-2xl font-bold text-gray-900">Admin Access</h2>
@@ -303,9 +279,7 @@ function LoginModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Enter PIN
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Enter PIN</label>
             <input
               type="password"
               value={pin}
@@ -331,127 +305,7 @@ function LoginModal({
           </button>
         </form>
 
-        <p className="text-xs text-gray-500 text-center mt-4">
-          Demo: Use 9999 for Master or 1234 / 5678 for shop admin
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// --- COMPONENT: Customize Dish Modal ---
-function CustomizeDishModal({
-  dish,
-  onConfirm,
-  onClose,
-}: {
-  dish: Dish;
-  onConfirm: (options: {
-    spiceLevel: string;
-    gravyType: string;
-    addKetchup: boolean;
-    addPepper: boolean;
-  }) => void;
-  onClose: () => void;
-}) {
-  const [spice, setSpice] = useState("Medium");
-  const [gravy, setGravy] = useState("Normal");
-  const [ketchup, setKetchup] = useState(false);
-  const [pepper, setPepper] = useState(false);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">
-            Customize: {dish.name}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gravy Level
-            </label>
-            <select
-              value={gravy}
-              onChange={(e) => setGravy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option>Normal Gravy</option>
-              <option>Extra Gravy</option>
-              <option>No Gravy / Dry</option>
-              <option>Gravy on Side</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Spice Level
-            </label>
-            <select
-              value={spice}
-              onChange={(e) => setSpice(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option>Mild</option>
-              <option>Medium</option>
-              <option>Hot & Spicy</option>
-            </select>
-          </div>
-
-          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
-            <input
-              type="checkbox"
-              checked={ketchup}
-              onChange={(e) => setKetchup(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-600"
-            />
-            <span className="text-sm text-gray-700 font-medium">
-              Add Ketchup
-            </span>
-          </label>
-
-          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
-            <input
-              type="checkbox"
-              checked={pepper}
-              onChange={(e) => setPepper(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-600"
-            />
-            <span className="text-sm text-gray-700 font-medium">
-              Add Scotch Bonnet Pepper
-            </span>
-          </label>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() =>
-              onConfirm({
-                spiceLevel: spice,
-                gravyType: gravy,
-                addKetchup: ketchup,
-                addPepper: pepper,
-              })
-            }
-            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 rounded-lg transition"
-          >
-            Add to Cart
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
-          >
-            Cancel
-          </button>
-        </div>
+        <p className="text-xs text-gray-500 text-center mt-4">Demo: Use 9999 for Master or shop PIN</p>
       </div>
     </div>
   );
@@ -473,13 +327,15 @@ export default function App() {
   const sessionCheckInterval = useRef<ReturnType<typeof setInterval>>();
 
   // UI State
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(
-    null
-  );
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Customization Options
+  const [optSpice, setOptSpice] = useState("Medium");
+  const [optGravy, setOptGravy] = useState("Normal");
+  const [optKetchup, setOptKetchup] = useState(false);
+  const [optPepper, setOptPepper] = useState(false);
   const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
 
   // Checkout
@@ -489,15 +345,13 @@ export default function App() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [driverTip, setDriverTip] = useState(0);
 
+  // Cloud Config
+  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || "");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || "");
+
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
-  const currentDeliveryFee =
-    orderType === "Delivery"
-      ? currentShop.deliveryZones[selectedZoneIndex]?.price || 300
-      : 0;
-  const subtotal = cart.reduce(
-    (acc, item) => acc + item.dish.price * item.quantity,
-    0
-  );
+  const currentDeliveryFee = orderType === "Delivery" ? currentShop.deliveryZones[selectedZoneIndex]?.price || 300 : 0;
+  const subtotal = cart.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
   const total = subtotal + currentDeliveryFee + driverTip;
 
   // Session timeout check
@@ -516,6 +370,13 @@ export default function App() {
 
     return () => clearInterval(sessionCheckInterval.current);
   }, [adminSession]);
+
+  // Activity tracker
+  const updateActivity = () => {
+    if (adminSession) {
+      setAdminSession((prev) => (prev ? { ...prev, lastActivity: Date.now() } : null));
+    }
+  };
 
   const handleLogin = (role: "admin" | "master", shopId: string) => {
     const session: AdminSession = {
@@ -537,11 +398,7 @@ export default function App() {
     const isLiked = likedDishIds[dishId];
     setLikedDishIds((prev) => ({ ...prev, [dishId]: !isLiked }));
     setMenu((prev) =>
-      prev.map((d) =>
-        d.id === dishId
-          ? { ...d, likes: isLiked ? d.likes - 1 : d.likes + 1 }
-          : d
-      )
+      prev.map((d) => (d.id === dishId ? { ...d, likes: isLiked ? d.likes - 1 : d.likes + 1 } : d))
     );
   };
 
@@ -632,14 +489,10 @@ export default function App() {
     const encodedMsg = encodeURIComponent(msg);
     let url = "";
 
-    if (platform === "whatsapp")
-      url = `https://wa.me/${currentShop.whatsapp}?text=${encodedMsg}`;
-    else if (platform === "instagram")
-      url = `https://instagram.com/${currentShop.instagram.replace("@", "")}`;
-    else if (platform === "tiktok")
-      url = `https://tiktok.com/${currentShop.tiktok.replace("@", "")}`;
-    else if (platform === "facebook")
-      url = `https://facebook.com/${currentShop.facebook}`;
+    if (platform === "whatsapp") url = `https://wa.me/${currentShop.whatsapp}?text=${encodedMsg}`;
+    else if (platform === "instagram") url = `https://instagram.com/${currentShop.instagram.replace("@", "")}`;
+    else if (platform === "tiktok") url = `https://tiktok.com/${currentShop.tiktok.replace("@", "")}`;
+    else if (platform === "facebook") url = `https://facebook.com/${currentShop.facebook}`;
 
     window.open(url, "_blank");
     setCart([]);
@@ -647,34 +500,23 @@ export default function App() {
     setCustomerAddress("");
   };
 
-  const filteredMenu =
-    selectedCategory === "All Items"
-      ? menu
-      : menu.filter((item) => item.category === selectedCategory);
+  const filteredMenu = selectedCategory === "All Items" ? menu : menu.filter((item) => item.category === selectedCategory);
 
   return (
-    <div
-      className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen"
-      style={{ fontFamily: currentShop.fontStyle }}
-    >
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen" style={{ fontFamily: currentShop.fontStyle }}>
       {/* HEADER */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {currentShop.name}
-              </h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{currentShop.name}</h1>
               <p className="text-sm text-gray-600">{currentShop.tagline}</p>
             </div>
-
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-3">
               {adminSession ? (
                 <>
-                  <span className="hidden sm:inline text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                    {adminSession.role === "master"
-                      ? "👑 Master"
-                      : "⚙️ Admin"}
+                  <span className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                    {adminSession.role === "master" ? "👑 Master" : "⚙️ Admin"}
                   </span>
                   <button
                     onClick={handleLogout}
@@ -687,9 +529,9 @@ export default function App() {
               ) : (
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 md:px-4 py-2 rounded-lg transition font-medium text-sm"
+                  className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition font-medium text-sm"
                 >
-                  <Lock className="w-4 h-4" /> <span className="hidden sm:inline">Admin</span>
+                  <Lock className="w-4 h-4" /> Admin
                 </button>
               )}
             </div>
@@ -700,186 +542,128 @@ export default function App() {
               src={currentShop.headerBanner}
               alt="Header"
               onClick={() => setZoomedImage(currentShop.headerBanner)}
-              className="w-full h-32 md:h-40 object-cover rounded-lg cursor-pointer"
+              className="w-full h-32 object-cover rounded-lg cursor-pointer"
             />
           )}
 
           {!currentShop.isOpenManual && (
             <div className="mt-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-sm text-red-700">
-                Cookshop is closed right now. Check back during business hours.
-              </p>
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-sm text-red-700">Cookshop is closed right now. Check back during business hours.</p>
             </div>
           )}
         </div>
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* MENU SECTION */}
           <div className="lg:col-span-2">
             {/* Category Selector */}
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map(
-                (cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
-                      selectedCategory === cat
-                        ? "bg-orange-600 text-white shadow-md"
-                        : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                )
-              )}
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+              {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
+                    selectedCategory === cat
+                      ? "bg-orange-600 text-white shadow-md"
+                      : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
 
             {/* Menu Items */}
             <div className="space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Today's Menu ({filteredMenu.length})
-              </h2>
-              {filteredMenu.length === 0 ? (
-                <div className="text-center p-8 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-600">
-                    No items in this category yet.
-                  </p>
-                </div>
-              ) : (
-                filteredMenu.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition border border-gray-200 p-4 flex gap-4 hover:border-orange-300"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      onClick={() => setZoomedImage(item.image)}
-                      className="w-24 h-24 object-cover rounded-lg cursor-pointer flex-shrink-0 hover:opacity-90 transition"
-                    />
-                    <div className="flex-1 flex flex-col">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">
-                            {item.name}
-                          </h3>
-                          {item.isSpecial && (
-                            <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">
-                              ⭐ Special
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-lg font-bold text-orange-600 ml-2">
-                          ${item.price}
-                        </span>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Today's Menu</h2>
+              {filteredMenu.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition border border-gray-200 p-4 flex gap-4"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    onClick={() => setZoomedImage(item.image)}
+                    className="w-24 h-24 object-cover rounded-lg cursor-pointer flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                        {item.isSpecial && <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">⭐ Special</span>}
                       </div>
-                      <p className="text-sm text-gray-600 mb-3 flex-1">
-                        {item.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        {item.inStock ? (
-                          <button
-                            onClick={() => handleOpenCustomizeModal(item)}
-                            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
-                          >
-                            <Plus className="w-4 h-4" /> Add
-                          </button>
-                        ) : (
-                          <span className="text-sm text-red-600 font-medium">
-                            Out of Stock
-                          </span>
-                        )}
+                      <span className="text-lg font-bold text-orange-600">${item.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                    <div className="flex items-center justify-between">
+                      {item.inStock ? (
                         <button
-                          onClick={() => handleToggleLike(item.id)}
-                          className={`text-sm font-medium transition flex items-center gap-1 ${
-                            likedDishIds[item.id]
-                              ? "text-red-500"
-                              : "text-gray-400 hover:text-red-500"
-                          }`}
+                          onClick={() => handleOpenCustomizeModal(item)}
+                          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
                         >
-                          <Heart
-                            className="w-4 h-4"
-                            fill={likedDishIds[item.id] ? "currentColor" : "none"}
-                          />
-                          {item.likes}
+                          <Plus className="w-4 h-4" /> Add
                         </button>
-                      </div>
+                      ) : (
+                        <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                      )}
+                      <button
+                        onClick={() => handleToggleLike(item.id)}
+                        className={`text-sm font-medium ${
+                          likedDishIds[item.id] ? "text-red-500" : "text-gray-400"
+                        }`}
+                      >
+                        ❤️ {item.likes}
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
 
           {/* CART SIDEBAR */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 sticky top-24">
               <div className="flex items-center gap-2 mb-4">
                 <ShoppingCart className="w-5 h-5 text-orange-600" />
-                <h2 className="text-lg font-bold text-gray-900">
-                  Order Summary
-                </h2>
+                <h2 className="text-lg font-bold text-gray-900">Order Summary</h2>
                 <span className="ml-auto bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full">
                   {cart.length}
                 </span>
               </div>
 
               {cart.length === 0 ? (
-                <p className="text-gray-500 text-sm text-center py-8">
-                  Your cart is empty
-                </p>
+                <p className="text-gray-500 text-sm text-center py-8">Your cart is empty</p>
               ) : (
                 <>
-                  <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
+                  <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
                     {cart.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">
+                      <div key={idx} className="flex justify-between items-start p-2 bg-gray-50 rounded">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-gray-900">
                             {item.quantity}x {item.dish.name}
                           </p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {item.spiceLevel} • {item.gravyType}
-                          </p>
+                          <p className="text-xs text-gray-600 mt-1">{item.spiceLevel} | {item.gravyType}</p>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <div className="flex items-center gap-1 bg-white border border-gray-300 rounded">
-                            <button
-                              onClick={() =>
-                                updateCartQuantity(idx, item.quantity - 1)
-                              }
-                              className="px-2 py-1 hover:bg-gray-100"
-                            >
-                              −
-                            </button>
-                            <span className="px-2 text-sm font-medium">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={() =>
-                                updateCartQuantity(idx, item.quantity + 1)
-                              }
-                              className="px-2 py-1 hover:bg-gray-100"
-                            >
-                              +
-                            </button>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900 text-sm">${item.dish.price * item.quantity}</span>
                           <button
                             onClick={() => removeFromCart(idx)}
-                            className="text-red-500 hover:text-red-700 transition p-1"
+                            className="text-red-500 hover:text-red-700 transition"
                           >
-                            <X className="w-4 h-4" />
+                            ✕
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
+                  <div className="border-t border-gray-200 pt-4 space-y-2 mb-4">
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Subtotal</span>
                       <span>${subtotal}</span>
@@ -896,7 +680,7 @@ export default function App() {
                         <span>${driverTip}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-bold text-lg text-gray-900 pt-2">
+                    <div className="flex justify-between font-bold text-lg text-gray-900 pt-2 border-t">
                       <span>Total</span>
                       <span className="text-orange-600">${total}</span>
                     </div>
@@ -921,25 +705,6 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="space-y-2 mb-4">
-                    <label className="text-sm font-medium text-gray-700">
-                      Delivery Zone
-                    </label>
-                    <select
-                      value={selectedZoneIndex}
-                      onChange={(e) =>
-                        setSelectedZoneIndex(parseInt(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
-                      {currentShop.deliveryZones.map((zone, idx) => (
-                        <option key={idx} value={idx}>
-                          {zone.name} (${zone.price})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   <div className="flex gap-2 mb-4">
                     <button
                       onClick={() => setOrderType("Delivery")}
@@ -949,7 +714,7 @@ export default function App() {
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
-                      🚗 Delivery
+                      🚚 Delivery
                     </button>
                     <button
                       onClick={() => setOrderType("Pickup")}
@@ -967,7 +732,7 @@ export default function App() {
                     onClick={() => handleDispatchOrder("whatsapp")}
                     className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
                   >
-                    <Zap className="w-4 h-4" /> Place Order via WhatsApp
+                    <Zap className="w-4 h-4" /> Place Order
                   </button>
                 </>
               )}
@@ -977,20 +742,74 @@ export default function App() {
       </main>
 
       {/* LOGIN MODAL */}
-      {showLoginModal && (
-        <LoginModal
-          onLogin={handleLogin}
-          onClose={() => setShowLoginModal(false)}
-        />
-      )}
+      {showLoginModal && <LoginModal onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
 
       {/* CUSTOMIZE DISH MODAL */}
       {selectedDishForCart && (
-        <CustomizeDishModal
-          dish={selectedDishForCart}
-          onConfirm={handleConfirmAddToCart}
-          onClose={() => setSelectedDishForCart(null)}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Customize: {selectedDishForCart.name}</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gravy Level</label>
+                <select
+                  value={optGravy}
+                  onChange={(e) => setOptGravy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option>Normal Gravy</option>
+                  <option>Extra Gravy</option>
+                  <option>No Gravy / Dry</option>
+                  <option>Gravy on Side</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Spice Level</label>
+                <select
+                  value={optSpice}
+                  onChange={(e) => setOptSpice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option>Mild</option>
+                  <option>Medium</option>
+                  <option>Hot & Spicy</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={optKetchup}
+                  onChange={(e) => setOptKetchup(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm text-gray-700">Add Ketchup</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={optPepper}
+                  onChange={(e) => setOptPepper(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm text-gray-700">Add Scotch Bonnet Pepper</span>
+              </label>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmAddToCart}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 rounded-lg transition"
+              >
+                Add to Cart
+              </button>
+              <button
+                onClick={() => setSelectedDishForCart(null)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FULLSCREEN IMAGE */}
@@ -999,11 +818,7 @@ export default function App() {
           onClick={() => setZoomedImage(null)}
           className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 cursor-pointer"
         >
-          <img
-            src={zoomedImage}
-            alt="Full View"
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
+          <img src={zoomedImage} alt="Full View" className="max-w-full max-h-full object-contain" />
         </div>
       )}
     </div>
