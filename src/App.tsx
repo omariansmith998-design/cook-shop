@@ -1,4 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ShoppingCart,
+  Settings,
+  Lock,
+  LogOut,
+  Plus,
+  X,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Zap,
+  Menu,
+  Home,
+  Phone,
+  MapPin,
+  Heart,
+} from "lucide-react";
 
 // --- TYPES & INTERFACES ---
 interface Dish {
@@ -20,7 +37,7 @@ interface CartItem {
   gravyType: string;
   addKetchup: boolean;
   addPepper: boolean;
-  isItemCompleted?: boolean; // Track individual item preparation state
+  isItemCompleted?: boolean;
 }
 
 interface ChatMessage {
@@ -44,7 +61,7 @@ interface Order {
   deliveryZone: string;
   paymentMethod: string;
   createdAt: string;
-  estimatedTime?: string; // Estimated ready time set by admin
+  estimatedTime?: string;
   status: "Pending" | "Preparing" | "Ready" | "Completed" | "Cancelled";
 }
 
@@ -69,11 +86,39 @@ interface ShopProfile {
   isOpenManual: boolean;
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
-  weeklySchedule: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>;
+  weeklySchedule: Record<
+    string,
+    { isOpen: boolean; openTime: string; closeTime: string }
+  >;
   themeColor: string;
   fontStyle: string;
   adminPin: string;
 }
+
+interface AdminSession {
+  shopId: string;
+  role: "admin" | "master";
+  loginTime: number;
+  lastActivity: number;
+}
+
+// --- SECURITY HELPERS ---
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const PIN_SALT = "cookshop_2024_secure";
+
+// Basic PIN hashing (for demo - use proper bcrypt in production)
+const hashPin = (pin: string): string => {
+  return btoa(pin + PIN_SALT).slice(0, 32);
+};
+
+const validatePin = (inputPin: string, storedHash: string): boolean => {
+  return hashPin(inputPin) === storedHash;
+};
+
+const isSessionValid = (session: AdminSession): boolean => {
+  const now = Date.now();
+  return now - session.lastActivity < SESSION_TIMEOUT_MS;
+};
 
 // --- DEFAULT INITIALIZERS ---
 const DEFAULT_SCHEDULE: ShopProfile["weeklySchedule"] = {
@@ -103,16 +148,17 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     facebook: "MamasYardCookshop",
     address: "Hip Strip, Montego Bay, St. James",
     mapLink: "https://maps.google.com",
-    pin: "1234",
-    headerBanner: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
+    pin: hashPin("1234"),
+    headerBanner:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
     deliveryZoneNote: "Delivery within Montego Bay main town & Hip Strip.",
     weeklySchedule: DEFAULT_SCHEDULE,
-    themeColor: "#fe0000",
-    fontStyle: "Monospace",
-    adminPin: "1234",
+    themeColor: "#d4522d",
+    fontStyle: "system-ui",
+    adminPin: hashPin("1234"),
   },
   {
     id: "aunties-ital",
@@ -124,16 +170,17 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     facebook: "AuntiesItalCorner",
     address: "Downtown, Montego Bay",
     mapLink: "https://maps.google.com",
-    pin: "5678",
-    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
+    pin: hashPin("5678"),
+    headerBanner:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
     deliveryZoneNote: "Local Montego Bay delivery.",
     weeklySchedule: DEFAULT_SCHEDULE,
-    themeColor: "#2e7d32",
-    fontStyle: "Sans-Serif",
-    adminPin: "5678",
+    themeColor: "#2d6a4f",
+    fontStyle: "system-ui",
+    adminPin: hashPin("5678"),
   },
 ];
 
@@ -142,9 +189,11 @@ const INITIAL_MENU: Dish[] = [
     id: "1",
     name: "Brown Stew Chicken",
     price: 1200,
-    description: "Slow-braised chicken in rich savory spices with carrots and butter beans.",
+    description:
+      "Slow-braised chicken in rich savory spices with carrots and butter beans.",
     category: "Mains",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 12,
     isSpecial: true,
@@ -153,9 +202,11 @@ const INITIAL_MENU: Dish[] = [
     id: "2",
     name: "Ackee & Saltfish",
     price: 1400,
-    description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
+    description:
+      "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
     category: "Mains",
-    image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 24,
     isSpecial: false,
@@ -166,7 +217,8 @@ const INITIAL_MENU: Dish[] = [
     price: 500,
     description: "Creamy soursop blended with nutmeg and condensed milk.",
     category: "Drinks",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 18,
     isSpecial: false,
@@ -177,13 +229,235 @@ const INITIAL_MENU: Dish[] = [
     price: 400,
     description: "Golden, crispy traditional fried Johnny cakes.",
     category: "Sides",
-    image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
+    image:
+      "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 15,
     isSpecial: false,
   },
+  {
+    id: "5",
+    name: "Callaloo & Saltfish",
+    price: 1100,
+    description: "Traditional Caribbean green leafy dish with saltfish.",
+    category: "Mains",
+    image:
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
+    inStock: true,
+    likes: 9,
+    isSpecial: false,
+  },
+  {
+    id: "6",
+    name: "Ginger Beer",
+    price: 350,
+    description: "Homemade spiced ginger beer with a kick.",
+    category: "Drinks",
+    image:
+      "https://images.unsplash.com/photo-1554866585-ad674172aa8a?auto=format&fit=crop&q=80&w=300",
+    inStock: true,
+    likes: 7,
+    isSpecial: false,
+  },
 ];
 
+// --- COMPONENT: Login Modal ---
+function LoginModal({
+  onLogin,
+  onClose,
+}: {
+  onLogin: (role: "admin" | "master", shopId: string) => void;
+  onClose: () => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [masterPin] = useState("9999");
+  const [shops] = useState(DEFAULT_SHOPS);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (validatePin(pin, hashPin(masterPin))) {
+      onLogin("master", "master");
+      return;
+    }
+
+    const matchedShop = shops.find((s) => validatePin(pin, s.adminPin));
+    if (matchedShop) {
+      onLogin("admin", matchedShop.id);
+      return;
+    }
+
+    setError("Invalid PIN. Please try again.");
+    setPin("");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <Lock className="w-6 h-6 text-orange-600" />
+          <h2 className="text-2xl font-bold text-gray-900">Admin Access</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Enter PIN
+            </label>
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="••••"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-2xl tracking-widest"
+              maxLength={4}
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg transition"
+          >
+            Unlock
+          </button>
+        </form>
+
+        <p className="text-xs text-gray-500 text-center mt-4">
+          Demo: Use 9999 for Master or 1234 / 5678 for shop admin
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// --- COMPONENT: Customize Dish Modal ---
+function CustomizeDishModal({
+  dish,
+  onConfirm,
+  onClose,
+}: {
+  dish: Dish;
+  onConfirm: (options: {
+    spiceLevel: string;
+    gravyType: string;
+    addKetchup: boolean;
+    addPepper: boolean;
+  }) => void;
+  onClose: () => void;
+}) {
+  const [spice, setSpice] = useState("Medium");
+  const [gravy, setGravy] = useState("Normal");
+  const [ketchup, setKetchup] = useState(false);
+  const [pepper, setPepper] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">
+            Customize: {dish.name}
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-lg transition"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gravy Level
+            </label>
+            <select
+              value={gravy}
+              onChange={(e) => setGravy(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option>Normal Gravy</option>
+              <option>Extra Gravy</option>
+              <option>No Gravy / Dry</option>
+              <option>Gravy on Side</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Spice Level
+            </label>
+            <select
+              value={spice}
+              onChange={(e) => setSpice(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option>Mild</option>
+              <option>Medium</option>
+              <option>Hot & Spicy</option>
+            </select>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
+            <input
+              type="checkbox"
+              checked={ketchup}
+              onChange={(e) => setKetchup(e.target.checked)}
+              className="w-4 h-4 rounded text-orange-600"
+            />
+            <span className="text-sm text-gray-700 font-medium">
+              Add Ketchup
+            </span>
+          </label>
+
+          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
+            <input
+              type="checkbox"
+              checked={pepper}
+              onChange={(e) => setPepper(e.target.checked)}
+              className="w-4 h-4 rounded text-orange-600"
+            />
+            <span className="text-sm text-gray-700 font-medium">
+              Add Scotch Bonnet Pepper
+            </span>
+          </label>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() =>
+              onConfirm({
+                spiceLevel: spice,
+                gravyType: gravy,
+                addKetchup: ketchup,
+                addPepper: pepper,
+              })
+            }
+            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Add to Cart
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN APP ---
 export default function App() {
   const [shops, setShops] = useState<ShopProfile[]>(DEFAULT_SHOPS);
   const [currentShopId, setCurrentShopId] = useState<string>("mamas-yard");
@@ -191,139 +465,77 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
-
-  // Track liked dishes for toggle like/unlike
   const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>({});
 
-  // Share & QR Code Modal State
-  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  // Authentication & Session Management
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const sessionCheckInterval = useRef<ReturnType<typeof setInterval>>();
 
-  // Item Customization Modal State
-  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(null);
-  const [optSpice, setOptSpice] = useState<string>("Medium");
-  const [optGravy, setOptGravy] = useState<string>("Normal");
-  const [optKetchup, setOptKetchup] = useState<boolean>(false);
-  const [optPepper, setOptPepper] = useState<boolean>(false);
-
-  // Delivery Zone Selection State
-  const [selectedZoneIndex, setSelectedZoneIndex] = useState<number>(0);
-
-  // Supabase Configuration State
-  const [supabaseUrl, setSupabaseUrl] = useState<string>(() => localStorage.getItem("SUPABASE_URL") || "");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(() => localStorage.getItem("SUPABASE_ANON_KEY") || "");
-
-  // Admin & Master Access States
-  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
-  const [adminPinInput, setAdminPinInput] = useState<string>("");
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
-  const [isMasterLoggedIn, setIsMasterLoggedIn] = useState<boolean>(false);
-  const [masterPin, setMasterPin] = useState<string>("9999");
-  const [activeAdminTab, setActiveAdminTab] = useState<"control" | "orders" | "menu" | "settings" | "devChat">("control");
-  const [activeMasterTab, setActiveMasterTab] = useState<"shops" | "supabase" | "devChat" | "masterPin">("shops");
-
-  // Chat State
-  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({
-    "mamas-yard": [{ id: "c1", sender: "master", text: "Welcome! System operational.", timestamp: "10:00 AM" }],
-  });
-  const [chatInput, setChatInput] = useState<string>("");
-
-  // Custom Dish Modal State
-  const [showCustomDishModal, setShowCustomDishModal] = useState<boolean>(false);
-  const [customDishName, setCustomDishName] = useState<string>("");
-  const [customDishPrice, setCustomDishPrice] = useState<string>("");
-  const [customDishNotes, setCustomDishNotes] = useState<string>("");
-
-  // Menu Editor Modal State
-  const [editingDish, setEditingDish] = useState<Dish | null>(null);
-  const [dishForm, setDishForm] = useState<{ name: string; price: string; description: string; category: Dish["category"]; image: string; isSpecial: boolean }>({
-    name: "",
-    price: "",
-    description: "",
-    category: "Mains",
-    image: "",
-    isSpecial: false,
-  });
-
-  // Master Control New Shop Registration
-  const [newShopName, setNewShopName] = useState<string>("");
-  const [newShopPin, setNewShopPin] = useState<string>("");
-  const [newShopWhatsapp, setNewShopWhatsapp] = useState<string>("");
-
-  // Customer Checkout Details & Geolocation State
-  const [orderType, setOrderType] = useState<"Delivery" | "Pickup">("Delivery");
-  const [customerName, setCustomerName] = useState<string>("");
-  const [customerAddress, setCustomerAddress] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
-  const [driverTip, setDriverTip] = useState<number>(0);
-  const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(false);
-
-  // Full-screen Image Lightbox
+  // UI State
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(
+    null
+  );
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Customization Options
+  const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
+
+  // Checkout
+  const [orderType, setOrderType] = useState<"Delivery" | "Pickup">("Delivery");
+  const [customerName, setCustomerName] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [driverTip, setDriverTip] = useState(0);
 
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
-  const currentDeliveryFee = orderType === "Delivery" ? (currentShop.deliveryZones[selectedZoneIndex]?.price || 300) : 0;
+  const currentDeliveryFee =
+    orderType === "Delivery"
+      ? currentShop.deliveryZones[selectedZoneIndex]?.price || 300
+      : 0;
+  const subtotal = cart.reduce(
+    (acc, item) => acc + item.dish.price * item.quantity,
+    0
+  );
+  const total = subtotal + currentDeliveryFee + driverTip;
 
-  // REST Supabase helper
-  const supabaseFetch = async (table: string, method: string = "GET", body?: any) => {
-    if (!supabaseUrl || !supabaseAnonKey) return null;
-    try {
-      const headers: Record<string, string> = {
-        "apikey": supabaseAnonKey,
-        "Authorization": `Bearer ${supabaseAnonKey}`,
-        "Content-Type": "application/json",
-      };
-      if (method === "POST" || method === "PUT") {
-        headers["Prefer"] = "return=representation";
-      }
+  // Session timeout check
+  useEffect(() => {
+    if (!adminSession) return;
 
-      const res = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
+    sessionCheckInterval.current = setInterval(() => {
+      setAdminSession((prev) => {
+        if (prev && !isSessionValid(prev)) {
+          alert("Session expired. Please log in again.");
+          return null;
+        }
+        return prev ? { ...prev, lastActivity: Date.now() } : null;
       });
+    }, 60000); // Check every minute
 
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.warn("Supabase fetch fallback execution:", err);
-      return null;
-    }
+    return () => clearInterval(sessionCheckInterval.current);
+  }, [adminSession]);
+
+  const handleLogin = (role: "admin" | "master", shopId: string) => {
+    const session: AdminSession = {
+      shopId: role === "master" ? shopId : shopId,
+      role,
+      loginTime: Date.now(),
+      lastActivity: Date.now(),
+    };
+    setAdminSession(session);
+    setShowLoginModal(false);
+    if (shopId !== "master") setCurrentShopId(shopId);
   };
 
-  // Sync Cloud Data via Supabase
-  useEffect(() => {
-    const fetchCloudData = async () => {
-      const cloudShops = await supabaseFetch("shops");
-      if (cloudShops && cloudShops.length > 0) setShops(cloudShops);
+  const handleLogout = () => {
+    setAdminSession(null);
+  };
 
-      const cloudMenu = await supabaseFetch("menu");
-      if (cloudMenu && cloudMenu.length > 0) setMenu(cloudMenu);
-
-      const cloudOrders = await supabaseFetch("orders");
-      if (cloudOrders) setOrders(cloudOrders);
-    };
-    fetchCloudData();
-  }, [supabaseUrl, supabaseAnonKey]);
-
-  // Sync Active Shop from URL Parameters
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shopParam = params.get("shop");
-    if (shopParam) {
-      const match = shops.find((s) => s.id === shopParam);
-      if (match) setCurrentShopId(match.id);
-    }
-  }, [shops]);
-
-  // Handle Like / Unlike Toggle
   const handleToggleLike = (dishId: string) => {
     const isLiked = likedDishIds[dishId];
-
-    setLikedDishIds((prev) => ({
-      ...prev,
-      [dishId]: !isLiked,
-    }));
-
+    setLikedDishIds((prev) => ({ ...prev, [dishId]: !isLiked }));
     setMenu((prev) =>
       prev.map((d) =>
         d.id === dishId
@@ -333,75 +545,26 @@ export default function App() {
     );
   };
 
-  const handleSaveSupabaseConfig = () => {
-    localStorage.setItem("SUPABASE_URL", supabaseUrl);
-    localStorage.setItem("SUPABASE_ANON_KEY", supabaseAnonKey);
-    alert("Supabase credentials saved successfully!");
-  };
-
-  const handleFetchGPS = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-    setIsFetchingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-        setCustomerAddress((prev) => (prev ? `${prev} | 📍 GPS Pin: ${mapUrl}` : `📍 GPS Pin: ${mapUrl}`));
-        setIsFetchingLocation(false);
-      },
-      () => {
-        alert("Unable to retrieve GPS location. Please enter manually.");
-        setIsFetchingLocation(false);
-      }
-    );
-  };
-
-  const handleAdminLogin = () => {
-    const input = adminPinInput.trim();
-    if (input === masterPin) {
-      setIsMasterLoggedIn(true);
-      setIsAdminLoggedIn(true);
-      setShowAdminModal(true);
-      setAdminPinInput("");
-      return;
-    }
-
-    const matchedShop = shops.find((s) => s.pin === input || s.adminPin === input);
-    if (matchedShop) {
-      setCurrentShopId(matchedShop.id);
-      setIsAdminLoggedIn(true);
-      setShowAdminModal(true);
-      setAdminPinInput("");
-      return;
-    }
-
-    alert("Invalid PIN. Please try again.");
-    setAdminPinInput("");
-  };
-
   const handleOpenCustomizeModal = (dish: Dish) => {
     setSelectedDishForCart(dish);
-    setOptSpice("Medium");
-    setOptGravy("Normal");
-    setOptKetchup(false);
-    setOptPepper(false);
   };
 
-  const handleConfirmAddToCart = () => {
+  const handleConfirmAddToCart = (options: {
+    spiceLevel: string;
+    gravyType: string;
+    addKetchup: boolean;
+    addPepper: boolean;
+  }) => {
     if (!selectedDishForCart) return;
     setCart((prev) => [
       ...prev,
       {
         dish: selectedDishForCart,
         quantity: 1,
-        spiceLevel: optSpice,
-        gravyType: optGravy,
-        addKetchup: optKetchup,
-        addPepper: optPepper,
+        spiceLevel: options.spiceLevel,
+        gravyType: options.gravyType,
+        addKetchup: options.addKetchup,
+        addPepper: options.addPepper,
         isItemCompleted: false,
       },
     ]);
@@ -412,118 +575,29 @@ export default function App() {
     setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
-  const total = subtotal + currentDeliveryFee + driverTip;
-
-  const handleAddCustomDish = () => {
-    if (!customDishName || !customDishPrice) {
-      alert("Please provide a name and price for the custom dish.");
+  const updateCartQuantity = (index: number, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(index);
       return;
     }
-    const newDish: Dish = {
-      id: Date.now().toString(),
-      name: customDishName,
-      price: parseFloat(customDishPrice) || 0,
-      description: customDishNotes || "Custom dish order",
-      category: "Mains",
-      image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
-      inStock: true,
-      likes: 0,
-      isSpecial: false,
-    };
-    setCart((prev) => [
-      ...prev,
-      { dish: newDish, quantity: 1, spiceLevel: "Normal", gravyType: "Normal", addKetchup: false, addPepper: false, isItemCompleted: false },
-    ]);
-    setShowCustomDishModal(false);
-    setCustomDishName("");
-    setCustomDishPrice("");
-    setCustomDishNotes("");
-  };
-
-  // Admin order status update & customer alert generator
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order["status"], estimatedTime?: string) => {
-    const updatedOrders = orders.map((o) =>
-      o.id === orderId
-        ? { ...o, status: newStatus, estimatedTime: estimatedTime || o.estimatedTime }
-        : o
+    setCart((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, quantity } : item))
     );
-    setOrders(updatedOrders);
-    const updatedOrder = updatedOrders.find((o) => o.id === orderId);
-    if (updatedOrder) {
-      await supabaseFetch("orders", "POST", updatedOrder);
-
-      // Generate notification message for customer
-      let statusMsg = `*Order Update - ${currentShop.name}*\n`;
-      statusMsg += `Hi ${updatedOrder.customerName}, your Order #${updatedOrder.id.slice(-4)} status has changed:\n\n`;
-      statusMsg += `📌 *Status:* ${newStatus.toUpperCase()}\n`;
-      if (estimatedTime) {
-        statusMsg += `⏱️ *Estimated Time:* Ready in approx ${estimatedTime}\n`;
-      }
-      if (newStatus === "Ready") {
-        statusMsg += updatedOrder.orderType === "Delivery" ? `🚚 Your order is cooked and on its way!` : `🏪 Your order is fresh & ready for pickup at our counter!`;
-      } else if (newStatus === "Completed") {
-        statusMsg += `🎉 Order completed! Thank you for dining with us!`;
-      }
-      
-      const encoded = encodeURIComponent(statusMsg);
-      window.open(`https://wa.me/?text=${encoded}`, "_blank");
-    }
   };
 
-  // Toggle individual item complete state on an active order
-  const handleToggleItemCompleted = async (orderId: string, itemIndex: number) => {
-    const updatedOrders = orders.map((o) => {
-      if (o.id === orderId) {
-        const updatedItems = o.items.map((it, idx) =>
-          idx === itemIndex ? { ...it, isItemCompleted: !it.isItemCompleted } : it
-        );
-        return { ...o, items: updatedItems };
-      }
-      return o;
-    });
-
-    setOrders(updatedOrders);
-    const updatedOrder = updatedOrders.find((o) => o.id === orderId);
-    if (updatedOrder) await supabaseFetch("orders", "POST", updatedOrder);
-  };
-
-  const buildOrderSummaryText = () => {
-    let msg = `*New Order - ${currentShop.name}*\n\n`;
-    cart.forEach((item, i) => {
-      msg += `${i + 1}. *${item.dish.name}* (x${item.quantity}) - $${item.dish.price * item.quantity} JMD\n`;
-      msg += `   Spice: ${item.spiceLevel} | Gravy: ${item.gravyType}`;
-      if (item.addKetchup) msg += ` | +Ketchup`;
-      if (item.addPepper) msg += ` | +Pepper`;
-      msg += `\n`;
-    });
-    msg += `\n*Order Type:* ${orderType}\n`;
-    if (orderType === "Delivery") {
-      msg += `*Delivery Zone:* ${currentShop.deliveryZones[selectedZoneIndex]?.name || "Standard"}\n`;
-      msg += `*Delivery Fee:* $${currentDeliveryFee} JMD\n`;
-      msg += `*Address / Landmark:* ${customerAddress}\n`;
-    }
-    if (driverTip > 0) {
-      msg += `*Tip:* $${driverTip} JMD\n`;
-    }
-    msg += `*Total Amount:* $${total} JMD\n`;
-    msg += `*Customer Name:* ${customerName}\n`;
-    msg += `*Payment:* ${paymentMethod}\n\n`;
-    msg += `🔗 Reopen App: ${window.location.href}`;
-    return encodeURIComponent(msg);
-  };
-
-  const handleDispatchOrder = async (platform: "whatsapp" | "instagram" | "tiktok" | "facebook") => {
+  const handleDispatchOrder = async (
+    platform: "whatsapp" | "instagram" | "tiktok" | "facebook"
+  ) => {
     if (!customerName.trim()) {
-      alert("Please enter your name/nickname before placing order.");
+      alert("Please enter your name/nickname.");
       return;
     }
     if (orderType === "Delivery" && !customerAddress.trim()) {
-      alert("Please enter a delivery address or landmark.");
+      alert("Please enter a delivery address.");
       return;
     }
     if (cart.length === 0) {
-      alert("Your order plate is empty.");
+      alert("Your cart is empty.");
       return;
     }
 
@@ -540,111 +614,37 @@ export default function App() {
       orderType,
       deliveryZone: currentShop.deliveryZones[selectedZoneIndex]?.name || "Standard",
       paymentMethod,
-      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      createdAt: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       status: "Pending",
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-    await supabaseFetch("orders", "POST", newOrder);
 
-    const encodedMsg = buildOrderSummaryText();
+    let msg = `*New Order - ${currentShop.name}*\n\n`;
+    cart.forEach((item, i) => {
+      msg += `${i + 1}. *${item.dish.name}* (x${item.quantity}) - $${item.dish.price * item.quantity} JMD\n`;
+    });
+    msg += `\n*Total:* $${total} JMD\n*Customer:* ${customerName}`;
+
+    const encodedMsg = encodeURIComponent(msg);
     let url = "";
 
-    if (platform === "whatsapp") {
+    if (platform === "whatsapp")
       url = `https://wa.me/${currentShop.whatsapp}?text=${encodedMsg}`;
-    } else if (platform === "instagram") {
+    else if (platform === "instagram")
       url = `https://instagram.com/${currentShop.instagram.replace("@", "")}`;
-    } else if (platform === "tiktok") {
+    else if (platform === "tiktok")
       url = `https://tiktok.com/${currentShop.tiktok.replace("@", "")}`;
-    } else if (platform === "facebook") {
+    else if (platform === "facebook")
       url = `https://facebook.com/${currentShop.facebook}`;
-    }
 
     window.open(url, "_blank");
-  };
-
-  const updateCurrentShop = async (key: keyof ShopProfile, value: any) => {
-    const updated = shops.map((s) => (s.id === currentShopId ? { ...s, [key]: value } : s));
-    setShops(updated);
-    const shopToUpdate = updated.find((s) => s.id === currentShopId);
-    if (shopToUpdate) {
-      await supabaseFetch("shops", "POST", shopToUpdate);
-    }
-  };
-
-  const handleSendMessage = (sender: "master" | "admin") => {
-    if (!chatInput.trim()) return;
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender,
-      text: chatInput.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-    setChatMessages((prev) => ({
-      ...prev,
-      [currentShopId]: [...(prev[currentShopId] || []), newMsg],
-    }));
-    setChatInput("");
-  };
-
-  const handleSaveDish = async () => {
-    if (!dishForm.name || !dishForm.price) return;
-    if (editingDish) {
-      const updatedMenu = menu.map((d) =>
-        d.id === editingDish.id
-          ? {
-              ...d,
-              name: dishForm.name,
-              price: parseFloat(dishForm.price) || 0,
-              description: dishForm.description,
-              category: dishForm.category,
-              image: dishForm.image || d.image,
-              isSpecial: dishForm.isSpecial,
-            }
-          : d
-      );
-      setMenu(updatedMenu);
-      const updatedItem = updatedMenu.find((d) => d.id === editingDish.id);
-      if (updatedItem) await supabaseFetch("menu", "POST", updatedItem);
-    } else {
-      const newDish: Dish = {
-        id: Date.now().toString(),
-        name: dishForm.name,
-        price: parseFloat(dishForm.price) || 0,
-        description: dishForm.description,
-        category: dishForm.category,
-        image: dishForm.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
-        inStock: true,
-        likes: 0,
-        isSpecial: dishForm.isSpecial,
-      };
-      setMenu((prev) => [...prev, newDish]);
-      await supabaseFetch("menu", "POST", newDish);
-    }
-    setEditingDish(null);
-    setDishForm({ name: "", price: "", description: "", category: "Mains", image: "", isSpecial: false });
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDishForm((prev) => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleHeaderBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateCurrentShop("headerBanner", reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    setCart([]);
+    setCustomerName("");
+    setCustomerAddress("");
   };
 
   const filteredMenu =
@@ -653,988 +653,359 @@ export default function App() {
       : menu.filter((item) => item.category === selectedCategory);
 
   return (
-    <div style={{ backgroundColor: "#121212", color: "#fff", minHeight: "100vh", fontFamily: currentShop.fontStyle }}>
-      {/* HEADER BANNER */}
-      <header style={{ position: "relative", backgroundColor: "#1e1e1e", borderBottom: "1px solid #333", padding: "12px 16px" }}>
-        {currentShop.headerBanner && (
-          <div style={{ position: "relative" }}>
+    <div
+      className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen"
+      style={{ fontFamily: currentShop.fontStyle }}
+    >
+      {/* HEADER */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                {currentShop.name}
+              </h1>
+              <p className="text-sm text-gray-600">{currentShop.tagline}</p>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-3">
+              {adminSession ? (
+                <>
+                  <span className="hidden sm:inline text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                    {adminSession.role === "master"
+                      ? "👑 Master"
+                      : "⚙️ Admin"}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition"
+                    title="Logout"
+                  >
+                    <LogOut className="w-5 h-5 text-gray-600" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 md:px-4 py-2 rounded-lg transition font-medium text-sm"
+                >
+                  <Lock className="w-4 h-4" /> <span className="hidden sm:inline">Admin</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {currentShop.headerBanner && (
             <img
               src={currentShop.headerBanner}
-              alt="Header Banner"
+              alt="Header"
               onClick={() => setZoomedImage(currentShop.headerBanner)}
-              style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "6px", marginBottom: "8px", cursor: "pointer" }}
+              className="w-full h-32 md:h-40 object-cover rounded-lg cursor-pointer"
             />
-            <span
-              onClick={() => setZoomedImage(currentShop.headerBanner)}
-              style={{
-                position: "absolute",
-                bottom: "14px",
-                right: "8px",
-                backgroundColor: "rgba(0,0,0,0.7)",
-                color: "#fff",
-                fontSize: "10px",
-                padding: "3px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              🔍 Tap to View
-            </span>
-          </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: "20px", color: "#fff" }}>{currentShop.name}</h1>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#aaa" }}>{currentShop.tagline}</p>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              onClick={() => setShowShareModal(true)}
-              style={{
-                backgroundColor: "#2a2a2a",
-                color: "#fff",
-                border: "1px solid #333",
-                padding: "6px 12px",
-                borderRadius: "4px",
-                fontSize: "12px",
-                fontWeight: "bold",
-                cursor: "pointer",
-              }}
-            >
-              📲 Share / QR
-            </button>
-            <button
-              onClick={() => setShowAdminModal(true)}
-              style={{
-                backgroundColor: currentShop.themeColor,
-                color: "#fff",
-                border: "none",
-                padding: "6px 12px",
-                borderRadius: "4px",
-                fontSize: "12px",
-                fontWeight: "bold",
-                cursor: "pointer",
-              }}
-            >
-              🔒 Admin
-            </button>
-          </div>
-        </div>
+          )}
 
-        {!currentShop.isOpenManual && (
-          <div style={{ marginTop: "10px", backgroundColor: "#3a0d0d", color: "#ff6b6b", border: "1px solid #ff4d4d", padding: "8px", borderRadius: "4px", textAlign: "center", fontSize: "12px" }}>
-            ⛔ Cookshop closed right now. Check back during business hours.
-          </div>
-        )}
+          {!currentShop.isOpenManual && (
+            <div className="mt-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-sm text-red-700">
+                Cookshop is closed right now. Check back during business hours.
+              </p>
+            </div>
+          )}
+        </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
-      <main style={{ padding: "16px", maxWidth: "600px", margin: "0 auto" }}>
-        {/* CATEGORY SELECTOR & CUSTOM DISH */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
-            {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                style={{
-                  backgroundColor: selectedCategory === cat ? currentShop.themeColor : "#2a2a2a",
-                  color: "#fff",
-                  border: "none",
-                  padding: "6px 12px",
-                  borderRadius: "16px",
-                  fontSize: "12px",
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowCustomDishModal(true)}
-            style={{
-              backgroundColor: "#2e7d32",
-              color: "#fff",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: "16px",
-              fontSize: "12px",
-              cursor: "pointer",
-              marginLeft: "8px",
-            }}
-          >
-            + Custom Dish
-          </button>
-        </div>
-
-        {/* MENU LIST */}
-        <h2 style={{ fontSize: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>Today's Menu</h2>
-        <div style={{ display: "grid", gap: "12px" }}>
-          {filteredMenu.map((item) => (
-            <div key={item.id} style={{ backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "12px", display: "flex", gap: "12px", border: item.isSpecial ? "1px solid #ffd700" : "none" }}>
-              <img
-                src={item.image}
-                alt={item.name}
-                onClick={() => setZoomedImage(item.image)}
-                style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", cursor: "pointer" }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <h3 style={{ margin: 0, fontSize: "14px" }}>{item.name}</h3>
-                    {item.isSpecial && <span style={{ backgroundColor: "#ffd700", color: "#000", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold" }}>⭐ Special</span>}
-                  </div>
-                  <span style={{ color: "#4caf50", fontWeight: "bold", fontSize: "14px" }}>${item.price} JMD</span>
-                </div>
-                <p style={{ fontSize: "11px", color: "#aaa", margin: "4px 0 8px" }}>{item.description}</p>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {item.inStock ? (
-                    <button
-                      onClick={() => handleOpenCustomizeModal(item)}
-                      style={{
-                        backgroundColor: currentShop.themeColor,
-                        color: "#fff",
-                        border: "none",
-                        padding: "4px 12px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      + Add to Plate
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: "11px", color: "#ff4d4d" }}>Out of Stock</span>
-                  )}
+      {/* MAIN CONTENT */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* MENU SECTION */}
+          <div className="lg:col-span-2">
+            {/* Category Selector */}
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map(
+                (cat) => (
                   <button
-                    onClick={() => handleToggleLike(item.id)}
-                    style={{
-                      backgroundColor: "transparent",
-                      border: "none",
-                      color: likedDishIds[item.id] ? "#e1306c" : "#aaa",
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      fontWeight: likedDishIds[item.id] ? "bold" : "normal",
-                    }}
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
+                      selectedCategory === cat
+                        ? "bg-orange-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
+                    }`}
                   >
-                    ❤️ {item.likes}
+                    {cat}
                   </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ORDER PLATE / CART */}
-        <div style={{ marginTop: "24px", backgroundColor: "#1e1e1e", borderRadius: "8px", padding: "16px" }}>
-          <h2 style={{ fontSize: "16px", margin: "0 0 12px" }}>🛒 Your Order Plate ({cart.length} items)</h2>
-          {cart.length === 0 ? (
-            <p style={{ fontSize: "12px", color: "#888" }}>Your plate is empty.</p>
-          ) : (
-            <div>
-              {cart.map((item, idx) => (
-                <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: "bold" }}>
-                      {item.quantity}x {item.dish.name}
-                    </div>
-                    <div style={{ fontSize: "10px", color: "#aaa" }}>
-                      Spice: {item.spiceLevel} | Gravy: {item.gravyType}
-                      {item.addKetchup && " | +Ketchup"}
-                      {item.addPepper && " | +Pepper"}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "13px" }}>${item.dish.price * item.quantity} JMD</span>
-                    <button onClick={() => removeFromCart(idx)} style={{ backgroundColor: "transparent", color: "#ff4d4d", border: "none", cursor: "pointer", fontSize: "14px" }}>
-                      ❌
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {/* SERVICE TOGGLES */}
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button
-                  onClick={() => setOrderType("Delivery")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    border: "none",
-                    borderRadius: "4px",
-                    backgroundColor: orderType === "Delivery" ? currentShop.themeColor : "#2a2a2a",
-                    color: "#fff",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  🚚 Delivery
-                </button>
-                <button
-                  onClick={() => setOrderType("Pickup")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    border: "none",
-                    borderRadius: "4px",
-                    backgroundColor: orderType === "Pickup" ? currentShop.themeColor : "#2a2a2a",
-                    color: "#fff",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  🏪 Store Pickup
-                </button>
-              </div>
-
-              {/* DYNAMIC DELIVERY ZONE SELECTOR */}
-              {orderType === "Delivery" && (
-                <div style={{ marginTop: "12px" }}>
-                  <label style={{ fontSize: "11px", color: "#aaa", display: "block", marginBottom: "4px" }}>
-                    Delivery Zone:
-                  </label>
-                  <select
-                    value={selectedZoneIndex}
-                    onChange={(e) => setSelectedZoneIndex(parseInt(e.target.value, 10))}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
-                  >
-                    {currentShop.deliveryZones.map((zone, i) => (
-                      <option key={i} value={i}>
-                        {zone.name} (+${zone.price} JMD)
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                )
               )}
+            </div>
 
-              {/* CUSTOMER INPUTS WITH GPS BUTTON */}
-              <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
-                <input
-                  type="text"
-                  placeholder="Your Name / Nickname *"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
-                />
-                {orderType === "Delivery" && (
-                  <div style={{ display: "flex", gap: "6px" }}>
+            {/* Menu Items */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Today's Menu ({filteredMenu.length})
+              </h2>
+              {filteredMenu.length === 0 ? (
+                <div className="text-center p-8 bg-white rounded-lg border border-gray-200">
+                  <p className="text-gray-600">
+                    No items in this category yet.
+                  </p>
+                </div>
+              ) : (
+                filteredMenu.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition border border-gray-200 p-4 flex gap-4 hover:border-orange-300"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      onClick={() => setZoomedImage(item.image)}
+                      className="w-24 h-24 object-cover rounded-lg cursor-pointer flex-shrink-0 hover:opacity-90 transition"
+                    />
+                    <div className="flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900">
+                            {item.name}
+                          </h3>
+                          {item.isSpecial && (
+                            <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">
+                              ⭐ Special
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-lg font-bold text-orange-600 ml-2">
+                          ${item.price}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3 flex-1">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        {item.inStock ? (
+                          <button
+                            onClick={() => handleOpenCustomizeModal(item)}
+                            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
+                          >
+                            <Plus className="w-4 h-4" /> Add
+                          </button>
+                        ) : (
+                          <span className="text-sm text-red-600 font-medium">
+                            Out of Stock
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleToggleLike(item.id)}
+                          className={`text-sm font-medium transition flex items-center gap-1 ${
+                            likedDishIds[item.id]
+                              ? "text-red-500"
+                              : "text-gray-400 hover:text-red-500"
+                          }`}
+                        >
+                          <Heart
+                            className="w-4 h-4"
+                            fill={likedDishIds[item.id] ? "currentColor" : "none"}
+                          />
+                          {item.likes}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* CART SIDEBAR */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+              <div className="flex items-center gap-2 mb-4">
+                <ShoppingCart className="w-5 h-5 text-orange-600" />
+                <h2 className="text-lg font-bold text-gray-900">
+                  Order Summary
+                </h2>
+                <span className="ml-auto bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full">
+                  {cart.length}
+                </span>
+              </div>
+
+              {cart.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">
+                  Your cart is empty
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
+                    {cart.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">
+                            {item.quantity}x {item.dish.name}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {item.spiceLevel} • {item.gravyType}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <div className="flex items-center gap-1 bg-white border border-gray-300 rounded">
+                            <button
+                              onClick={() =>
+                                updateCartQuantity(idx, item.quantity - 1)
+                              }
+                              className="px-2 py-1 hover:bg-gray-100"
+                            >
+                              −
+                            </button>
+                            <span className="px-2 text-sm font-medium">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() =>
+                                updateCartQuantity(idx, item.quantity + 1)
+                              }
+                              className="px-2 py-1 hover:bg-gray-100"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(idx)}
+                            className="text-red-500 hover:text-red-700 transition p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Subtotal</span>
+                      <span>${subtotal}</span>
+                    </div>
+                    {orderType === "Delivery" && (
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Delivery</span>
+                        <span>${currentDeliveryFee}</span>
+                      </div>
+                    )}
+                    {driverTip > 0 && (
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Tip</span>
+                        <span>${driverTip}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-lg text-gray-900 pt-2">
+                      <span>Total</span>
+                      <span className="text-orange-600">${total}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
                     <input
                       type="text"
-                      placeholder="Delivery Address / Landmark *"
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
+                      placeholder="Your Name *"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
-                    <button
-                      onClick={handleFetchGPS}
-                      disabled={isFetchingLocation}
-                      style={{
-                        backgroundColor: "#0288d1",
-                        color: "#fff",
-                        border: "none",
-                        padding: "8px 12px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                      }}
+                    {orderType === "Delivery" && (
+                      <input
+                        type="text"
+                        placeholder="Delivery Address *"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium text-gray-700">
+                      Delivery Zone
+                    </label>
+                    <select
+                      value={selectedZoneIndex}
+                      onChange={(e) =>
+                        setSelectedZoneIndex(parseInt(e.target.value))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
-                      {isFetchingLocation ? "..." : "📍 GPS"}
+                      {currentShop.deliveryZones.map((zone, idx) => (
+                        <option key={idx} value={idx}>
+                          {zone.name} (${zone.price})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setOrderType("Delivery")}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                        orderType === "Delivery"
+                          ? "bg-orange-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      🚗 Delivery
+                    </button>
+                    <button
+                      onClick={() => setOrderType("Pickup")}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                        orderType === "Pickup"
+                          ? "bg-orange-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      🏪 Pickup
                     </button>
                   </div>
-                )}
-              </div>
 
-              {/* TOTAL & DISPATCH BUTTONS */}
-              <div style={{ marginTop: "16px", borderTop: "1px solid #333", paddingTop: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold" }}>
-                  <span>Total</span>
-                  <span>${total} JMD</span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
-                  <button onClick={() => handleDispatchOrder("whatsapp")} style={{ backgroundColor: "#25D366", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-                    📱 WhatsApp
+                  <button
+                    onClick={() => handleDispatchOrder("whatsapp")}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    <Zap className="w-4 h-4" /> Place Order via WhatsApp
                   </button>
-                  <button onClick={() => handleDispatchOrder("instagram")} style={{ backgroundColor: "#E1306C", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-                    📸 Instagram DM
-                  </button>
-                  <button onClick={() => handleDispatchOrder("tiktok")} style={{ backgroundColor: "#00f2fe", color: "#000", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-                    🎵 TikTok DM
-                  </button>
-                  <button onClick={() => handleDispatchOrder("facebook")} style={{ backgroundColor: "#1877F2", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-                    📘 Facebook DM
-                  </button>
-                </div>
-              </div>
+                </>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* FOOTER SOCIAL PORTALS */}
-        <footer style={{ marginTop: "32px", padding: "16px 0", borderTop: "1px solid #222", textAlign: "center" }}>
-          <p style={{ fontSize: "11px", color: "#888", marginBottom: "8px" }}>Visit our social channels:</p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "12px" }}>
-            <a href={`https://instagram.com/${currentShop.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" style={{ color: "#E1306C", textDecoration: "none" }}>
-              Instagram ({currentShop.instagram})
-            </a>
-            <a href={`https://tiktok.com/${currentShop.tiktok.replace("@", "")}`} target="_blank" rel="noreferrer" style={{ color: "#00f2fe", textDecoration: "none" }}>
-              TikTok ({currentShop.tiktok})
-            </a>
-            <a href={`https://facebook.com/${currentShop.facebook}`} target="_blank" rel="noreferrer" style={{ color: "#1877F2", textDecoration: "none" }}>
-              Facebook
-            </a>
           </div>
-          {currentShop.address && (
-            <p style={{ fontSize: "10px", color: "#666", marginTop: "12px" }}>
-              📍 {currentShop.address} {currentShop.mapLink && <a href={currentShop.mapLink} target="_blank" rel="noreferrer" style={{ color: "#4caf50" }}>(Map Link)</a>}
-            </p>
-          )}
-        </footer>
+        </div>
       </main>
 
-      {/* SHARE & QR CODE MODAL */}
-      {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1500 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "360px", textAlign: "center" }}>
-            <h3 style={{ margin: "0 0 8px" }}>📲 Share {currentShop.name}</h3>
-            <p style={{ fontSize: "11px", color: "#aaa", margin: "0 0 16px" }}>Scan this QR code or copy the link to open your menu.</p>
-            
-            <div style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "8px", display: "inline-block", marginBottom: "16px" }}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(window.location.href)}`}
-                alt="Menu QR Code"
-                style={{ width: "180px", height: "180px", display: "block" }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: "8px" }}>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert("Menu link copied to clipboard!");
-                }}
-                style={{ padding: "10px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", cursor: "pointer" }}
-              >
-                📋 Copy Menu Link
-              </button>
-              <button
-                onClick={() => setShowShareModal(false)}
-                style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DISH CUSTOMIZATION MODAL */}
-      {selectedDishForCart && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: "16px" }}>Customize: {selectedDishForCart.name}</h3>
-            
-            <div style={{ display: "grid", gap: "12px", marginBottom: "16px" }}>
-              <div>
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Gravy Level:</label>
-                <select value={optGravy} onChange={(e) => setOptGravy(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
-                  <option value="Normal">Normal Gravy</option>
-                  <option value="Extra Gravy">Extra Gravy</option>
-                  <option value="No Gravy / Dry">No Gravy (Dry)</option>
-                  <option value="Gravy on Side">Gravy on Side</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Spice Level:</label>
-                <select value={optSpice} onChange={(e) => setOptSpice(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", marginTop: "4px" }}>
-                  <option value="Mild">Mild</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hot & Spicy">Hot & Spicy</option>
-                </select>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingTop: "4px" }}>
-                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={optKetchup} onChange={(e) => setOptKetchup(e.target.checked)} />
-                  Add Ketchup
-                </label>
-                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={optPepper} onChange={(e) => setOptPepper(e.target.checked)} />
-                  Add Scotch Bonnet Pepper
-                </label>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={handleConfirmAddToCart} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", fontWeight: "bold", cursor: "pointer" }}>
-                Add to Plate
-              </button>
-              <button onClick={() => setSelectedDishForCart(null)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* LOGIN MODAL */}
-      {showAdminModal && !isAdminLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
-            <h3 style={{ margin: "0 0 12px" }}>🔐 Enter Admin PIN</h3>
-            <input
-              type="password"
-              placeholder="****"
-              value={adminPinInput}
-              onChange={(e) => setAdminPinInput(e.target.value)}
-              style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "16px", textAlign: "center", marginBottom: "12px" }}
-            />
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={handleAdminLogin} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                Unlock Panel
-              </button>
-              <button onClick={() => setShowAdminModal(false)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+      {showLoginModal && (
+        <LoginModal
+          onLogin={handleLogin}
+          onClose={() => setShowLoginModal(false)}
+        />
       )}
 
-      {/* MASTER CONTROL CENTER */}
-      {showAdminModal && isMasterLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0, color: "#e53935" }}>👑 Master Control Center</h3>
-              <button onClick={() => { setIsMasterLoggedIn(false); setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#333", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>
-                Logout Master
-              </button>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px", overflowX: "auto" }}>
-              <button onClick={() => setActiveMasterTab("shops")} style={{ backgroundColor: activeMasterTab === "shops" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                Shops Manager
-              </button>
-              <button onClick={() => setActiveMasterTab("supabase")} style={{ backgroundColor: activeMasterTab === "supabase" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                ⚡ Supabase Config
-              </button>
-              <button onClick={() => setActiveMasterTab("devChat")} style={{ backgroundColor: activeMasterTab === "devChat" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                Dev Chat
-              </button>
-              <button onClick={() => setActiveMasterTab("masterPin")} style={{ backgroundColor: activeMasterTab === "masterPin" ? "#e53935" : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                Master PIN
-              </button>
-            </div>
-
-            {/* SHOPS MANAGER */}
-            {activeMasterTab === "shops" && (
-              <div>
-                <h4 style={{ margin: "0 0 8px" }}>Register New Cookshop</h4>
-                <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
-                  <input type="text" placeholder="Cookshop Name" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <input type="text" placeholder="Access PIN (4 digits)" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <input type="text" placeholder="WhatsApp Number" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <button
-                    onClick={async () => {
-                      if (!newShopName || !newShopPin) return;
-                      const id = newShopName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-                      const newProfile: ShopProfile = {
-                        ...DEFAULT_SHOPS[0],
-                        id,
-                        name: newShopName,
-                        pin: newShopPin,
-                        adminPin: newShopPin,
-                        whatsapp: newShopWhatsapp || "18765550000",
-                      };
-                      setShops((prev) => [...prev, newProfile]);
-                      await supabaseFetch("shops", "POST", newProfile);
-                      setNewShopName("");
-                      setNewShopPin("");
-                      setNewShopWhatsapp("");
-                    }}
-                    style={{ padding: "8px", backgroundColor: "#e53935", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
-                  >
-                    Create Shop
-                  </button>
-                </div>
-
-                <h4 style={{ margin: "16px 0 8px" }}>Select Active Cookshop ({shops.length})</h4>
-                <select
-                  value={currentShopId}
-                  onChange={(e) => {
-                    setCurrentShopId(e.target.value);
-                    setIsMasterLoggedIn(false);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "4px",
-                    border: "1px solid #333",
-                    backgroundColor: "#121212",
-                    color: "#fff",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
-                >
-                  {shops.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} (PIN: {s.pin} | WA: {s.whatsapp})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* SUPABASE CONFIG */}
-            {activeMasterTab === "supabase" && (
-              <div style={{ display: "grid", gap: "12px" }}>
-                <h4 style={{ margin: "0 0 4px" }}>⚡ Connect Database (Supabase)</h4>
-                <p style={{ fontSize: "11px", color: "#aaa", margin: 0 }}>
-                  Enter your project API URL and public Anon key below. These will persist in browser storage and connect your app directly to your cloud tables.
-                </p>
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Project URL:</label>
-                <input
-                  type="text"
-                  placeholder="https://xyz.supabase.co"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
-                />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Supabase Anon API Key:</label>
-                <textarea
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={supabaseAnonKey}
-                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                  style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px", height: "80px" }}
-                />
-
-                <button
-                  onClick={handleSaveSupabaseConfig}
-                  style={{ padding: "10px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
-                >
-                  Save Supabase Settings
-                </button>
-              </div>
-            )}
-
-            {/* DEV CHAT */}
-            {activeMasterTab === "devChat" && (
-              <div>
-                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #333", borderRadius: "4px", padding: "8px", marginBottom: "8px", backgroundColor: "#121212" }}>
-                  {(chatMessages[currentShopId] || []).map((msg) => (
-                    <div key={msg.id} style={{ textAlign: msg.sender === "master" ? "right" : "left", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", color: "#aaa" }}>{msg.timestamp}</span>
-                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "master" ? "#e53935" : "#333", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <input type="text" placeholder="Message shop admin..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <button onClick={() => handleSendMessage("master")} style={{ backgroundColor: "#e53935", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "4px", cursor: "pointer" }}>
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* MASTER PIN */}
-            {activeMasterTab === "masterPin" && (
-              <div style={{ display: "grid", gap: "8px" }}>
-                <h4 style={{ margin: "0 0 8px" }}>Update Master PIN</h4>
-                <input type="text" placeholder="New Master PIN (4 digits)" value={masterPin} onChange={(e) => setMasterPin(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                <button onClick={() => alert("Master PIN updated successfully.")} style={{ padding: "8px", backgroundColor: "#e53935", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                  Save Master PIN
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* CUSTOMIZE DISH MODAL */}
+      {selectedDishForCart && (
+        <CustomizeDishModal
+          dish={selectedDishForCart}
+          onConfirm={handleConfirmAddToCart}
+          onClose={() => setSelectedDishForCart(null)}
+        />
       )}
 
-      {/* SHOP ADMIN PANEL */}
-      {showAdminModal && isAdminLoggedIn && !isMasterLoggedIn && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "95%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0 }}>⚙️ {currentShop.name} Admin Panel</h3>
-              <button onClick={() => { setIsAdminLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "#333", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>
-                Logout Admin
-              </button>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333", paddingBottom: "8px" }}>
-              <button onClick={() => setActiveAdminTab("control")} style={{ backgroundColor: activeAdminTab === "control" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                🎛️ Control
-              </button>
-              <button onClick={() => setActiveAdminTab("orders")} style={{ backgroundColor: activeAdminTab === "orders" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                📋 Orders ({orders.filter((o) => o.shopId === currentShopId).length})
-              </button>
-              <button onClick={() => setActiveAdminTab("menu")} style={{ backgroundColor: activeAdminTab === "menu" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                📜 Menu
-              </button>
-              <button onClick={() => setActiveAdminTab("settings")} style={{ backgroundColor: activeAdminTab === "settings" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                ⚙️ Settings
-              </button>
-              <button onClick={() => setActiveAdminTab("devChat")} style={{ backgroundColor: activeAdminTab === "devChat" ? currentShop.themeColor : "#2a2a2a", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                💬 Dev Chat
-              </button>
-            </div>
-
-            {/* OPERATIONAL CONTROL */}
-            {activeAdminTab === "control" && (
-              <div>
-                <h4 style={{ margin: "0 0 8px" }}>⏰ Operational Toggles</h4>
-                <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.isOpenManual ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                    {currentShop.isOpenManual ? "STORE OPEN" : "STORE CLOSED"}
-                  </button>
-                  <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} style={{ flex: 1, padding: "8px", backgroundColor: currentShop.isDeliveryActive ? "#2e7d32" : "#c62828", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                    {currentShop.isDeliveryActive ? "DELIVERY ACTIVE" : "DELIVERY OFF"}
-                  </button>
-                </div>
-
-                <h4 style={{ margin: "16px 0 8px" }}>📅 Weekly Schedule</h4>
-                {Object.keys(currentShop.weeklySchedule).map((day) => (
-                  <div key={day} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", fontSize: "12px" }}>
-                    <span style={{ width: "35px", fontWeight: "bold" }}>{day}:</span>
-                    <input
-                      type="checkbox"
-                      checked={currentShop.weeklySchedule[day].isOpen}
-                      onChange={(e) => {
-                        const updated = { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], isOpen: e.target.checked } };
-                        updateCurrentShop("weeklySchedule", updated);
-                      }}
-                    />
-                    <input
-                      type="time"
-                      value={currentShop.weeklySchedule[day].openTime}
-                      onChange={(e) => {
-                        const updated = { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], openTime: e.target.value } };
-                        updateCurrentShop("weeklySchedule", updated);
-                      }}
-                      style={{ backgroundColor: "#121212", color: "#fff", border: "1px solid #333", borderRadius: "4px" }}
-                    />
-                    <span>to</span>
-                    <input
-                      type="time"
-                      value={currentShop.weeklySchedule[day].closeTime}
-                      onChange={(e) => {
-                        const updated = { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], closeTime: e.target.value } };
-                        updateCurrentShop("weeklySchedule", updated);
-                      }}
-                      style={{ backgroundColor: "#121212", color: "#fff", border: "1px solid #333", borderRadius: "4px" }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ORDERS, PREPARATION STATUS & DISH TICKETS */}
-            {activeAdminTab === "orders" && (
-              <div>
-                <h4 style={{ margin: "0 0 12px" }}>🧾 Incoming Orders & Digital Receipts</h4>
-                {orders.filter((o) => o.shopId === currentShopId).length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "#888" }}>No active orders found for this shop.</p>
-                ) : (
-                  <div style={{ display: "grid", gap: "12px" }}>
-                    {orders
-                      .filter((o) => o.shopId === currentShopId)
-                      .map((ord) => (
-                        <div key={ord.id} style={{ backgroundColor: "#121212", border: "1px solid #333", padding: "12px", borderRadius: "6px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                            <span style={{ fontWeight: "bold", fontSize: "13px" }}>Order #{ord.id.slice(-4)}</span>
-                            <span style={{ color: "#4caf50", fontSize: "12px", fontWeight: "bold" }}>${ord.total} JMD</span>
-                          </div>
-                          
-                          <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                            👤 {ord.customerName} | 🚚 {ord.orderType} ({ord.deliveryZone}) | ⏰ {ord.createdAt}
-                          </div>
-                          
-                          {ord.customerAddress && (
-                            <div style={{ fontSize: "11px", color: "#64b5f6", marginBottom: "8px" }}>
-                              📍 {ord.customerAddress}
-                            </div>
-                          )}
-
-                          {/* ORDER STATUS CONTROL & TIME NOTIFIER */}
-                          <div style={{ backgroundColor: "#1e1e1e", padding: "8px", borderRadius: "4px", marginBottom: "10px", display: "grid", gap: "6px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
-                              <span>Status: <strong style={{ color: ord.status === "Ready" ? "#4caf50" : ord.status === "Preparing" ? "#ff9800" : "#fff" }}>{ord.status}</strong></span>
-                              {ord.estimatedTime && <span style={{ color: "#ffd700" }}>⏱️ {ord.estimatedTime}</span>}
-                            </div>
-
-                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord.id, "Preparing", "15-20 mins")}
-                                style={{ backgroundColor: "#ff9800", color: "#000", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
-                              >
-                                ⏳ Preparing (15m)
-                              </button>
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord.id, "Preparing", "30-40 mins")}
-                                style={{ backgroundColor: "#ff9800", color: "#000", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
-                              >
-                                ⏳ Preparing (30m)
-                              </button>
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord.id, "Ready")}
-                                style={{ backgroundColor: "#4caf50", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
-                              >
-                                ✅ Mark Ready & Alert
-                              </button>
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord.id, "Completed")}
-                                style={{ backgroundColor: "#0288d1", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
-                              >
-                                🎉 Complete
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* DISH ITEM-LEVEL CHECKLIST */}
-                          <div style={{ borderTop: "1px dashed #333", paddingTop: "6px", fontSize: "11px" }}>
-                            <div style={{ fontSize: "10px", color: "#888", marginBottom: "4px" }}>Item Checklist (Tap item to toggle done):</div>
-                            {ord.items.map((it, i) => (
-                              <div
-                                key={i}
-                                onClick={() => handleToggleItemCompleted(ord.id, i)}
-                                style={{
-                                  display: "flex",
-                                  justify: "space-between",
-                                  alignItems: "center",
-                                  padding: "4px 0",
-                                  cursor: "pointer",
-                                  textDecoration: it.isItemCompleted ? "line-through" : "none",
-                                  color: it.isItemCompleted ? "#4caf50" : "#fff",
-                                }}
-                              >
-                                <div>
-                                  {it.isItemCompleted ? "✅ " : "🍳 "}
-                                  {it.quantity}x {it.dish.name} (${it.dish.price * it.quantity})
-                                  <span style={{ color: "#aaa" }}>
-                                    {" "}[Spice: {it.spiceLevel}, Gravy: {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]
-                                  </span>
-                                </div>
-                                <span style={{ fontSize: "9px", backgroundColor: it.isItemCompleted ? "#2e7d32" : "#333", color: "#fff", padding: "2px 6px", borderRadius: "3px" }}>
-                                  {it.isItemCompleted ? "Done" : "Cooking"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* MENU EDITOR */}
-            {activeAdminTab === "menu" && (
-              <div>
-                <h4 style={{ margin: "0 0 8px" }}>{editingDish ? "Edit Dish" : "Add New Dish"}</h4>
-                <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
-                  <input type="text" placeholder="Dish Name" value={dishForm.name} onChange={(e) => setDishForm((p) => ({ ...p, name: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <input type="number" placeholder="Price (JMD)" value={dishForm.price} onChange={(e) => setDishForm((p) => ({ ...p, price: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <textarea placeholder="Description" value={dishForm.description} onChange={(e) => setDishForm((p) => ({ ...p, description: e.target.value }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <select value={dishForm.category} onChange={(e) => setDishForm((p) => ({ ...p, category: e.target.value as Dish["category"] }))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }}>
-                    <option value="Mains">Mains</option>
-                    <option value="Drinks">Drinks</option>
-                    <option value="Snacks">Snacks</option>
-                    <option value="Sides">Sides</option>
-                    <option value="Soups">Soups</option>
-                  </select>
-                  <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={dishForm.isSpecial} onChange={(e) => setDishForm((p) => ({ ...p, isSpecial: e.target.checked }))} />
-                    Mark as ⭐ Special / Featured Item
-                  </label>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: "12px" }} />
-                  <button onClick={handleSaveDish} style={{ padding: "8px", backgroundColor: currentShop.themeColor, color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>
-                    {editingDish ? "Update Dish" : "Add Dish"}
-                  </button>
-                </div>
-
-                <h4 style={{ margin: "16px 0 8px" }}>Current Items</h4>
-                <div style={{ display: "grid", gap: "8px" }}>
-                  {menu.map((item) => (
-                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#121212", padding: "8px 12px", borderRadius: "4px" }}>
-                      <div>
-                        <div style={{ fontWeight: "bold", fontSize: "13px" }}>
-                          {item.name} (${item.price} JMD) {item.isSpecial && "⭐"}
-                        </div>
-                        <div style={{ fontSize: "10px", color: "#aaa" }}>{item.category}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: "6px" }}>
-                        <button
-                          onClick={async () => {
-                            const updatedMenu = menu.map((d) => (d.id === item.id ? { ...d, inStock: !d.inStock } : d));
-                            setMenu(updatedMenu);
-                            const updatedItem = updatedMenu.find((d) => d.id === item.id);
-                            if (updatedItem) await supabaseFetch("menu", "POST", updatedItem);
-                          }}
-                          style={{ backgroundColor: item.inStock ? "#2e7d32" : "#c62828", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
-                        >
-                          {item.inStock ? "In Stock" : "Sold Out"}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingDish(item);
-                            setDishForm({ name: item.name, price: item.price.toString(), description: item.description, category: item.category, image: item.image, isSpecial: item.isSpecial || false });
-                          }}
-                          style={{ backgroundColor: "#0288d1", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setMenu((prev) => prev.filter((d) => d.id !== item.id))}
-                          style={{ backgroundColor: "#333", color: "#ff4d4d", border: "none", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* SETTINGS (DELIVERY ZONES & BRANDING) */}
-            {activeAdminTab === "settings" && (
-              <div style={{ display: "grid", gap: "8px" }}>
-                <h4 style={{ margin: "0 0 4px" }}>🎨 Branding, Delivery & Location Settings</h4>
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Upload Header Banner Image:</label>
-                <input type="file" accept="image/*" onChange={handleHeaderBannerUpload} style={{ fontSize: "12px" }} />
-                {currentShop.headerBanner && (
-                  <img src={currentShop.headerBanner} alt="Header Preview" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "4px", marginTop: "4px" }} />
-                )}
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Cookshop Name:</label>
-                <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Font Style:</label>
-                <select value={currentShop.fontStyle} onChange={(e) => updateCurrentShop("fontStyle", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }}>
-                  <option value="Monospace">Monospace</option>
-                  <option value="Sans-Serif">Sans-Serif</option>
-                  <option value="Serif">Serif</option>
-                  <option value="Cursive">Cursive</option>
-                </select>
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Theme Color:</label>
-                <input type="color" value={currentShop.themeColor} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} style={{ width: "100%", height: "40px", border: "none", cursor: "pointer" }} />
-
-                <h4 style={{ margin: "10px 0 0", fontSize: "13px" }}>🚚 Delivery Pricing Zones</h4>
-                {currentShop.deliveryZones.map((zone, zIdx) => (
-                  <div key={zIdx} style={{ display: "flex", gap: "6px" }}>
-                    <input
-                      type="text"
-                      value={zone.name}
-                      onChange={(e) => {
-                        const updated = [...currentShop.deliveryZones];
-                        updated[zIdx].name = e.target.value;
-                        updateCurrentShop("deliveryZones", updated);
-                      }}
-                      style={{ flex: 1, padding: "6px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
-                    />
-                    <input
-                      type="number"
-                      value={zone.price}
-                      onChange={(e) => {
-                        const updated = [...currentShop.deliveryZones];
-                        updated[zIdx].price = parseFloat(e.target.value) || 0;
-                        updateCurrentShop("deliveryZones", updated);
-                      }}
-                      style={{ width: "90px", padding: "6px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }}
-                    />
-                  </div>
-                ))}
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Delivery Zone Coverage Note:</label>
-                <input type="text" value={currentShop.deliveryZoneNote} onChange={(e) => updateCurrentShop("deliveryZoneNote", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>WhatsApp Number:</label>
-                <input type="text" value={currentShop.whatsapp} onChange={(e) => updateCurrentShop("whatsapp", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Instagram Handle:</label>
-                <input type="text" value={currentShop.instagram} onChange={(e) => updateCurrentShop("instagram", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>TikTok Handle:</label>
-                <input type="text" value={currentShop.tiktok} onChange={(e) => updateCurrentShop("tiktok", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Facebook Name:</label>
-                <input type="text" value={currentShop.facebook} onChange={(e) => updateCurrentShop("facebook", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Physical Address / Location:</label>
-                <input type="text" value={currentShop.address} onChange={(e) => updateCurrentShop("address", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Google Maps Link:</label>
-                <input type="text" value={currentShop.mapLink} onChange={(e) => updateCurrentShop("mapLink", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-
-                <label style={{ fontSize: "11px", color: "#aaa" }}>Admin Access PIN:</label>
-                <input type="text" value={currentShop.adminPin} onChange={(e) => updateCurrentShop("adminPin", e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-              </div>
-            )}
-
-            {/* DEV CHAT */}
-            {activeAdminTab === "devChat" && (
-              <div>
-                <div style={{ height: "200px", overflowY: "auto", border: "1px solid #333", borderRadius: "4px", padding: "8px", marginBottom: "8px", backgroundColor: "#121212" }}>
-                  {(chatMessages[currentShopId] || []).map((msg) => (
-                    <div key={msg.id} style={{ textAlign: msg.sender === "admin" ? "right" : "left", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", color: "#aaa" }}>{msg.timestamp}</span>
-                      <div style={{ display: "inline-block", backgroundColor: msg.sender === "admin" ? currentShop.themeColor : "#333", padding: "6px 10px", borderRadius: "6px", fontSize: "12px", marginLeft: "6px" }}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <input type="text" placeholder="Message developer..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff" }} />
-                  <button onClick={() => handleSendMessage("admin")} style={{ backgroundColor: currentShop.themeColor, color: "#fff", border: "none", padding: "8px 16px", borderRadius: "4px", cursor: "pointer" }}>
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* CUSTOM DISH OVERLAY */}
-      {showCustomDishModal && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
-            <h3 style={{ margin: "0 0 12px" }}>🍲 Order Custom Dish</h3>
-            <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
-              <input type="text" placeholder="Dish Name (e.g. Steamed Fish)" value={customDishName} onChange={(e) => setCustomDishName(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
-              <input type="number" placeholder="Agreed Price ($ JMD)" value={customDishPrice} onChange={(e) => setCustomDishPrice(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
-              <textarea placeholder="Special instructions or notes..." value={customDishNotes} onChange={(e) => setCustomDishNotes(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #333", backgroundColor: "#121212", color: "#fff", fontSize: "12px" }} />
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={handleAddCustomDish} style={{ flex: 1, padding: "8px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                Add to Plate
-              </button>
-              <button onClick={() => setShowCustomDishModal(false)} style={{ padding: "8px", backgroundColor: "#333", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FULLSCREEN LIGHTBOX */}
+      {/* FULLSCREEN IMAGE */}
       {zoomedImage && (
-        <div onClick={() => setZoomedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <img src={zoomedImage} alt="Full View" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain", borderRadius: "8px" }} />
+        <div
+          onClick={() => setZoomedImage(null)}
+          className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 cursor-pointer"
+        >
+          <img
+            src={zoomedImage}
+            alt="Full View"
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
         </div>
       )}
     </div>
   );
-      }
+}
