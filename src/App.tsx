@@ -1,21 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  ShoppingCart,
-  Settings,
-  Lock,
-  LogOut,
-  Plus,
-  X,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Zap,
-  Menu,
-  Home,
-  Phone,
-  MapPin,
-  Heart,
-} from "lucide-react";
+import { ShoppingCart, Settings, Lock, LogOut, Plus, X, AlertCircle, Heart, Menu, Download, Share2 } from "lucide-react";
 
 // --- TYPES & INTERFACES ---
 interface Dish {
@@ -86,41 +70,13 @@ interface ShopProfile {
   isOpenManual: boolean;
   isDeliveryActive: boolean;
   deliveryZoneNote: string;
-  weeklySchedule: Record<
-    string,
-    { isOpen: boolean; openTime: string; closeTime: string }
-  >;
+  weeklySchedule: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>;
   themeColor: string;
   fontStyle: string;
   adminPin: string;
 }
 
-interface AdminSession {
-  shopId: string;
-  role: "admin" | "master";
-  loginTime: number;
-  lastActivity: number;
-}
-
-// --- SECURITY HELPERS ---
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-const PIN_SALT = "cookshop_2024_secure";
-
-// Basic PIN hashing (for demo - use proper bcrypt in production)
-const hashPin = (pin: string): string => {
-  return btoa(pin + PIN_SALT).slice(0, 32);
-};
-
-const validatePin = (inputPin: string, storedHash: string): boolean => {
-  return hashPin(inputPin) === storedHash;
-};
-
-const isSessionValid = (session: AdminSession): boolean => {
-  const now = Date.now();
-  return now - session.lastActivity < SESSION_TIMEOUT_MS;
-};
-
-// --- DEFAULT INITIALIZERS ---
+// --- DEFAULTS ---
 const DEFAULT_SCHEDULE: ShopProfile["weeklySchedule"] = {
   Mon: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
   Tue: { isOpen: true, openTime: "09:00", closeTime: "20:00" },
@@ -148,9 +104,8 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     facebook: "MamasYardCookshop",
     address: "Hip Strip, Montego Bay, St. James",
     mapLink: "https://maps.google.com",
-    pin: hashPin("1234"),
-    headerBanner:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
+    pin: "1234",
+    headerBanner: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -158,7 +113,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     weeklySchedule: DEFAULT_SCHEDULE,
     themeColor: "#d4522d",
     fontStyle: "system-ui",
-    adminPin: hashPin("1234"),
+    adminPin: "1234",
   },
   {
     id: "aunties-ital",
@@ -170,9 +125,8 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     facebook: "AuntiesItalCorner",
     address: "Downtown, Montego Bay",
     mapLink: "https://maps.google.com",
-    pin: hashPin("5678"),
-    headerBanner:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
+    pin: "5678",
+    headerBanner: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000",
     deliveryZones: DEFAULT_DELIVERY_ZONES,
     isOpenManual: true,
     isDeliveryActive: true,
@@ -180,7 +134,7 @@ const DEFAULT_SHOPS: ShopProfile[] = [
     weeklySchedule: DEFAULT_SCHEDULE,
     themeColor: "#2d6a4f",
     fontStyle: "system-ui",
-    adminPin: hashPin("5678"),
+    adminPin: "5678",
   },
 ];
 
@@ -189,11 +143,9 @@ const INITIAL_MENU: Dish[] = [
     id: "1",
     name: "Brown Stew Chicken",
     price: 1200,
-    description:
-      "Slow-braised chicken in rich savory spices with carrots and butter beans.",
+    description: "Slow-braised chicken in rich savory spices with carrots and butter beans.",
     category: "Mains",
-    image:
-      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 12,
     isSpecial: true,
@@ -202,11 +154,9 @@ const INITIAL_MENU: Dish[] = [
     id: "2",
     name: "Ackee & Saltfish",
     price: 1400,
-    description:
-      "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
+    description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.",
     category: "Mains",
-    image:
-      "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
+    image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 24,
     isSpecial: false,
@@ -217,8 +167,7 @@ const INITIAL_MENU: Dish[] = [
     price: 500,
     description: "Creamy soursop blended with nutmeg and condensed milk.",
     category: "Drinks",
-    image:
-      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
+    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 18,
     isSpecial: false,
@@ -229,233 +178,12 @@ const INITIAL_MENU: Dish[] = [
     price: 400,
     description: "Golden, crispy traditional fried Johnny cakes.",
     category: "Sides",
-    image:
-      "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
+    image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=300",
     inStock: true,
     likes: 15,
     isSpecial: false,
   },
-  {
-    id: "5",
-    name: "Callaloo & Saltfish",
-    price: 1100,
-    description: "Traditional Caribbean green leafy dish with saltfish.",
-    category: "Mains",
-    image:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
-    inStock: true,
-    likes: 9,
-    isSpecial: false,
-  },
-  {
-    id: "6",
-    name: "Ginger Beer",
-    price: 350,
-    description: "Homemade spiced ginger beer with a kick.",
-    category: "Drinks",
-    image:
-      "https://images.unsplash.com/photo-1554866585-ad674172aa8a?auto=format&fit=crop&q=80&w=300",
-    inStock: true,
-    likes: 7,
-    isSpecial: false,
-  },
 ];
-
-// --- COMPONENT: Login Modal ---
-function LoginModal({
-  onLogin,
-  onClose,
-}: {
-  onLogin: (role: "admin" | "master", shopId: string) => void;
-  onClose: () => void;
-}) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
-  const [masterPin] = useState("9999");
-  const [shops] = useState(DEFAULT_SHOPS);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (validatePin(pin, hashPin(masterPin))) {
-      onLogin("master", "master");
-      return;
-    }
-
-    const matchedShop = shops.find((s) => validatePin(pin, s.adminPin));
-    if (matchedShop) {
-      onLogin("admin", matchedShop.id);
-      return;
-    }
-
-    setError("Invalid PIN. Please try again.");
-    setPin("");
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Lock className="w-6 h-6 text-orange-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Admin Access</h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Enter PIN
-            </label>
-            <input
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="••••"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-2xl tracking-widest"
-              maxLength={4}
-            />
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg transition"
-          >
-            Unlock
-          </button>
-        </form>
-
-        <p className="text-xs text-gray-500 text-center mt-4">
-          Demo: Use 9999 for Master or 1234 / 5678 for shop admin
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// --- COMPONENT: Customize Dish Modal ---
-function CustomizeDishModal({
-  dish,
-  onConfirm,
-  onClose,
-}: {
-  dish: Dish;
-  onConfirm: (options: {
-    spiceLevel: string;
-    gravyType: string;
-    addKetchup: boolean;
-    addPepper: boolean;
-  }) => void;
-  onClose: () => void;
-}) {
-  const [spice, setSpice] = useState("Medium");
-  const [gravy, setGravy] = useState("Normal");
-  const [ketchup, setKetchup] = useState(false);
-  const [pepper, setPepper] = useState(false);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">
-            Customize: {dish.name}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gravy Level
-            </label>
-            <select
-              value={gravy}
-              onChange={(e) => setGravy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option>Normal Gravy</option>
-              <option>Extra Gravy</option>
-              <option>No Gravy / Dry</option>
-              <option>Gravy on Side</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Spice Level
-            </label>
-            <select
-              value={spice}
-              onChange={(e) => setSpice(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option>Mild</option>
-              <option>Medium</option>
-              <option>Hot & Spicy</option>
-            </select>
-          </div>
-
-          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
-            <input
-              type="checkbox"
-              checked={ketchup}
-              onChange={(e) => setKetchup(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-600"
-            />
-            <span className="text-sm text-gray-700 font-medium">
-              Add Ketchup
-            </span>
-          </label>
-
-          <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition">
-            <input
-              type="checkbox"
-              checked={pepper}
-              onChange={(e) => setPepper(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-600"
-            />
-            <span className="text-sm text-gray-700 font-medium">
-              Add Scotch Bonnet Pepper
-            </span>
-          </label>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() =>
-              onConfirm({
-                spiceLevel: spice,
-                gravyType: gravy,
-                addKetchup: ketchup,
-                addPepper: pepper,
-              })
-            }
-            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 rounded-lg transition"
-          >
-            Add to Cart
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // --- MAIN APP ---
 export default function App() {
@@ -467,104 +195,110 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Items");
   const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>({});
 
-  // Authentication & Session Management
-  const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const sessionCheckInterval = useRef<ReturnType<typeof setInterval>>();
+  // Auth
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isMasterLoggedIn, setIsMasterLoggedIn] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPinInput, setAdminPinInput] = useState("");
 
-  // UI State
+  // Admin Tabs
+  const [activeAdminTab, setActiveAdminTab] = useState<"control" | "orders" | "menu" | "settings" | "devChat">("control");
+  const [activeMasterTab, setActiveMasterTab] = useState<"shops" | "supabase" | "devChat">("shops");
+
+  // UI
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(
-    null
-  );
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  // Customization Options
-  const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
+  const [selectedDishForCart, setSelectedDishForCart] = useState<Dish | null>(null);
+  const [optSpice, setOptSpice] = useState("Medium");
+  const [optGravy, setOptGravy] = useState("Normal");
+  const [optKetchup, setOptKetchup] = useState(false);
+  const [optPepper, setOptPepper] = useState(false);
 
   // Checkout
+  const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
   const [orderType, setOrderType] = useState<"Delivery" | "Pickup">("Delivery");
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [driverTip, setDriverTip] = useState(0);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  // Chat & Custom Dish
+  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({
+    "mamas-yard": [{ id: "c1", sender: "master", text: "Welcome! System operational.", timestamp: "10:00 AM" }],
+  });
+  const [chatInput, setChatInput] = useState("");
+  const [showCustomDishModal, setShowCustomDishModal] = useState(false);
+  const [customDishName, setCustomDishName] = useState("");
+  const [customDishPrice, setCustomDishPrice] = useState("");
+  const [customDishNotes, setCustomDishNotes] = useState("");
+
+  // Menu Editor
+  const [editingDish, setEditingDish] = useState<Dish | null>(null);
+  const [dishForm, setDishForm] = useState<{ name: string; price: string; description: string; category: Dish["category"]; image: string; isSpecial: boolean }>({
+    name: "",
+    price: "",
+    description: "",
+    category: "Mains",
+    image: "",
+    isSpecial: false,
+  });
+
+  // Master
+  const [newShopName, setNewShopName] = useState("");
+  const [newShopPin, setNewShopPin] = useState("");
+  const [masterPin, setMasterPin] = useState("9999");
 
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
-  const currentDeliveryFee =
-    orderType === "Delivery"
-      ? currentShop.deliveryZones[selectedZoneIndex]?.price || 300
-      : 0;
-  const subtotal = cart.reduce(
-    (acc, item) => acc + item.dish.price * item.quantity,
-    0
-  );
+  const currentDeliveryFee = orderType === "Delivery" ? (currentShop.deliveryZones[selectedZoneIndex]?.price || 300) : 0;
+  const subtotal = cart.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
   const total = subtotal + currentDeliveryFee + driverTip;
 
-  // Session timeout check
-  useEffect(() => {
-    if (!adminSession) return;
+  const handleAdminLogin = () => {
+    const input = adminPinInput.trim();
+    if (input === masterPin) {
+      setIsMasterLoggedIn(true);
+      setIsAdminLoggedIn(true);
+      setAdminPinInput("");
+      return;
+    }
 
-    sessionCheckInterval.current = setInterval(() => {
-      setAdminSession((prev) => {
-        if (prev && !isSessionValid(prev)) {
-          alert("Session expired. Please log in again.");
-          return null;
-        }
-        return prev ? { ...prev, lastActivity: Date.now() } : null;
-      });
-    }, 60000); // Check every minute
+    const matchedShop = shops.find((s) => s.pin === input || s.adminPin === input);
+    if (matchedShop) {
+      setCurrentShopId(matchedShop.id);
+      setIsAdminLoggedIn(true);
+      setAdminPinInput("");
+      return;
+    }
 
-    return () => clearInterval(sessionCheckInterval.current);
-  }, [adminSession]);
-
-  const handleLogin = (role: "admin" | "master", shopId: string) => {
-    const session: AdminSession = {
-      shopId: role === "master" ? shopId : shopId,
-      role,
-      loginTime: Date.now(),
-      lastActivity: Date.now(),
-    };
-    setAdminSession(session);
-    setShowLoginModal(false);
-    if (shopId !== "master") setCurrentShopId(shopId);
-  };
-
-  const handleLogout = () => {
-    setAdminSession(null);
+    alert("Invalid PIN");
+    setAdminPinInput("");
   };
 
   const handleToggleLike = (dishId: string) => {
     const isLiked = likedDishIds[dishId];
     setLikedDishIds((prev) => ({ ...prev, [dishId]: !isLiked }));
-    setMenu((prev) =>
-      prev.map((d) =>
-        d.id === dishId
-          ? { ...d, likes: isLiked ? d.likes - 1 : d.likes + 1 }
-          : d
-      )
-    );
+    setMenu((prev) => prev.map((d) => (d.id === dishId ? { ...d, likes: isLiked ? d.likes - 1 : d.likes + 1 } : d)));
   };
 
   const handleOpenCustomizeModal = (dish: Dish) => {
     setSelectedDishForCart(dish);
+    setOptSpice("Medium");
+    setOptGravy("Normal");
+    setOptKetchup(false);
+    setOptPepper(false);
   };
 
-  const handleConfirmAddToCart = (options: {
-    spiceLevel: string;
-    gravyType: string;
-    addKetchup: boolean;
-    addPepper: boolean;
-  }) => {
+  const handleConfirmAddToCart = () => {
     if (!selectedDishForCart) return;
     setCart((prev) => [
       ...prev,
       {
         dish: selectedDishForCart,
         quantity: 1,
-        spiceLevel: options.spiceLevel,
-        gravyType: options.gravyType,
-        addKetchup: options.addKetchup,
-        addPepper: options.addPepper,
+        spiceLevel: optSpice,
+        gravyType: optGravy,
+        addKetchup: optKetchup,
+        addPepper: optPepper,
         isItemCompleted: false,
       },
     ]);
@@ -580,16 +314,33 @@ export default function App() {
       removeFromCart(index);
       return;
     }
-    setCart((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, quantity } : item))
+    setCart((prev) => prev.map((item, i) => (i === index ? { ...item, quantity } : item)));
+  };
+
+  const handleFetchGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported.");
+      return;
+    }
+    setIsFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        setCustomerAddress((prev) => (prev ? `${prev} | 📍 GPS: ${mapUrl}` : `📍 GPS: ${mapUrl}`));
+        setIsFetchingLocation(false);
+      },
+      () => {
+        alert("Unable to get GPS location.");
+        setIsFetchingLocation(false);
+      }
     );
   };
 
-  const handleDispatchOrder = async (
-    platform: "whatsapp" | "instagram" | "tiktok" | "facebook"
-  ) => {
+  const handleDispatchOrder = (platform: "whatsapp" | "instagram" | "tiktok" | "facebook") => {
     if (!customerName.trim()) {
-      alert("Please enter your name/nickname.");
+      alert("Please enter your name.");
       return;
     }
     if (orderType === "Delivery" && !customerAddress.trim()) {
@@ -597,7 +348,7 @@ export default function App() {
       return;
     }
     if (cart.length === 0) {
-      alert("Your cart is empty.");
+      alert("Cart is empty.");
       return;
     }
 
@@ -614,10 +365,7 @@ export default function App() {
       orderType,
       deliveryZone: currentShop.deliveryZones[selectedZoneIndex]?.name || "Standard",
       paymentMethod,
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       status: "Pending",
     };
 
@@ -632,14 +380,10 @@ export default function App() {
     const encodedMsg = encodeURIComponent(msg);
     let url = "";
 
-    if (platform === "whatsapp")
-      url = `https://wa.me/${currentShop.whatsapp}?text=${encodedMsg}`;
-    else if (platform === "instagram")
-      url = `https://instagram.com/${currentShop.instagram.replace("@", "")}`;
-    else if (platform === "tiktok")
-      url = `https://tiktok.com/${currentShop.tiktok.replace("@", "")}`;
-    else if (platform === "facebook")
-      url = `https://facebook.com/${currentShop.facebook}`;
+    if (platform === "whatsapp") url = `https://wa.me/${currentShop.whatsapp}?text=${encodedMsg}`;
+    else if (platform === "instagram") url = `https://instagram.com/${currentShop.instagram.replace("@", "")}`;
+    else if (platform === "tiktok") url = `https://tiktok.com/${currentShop.tiktok.replace("@", "")}`;
+    else if (platform === "facebook") url = `https://facebook.com/${currentShop.facebook}`;
 
     window.open(url, "_blank");
     setCart([]);
@@ -647,365 +391,606 @@ export default function App() {
     setCustomerAddress("");
   };
 
-  const filteredMenu =
-    selectedCategory === "All Items"
-      ? menu
-      : menu.filter((item) => item.category === selectedCategory);
+  const handleUpdateOrderStatus = (orderId: string, newStatus: Order["status"], estimatedTime?: string) => {
+    const updatedOrders = orders.map((o) =>
+      o.id === orderId ? { ...o, status: newStatus, estimatedTime: estimatedTime || o.estimatedTime } : o
+    );
+    setOrders(updatedOrders);
+  };
+
+  const handleToggleItemCompleted = (orderId: string, itemIndex: number) => {
+    const updatedOrders = orders.map((o) => {
+      if (o.id === orderId) {
+        const updatedItems = o.items.map((it, idx) =>
+          idx === itemIndex ? { ...it, isItemCompleted: !it.isItemCompleted } : it
+        );
+        return { ...o, items: updatedItems };
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+  };
+
+  const handleAddCustomDish = () => {
+    if (!customDishName || !customDishPrice) {
+      alert("Provide a name and price.");
+      return;
+    }
+    const newDish: Dish = {
+      id: Date.now().toString(),
+      name: customDishName,
+      price: parseFloat(customDishPrice) || 0,
+      description: customDishNotes || "Custom dish",
+      category: "Mains",
+      image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
+      inStock: true,
+      likes: 0,
+      isSpecial: false,
+    };
+    setCart((prev) => [
+      ...prev,
+      { dish: newDish, quantity: 1, spiceLevel: "Normal", gravyType: "Normal", addKetchup: false, addPepper: false, isItemCompleted: false },
+    ]);
+    setShowCustomDishModal(false);
+    setCustomDishName("");
+    setCustomDishPrice("");
+    setCustomDishNotes("");
+  };
+
+  const handleSaveDish = () => {
+    if (!dishForm.name || !dishForm.price) return;
+    if (editingDish) {
+      const updatedMenu = menu.map((d) =>
+        d.id === editingDish.id
+          ? { ...d, name: dishForm.name, price: parseFloat(dishForm.price) || 0, description: dishForm.description, category: dishForm.category, image: dishForm.image || d.image, isSpecial: dishForm.isSpecial }
+          : d
+      );
+      setMenu(updatedMenu);
+    } else {
+      const newDish: Dish = {
+        id: Date.now().toString(),
+        name: dishForm.name,
+        price: parseFloat(dishForm.price) || 0,
+        description: dishForm.description,
+        category: dishForm.category,
+        image: dishForm.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300",
+        inStock: true,
+        likes: 0,
+        isSpecial: dishForm.isSpecial,
+      };
+      setMenu((prev) => [...prev, newDish]);
+    }
+    setEditingDish(null);
+    setDishForm({ name: "", price: "", description: "", category: "Mains", image: "", isSpecial: false });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDishForm((prev) => ({ ...prev, image: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleHeaderBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setShops((prev) =>
+          prev.map((s) => (s.id === currentShopId ? { ...s, headerBanner: reader.result as string } : s))
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSendMessage = (sender: "master" | "admin") => {
+    if (!chatInput.trim()) return;
+    const newMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender,
+      text: chatInput.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setChatMessages((prev) => ({
+      ...prev,
+      [currentShopId]: [...(prev[currentShopId] || []), newMsg],
+    }));
+    setChatInput("");
+  };
+
+  const updateCurrentShop = (key: keyof ShopProfile, value: any) => {
+    setShops((prev) =>
+      prev.map((s) => (s.id === currentShopId ? { ...s, [key]: value } : s))
+    );
+  };
+
+  const filteredMenu = selectedCategory === "All Items" ? menu : menu.filter((item) => item.category === selectedCategory);
 
   return (
-    <div
-      className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen"
-      style={{ fontFamily: currentShop.fontStyle }}
-    >
+    <div style={{ backgroundColor: "#f8f8f8", minHeight: "100vh", fontFamily: currentShop.fontStyle }} className="w-full">
       {/* HEADER */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {currentShop.name}
-              </h1>
-              <p className="text-sm text-gray-600">{currentShop.tagline}</p>
-            </div>
-
-            <div className="flex items-center gap-2 md:gap-3">
-              {adminSession ? (
-                <>
-                  <span className="hidden sm:inline text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                    {adminSession.role === "master"
-                      ? "👑 Master"
-                      : "⚙️ Admin"}
-                  </span>
-                  <button
-                    onClick={handleLogout}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition"
-                    title="Logout"
-                  >
-                    <LogOut className="w-5 h-5 text-gray-600" />
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 md:px-4 py-2 rounded-lg transition font-medium text-sm"
-                >
-                  <Lock className="w-4 h-4" /> <span className="hidden sm:inline">Admin</span>
+      <header style={{ backgroundColor: "#fff", borderBottom: "1px solid #ddd", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+          <div>
+            <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#000", margin: 0 }}>{currentShop.name}</h1>
+            <p style={{ fontSize: "13px", color: "#666", margin: "4px 0 0" }}>{currentShop.tagline}</p>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {isAdminLoggedIn ? (
+              <>
+                <span style={{ fontSize: "11px", backgroundColor: "#e8f5e9", color: "#2e7d32", padding: "6px 12px", borderRadius: "20px", fontWeight: "bold" }}>
+                  {isMasterLoggedIn ? "👑 Master" : "⚙️ Admin"}
+                </span>
+                <button onClick={() => { setIsAdminLoggedIn(false); setIsMasterLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "transparent", border: "none", color: "#666", cursor: "pointer", fontSize: "12px" }}>
+                  Logout
                 </button>
-              )}
+              </>
+            ) : (
+              <button onClick={() => setShowAdminModal(true)} style={{ backgroundColor: "#d4522d", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
+                🔒 Admin
+              </button>
+            )}
+          </div>
+        </div>
+
+        {currentShop.headerBanner && (
+          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 16px" }}>
+            <img src={currentShop.headerBanner} alt="Header" onClick={() => setZoomedImage(currentShop.headerBanner)} style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: "8px", cursor: "pointer" }} />
+          </div>
+        )}
+
+        {!currentShop.isOpenManual && (
+          <div style={{ maxWidth: "1280px", margin: "12px auto 0", padding: "0 16px" }}>
+            <div style={{ backgroundColor: "#ffebee", borderLeft: "4px solid #d32f2f", padding: "12px", borderRadius: "4px", fontSize: "12px", color: "#c62828" }}>
+              ⛔ Closed. Check business hours.
             </div>
           </div>
-
-          {currentShop.headerBanner && (
-            <img
-              src={currentShop.headerBanner}
-              alt="Header"
-              onClick={() => setZoomedImage(currentShop.headerBanner)}
-              className="w-full h-32 md:h-40 object-cover rounded-lg cursor-pointer"
-            />
-          )}
-
-          {!currentShop.isOpenManual && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-sm text-red-700">
-                Cookshop is closed right now. Check back during business hours.
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* MENU SECTION */}
-          <div className="lg:col-span-2">
-            {/* Category Selector */}
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map(
-                (cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
-                      selectedCategory === cat
-                        ? "bg-orange-600 text-white shadow-md"
-                        : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                )
-              )}
-            </div>
-
-            {/* Menu Items */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Today's Menu ({filteredMenu.length})
-              </h2>
-              {filteredMenu.length === 0 ? (
-                <div className="text-center p-8 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-600">
-                    No items in this category yet.
-                  </p>
-                </div>
-              ) : (
-                filteredMenu.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition border border-gray-200 p-4 flex gap-4 hover:border-orange-300"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      onClick={() => setZoomedImage(item.image)}
-                      className="w-24 h-24 object-cover rounded-lg cursor-pointer flex-shrink-0 hover:opacity-90 transition"
-                    />
-                    <div className="flex-1 flex flex-col">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">
-                            {item.name}
-                          </h3>
-                          {item.isSpecial && (
-                            <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">
-                              ⭐ Special
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-lg font-bold text-orange-600 ml-2">
-                          ${item.price}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3 flex-1">
-                        {item.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        {item.inStock ? (
-                          <button
-                            onClick={() => handleOpenCustomizeModal(item)}
-                            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
-                          >
-                            <Plus className="w-4 h-4" /> Add
-                          </button>
-                        ) : (
-                          <span className="text-sm text-red-600 font-medium">
-                            Out of Stock
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handleToggleLike(item.id)}
-                          className={`text-sm font-medium transition flex items-center gap-1 ${
-                            likedDishIds[item.id]
-                              ? "text-red-500"
-                              : "text-gray-400 hover:text-red-500"
-                          }`}
-                        >
-                          <Heart
-                            className="w-4 h-4"
-                            fill={likedDishIds[item.id] ? "currentColor" : "none"}
-                          />
-                          {item.likes}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+      <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px 16px", display: "grid", gridTemplateColumns: "1fr 300px", gap: "24px" }}>
+        {/* MENU SECTION */}
+        <div>
+          {/* Category Selector */}
+          <div style={{ display: "flex", gap: "8px", overflowX: "auto", marginBottom: "24px", paddingBottom: "8px" }}>
+            {["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                style={{
+                  backgroundColor: selectedCategory === cat ? currentShop.themeColor : "#fff",
+                  color: selectedCategory === cat ? "#fff" : "#333",
+                  border: "1px solid #ddd",
+                  padding: "8px 16px",
+                  borderRadius: "20px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: selectedCategory === cat ? "bold" : "normal",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
 
-          {/* CART SIDEBAR */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
-              <div className="flex items-center gap-2 mb-4">
-                <ShoppingCart className="w-5 h-5 text-orange-600" />
-                <h2 className="text-lg font-bold text-gray-900">
-                  Order Summary
-                </h2>
-                <span className="ml-auto bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full">
-                  {cart.length}
-                </span>
+          {/* Menu Items */}
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "16px" }}>Today's Menu ({filteredMenu.length})</h2>
+          <div style={{ display: "grid", gap: "12px" }}>
+            {filteredMenu.map((item) => (
+              <div key={item.id} style={{ backgroundColor: "#fff", borderRadius: "8px", padding: "12px", display: "flex", gap: "12px", border: "1px solid #e0e0e0", cursor: "pointer", transition: "all 0.3s" }} onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)")} onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}>
+                <img src={item.image} alt={item.name} onClick={() => setZoomedImage(item.image)} style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "6px", cursor: "pointer" }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "6px" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <h3 style={{ margin: 0, fontSize: "14px", fontWeight: "bold", color: "#000" }}>{item.name}</h3>
+                      {item.isSpecial && <span style={{ backgroundColor: "#ffd700", color: "#000", fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontWeight: "bold" }}>⭐ Special</span>}
+                    </div>
+                    <span style={{ color: "#d4522d", fontWeight: "bold", fontSize: "14px" }}>${item.price}</span>
+                  </div>
+                  <p style={{ fontSize: "11px", color: "#666", margin: "4px 0 8px", lineHeight: "1.4" }}>{item.description}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    {item.inStock ? (
+                      <button onClick={() => handleOpenCustomizeModal(item)} style={{ backgroundColor: "#d4522d", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "bold" }}>
+                        + Add
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: "11px", color: "#d32f2f", fontWeight: "bold" }}>Out of Stock</span>
+                    )}
+                    <button onClick={() => handleToggleLike(item.id)} style={{ backgroundColor: "transparent", border: "none", color: likedDishIds[item.id] ? "#e91e63" : "#999", cursor: "pointer", fontSize: "11px" }}>
+                      ❤️ {item.likes}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CART SIDEBAR */}
+        <div style={{ backgroundColor: "#fff", borderRadius: "8px", padding: "16px", border: "1px solid #e0e0e0", height: "fit-content", position: "sticky", top: "100px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+            <ShoppingCart style={{ width: "18px", height: "18px", color: "#d4522d" }} />
+            <h2 style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>Cart ({cart.length})</h2>
+          </div>
+
+          {cart.length === 0 ? (
+            <p style={{ fontSize: "11px", color: "#999", textAlign: "center", margin: "16px 0" }}>Empty cart</p>
+          ) : (
+            <>
+              <div style={{ maxHeight: "200px", overflowY: "auto", marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #eee" }}>
+                {cart.map((item, idx) => (
+                  <div key={idx} style={{ fontSize: "11px", marginBottom: "8px", padding: "8px", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                      <div>
+                        <div style={{ fontWeight: "bold", color: "#000" }}>{item.quantity}x {item.dish.name}</div>
+                        <div style={{ color: "#666", marginTop: "2px" }}>{item.spiceLevel} • {item.gravyType}</div>
+                      </div>
+                      <button onClick={() => removeFromCart(idx)} style={{ backgroundColor: "transparent", border: "none", color: "#d32f2f", cursor: "pointer", padding: 0 }}>
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {cart.length === 0 ? (
-                <p className="text-gray-500 text-sm text-center py-8">
-                  Your cart is empty
-                </p>
-              ) : (
-                <>
-                  <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
-                    {cart.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">
-                            {item.quantity}x {item.dish.name}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {item.spiceLevel} • {item.gravyType}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <div className="flex items-center gap-1 bg-white border border-gray-300 rounded">
-                            <button
-                              onClick={() =>
-                                updateCartQuantity(idx, item.quantity - 1)
-                              }
-                              className="px-2 py-1 hover:bg-gray-100"
-                            >
-                              −
-                            </button>
-                            <span className="px-2 text-sm font-medium">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={() =>
-                                updateCartQuantity(idx, item.quantity + 1)
-                              }
-                              className="px-2 py-1 hover:bg-gray-100"
-                            >
-                              +
-                            </button>
+              <div style={{ fontSize: "11px", marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #eee" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span>Subtotal</span>
+                  <span>${subtotal}</span>
+                </div>
+                {orderType === "Delivery" && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span>Delivery</span>
+                    <span>${currentDeliveryFee}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "12px", marginTop: "6px" }}>
+                  <span>Total</span>
+                  <span style={{ color: "#d4522d" }}>${total}</span>
+                </div>
+              </div>
+
+              <input type="text" placeholder="Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: "100%", padding: "6px", marginBottom: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+              {orderType === "Delivery" && <input type="text" placeholder="Address" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} style={{ width: "100%", padding: "6px", marginBottom: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />}
+
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                <button onClick={() => setOrderType("Delivery")} style={{ flex: 1, padding: "6px", backgroundColor: orderType === "Delivery" ? "#d4522d" : "#eee", color: orderType === "Delivery" ? "#fff" : "#333", border: "none", borderRadius: "4px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" }}>
+                  🚗 Delivery
+                </button>
+                <button onClick={() => setOrderType("Pickup")} style={{ flex: 1, padding: "6px", backgroundColor: orderType === "Pickup" ? "#d4522d" : "#eee", color: orderType === "Pickup" ? "#fff" : "#333", border: "none", borderRadius: "4px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" }}>
+                  🏪 Pickup
+                </button>
+              </div>
+
+              <button onClick={() => handleDispatchOrder("whatsapp")} style={{ width: "100%", backgroundColor: "#25D366", color: "#fff", border: "none", padding: "10px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
+                📱 WhatsApp
+              </button>
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* ADMIN MODAL */}
+      {showAdminModal && !isAdminLoggedIn && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "8px", width: "90%", maxWidth: "400px", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: "bold" }}>🔐 Admin PIN</h3>
+            <input type="password" placeholder="Enter PIN" value={adminPinInput} onChange={(e) => setAdminPinInput(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "12px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "14px", textAlign: "center", boxSizing: "border-box" }} maxLength={4} />
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleAdminLogin} style={{ flex: 1, padding: "10px", backgroundColor: "#d4522d", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>
+                Unlock
+              </button>
+              <button onClick={() => setShowAdminModal(false)} style={{ flex: 1, padding: "10px", backgroundColor: "#eee", color: "#333", border: "none", borderRadius: "4px", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN PANEL */}
+      {showAdminModal && isAdminLoggedIn && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "16px" }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: "8px", width: "100%", maxWidth: "800px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}>
+            <div style={{ padding: "20px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, backgroundColor: "#f8f8f8" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "bold" }}>{isMasterLoggedIn ? "👑 Master Control" : "⚙️ Admin Panel"}</h2>
+              <button onClick={() => { setIsAdminLoggedIn(false); setIsMasterLoggedIn(false); setShowAdminModal(false); }} style={{ backgroundColor: "transparent", border: "none", cursor: "pointer", fontSize: "18px" }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "20px" }}>
+              {/* Tab Navigation */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #eee", paddingBottom: "12px", overflowX: "auto" }}>
+                {isMasterLoggedIn ? (
+                  <>
+                    <button onClick={() => setActiveMasterTab("shops")} style={{ backgroundColor: activeMasterTab === "shops" ? "#d4522d" : "#eee", color: activeMasterTab === "shops" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>
+                      🏪 Shops
+                    </button>
+                    <button onClick={() => setActiveMasterTab("supabase")} style={{ backgroundColor: activeMasterTab === "supabase" ? "#d4522d" : "#eee", color: activeMasterTab === "supabase" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>
+                      ⚡ Supabase
+                    </button>
+                    <button onClick={() => setActiveMasterTab("devChat")} style={{ backgroundColor: activeMasterTab === "devChat" ? "#d4522d" : "#eee", color: activeMasterTab === "devChat" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>
+                      💬 Chat
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setActiveAdminTab("control")} style={{ backgroundColor: activeAdminTab === "control" ? "#d4522d" : "#eee", color: activeAdminTab === "control" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                      Control
+                    </button>
+                    <button onClick={() => setActiveAdminTab("orders")} style={{ backgroundColor: activeAdminTab === "orders" ? "#d4522d" : "#eee", color: activeAdminTab === "orders" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                      Orders ({orders.filter((o) => o.shopId === currentShopId).length})
+                    </button>
+                    <button onClick={() => setActiveAdminTab("menu")} style={{ backgroundColor: activeAdminTab === "menu" ? "#d4522d" : "#eee", color: activeAdminTab === "menu" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                      Menu
+                    </button>
+                    <button onClick={() => setActiveAdminTab("settings")} style={{ backgroundColor: activeAdminTab === "settings" ? "#d4522d" : "#eee", color: activeAdminTab === "settings" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                      Settings
+                    </button>
+                    <button onClick={() => setActiveAdminTab("devChat")} style={{ backgroundColor: activeAdminTab === "devChat" ? "#d4522d" : "#eee", color: activeAdminTab === "devChat" ? "#fff" : "#333", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                      Chat
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* CONTROL TAB */}
+              {activeAdminTab === "control" && !isMasterLoggedIn && (
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px" }}>⏰ Operations</h3>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.isOpenManual ? "#2e7d32" : "#d32f2f", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "11px" }}>
+                      {currentShop.isOpenManual ? "🟢 OPEN" : "🔴 CLOSED"}
+                    </button>
+                    <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} style={{ flex: 1, padding: "10px", backgroundColor: currentShop.isDeliveryActive ? "#2e7d32" : "#d32f2f", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "11px" }}>
+                      {currentShop.isDeliveryActive ? "🟢 DELIVERY ON" : "🔴 DELIVERY OFF"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ORDERS TAB */}
+              {activeAdminTab === "orders" && !isMasterLoggedIn && (
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px" }}>📋 Orders</h3>
+                  {orders.filter((o) => o.shopId === currentShopId).length === 0 ? (
+                    <p style={{ fontSize: "12px", color: "#999" }}>No orders yet.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: "12px" }}>
+                      {orders
+                        .filter((o) => o.shopId === currentShopId)
+                        .map((ord) => (
+                          <div key={ord.id} style={{ backgroundColor: "#f5f5f5", padding: "12px", borderRadius: "6px", border: "1px solid #ddd" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "11px" }}>
+                              <span style={{ fontWeight: "bold" }}>Order #{ord.id.slice(-4)}</span>
+                              <span style={{ color: "#d4522d", fontWeight: "bold" }}>${ord.total}</span>
+                            </div>
+                            <div style={{ fontSize: "10px", color: "#666", marginBottom: "6px" }}>
+                              👤 {ord.customerName} | {ord.orderType}
+                            </div>
+                            <select value={ord.status} onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as Order["status"])} style={{ width: "100%", padding: "6px", marginBottom: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px" }}>
+                              <option value="Pending">Pending</option>
+                              <option value="Preparing">Preparing</option>
+                              <option value="Ready">Ready</option>
+                              <option value="Completed">Completed</option>
+                            </select>
+                            <div style={{ fontSize: "10px", color: "#666" }}>
+                              {ord.items.map((it, i) => (
+                                <div key={i} style={{ cursor: "pointer", padding: "2px 0", textDecoration: it.isItemCompleted ? "line-through" : "none", opacity: it.isItemCompleted ? 0.6 : 1 }} onClick={() => handleToggleItemCompleted(ord.id, i)}>
+                                  {it.isItemCompleted ? "✅" : "🍳"} {it.quantity}x {it.dish.name}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <button
-                            onClick={() => removeFromCart(idx)}
-                            className="text-red-500 hover:text-red-700 transition p-1"
-                          >
-                            <X className="w-4 h-4" />
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MENU TAB */}
+              {activeAdminTab === "menu" && !isMasterLoggedIn && (
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px" }}>{editingDish ? "Edit Dish" : "Add Dish"}</h3>
+                  <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
+                    <input type="text" placeholder="Name" value={dishForm.name} onChange={(e) => setDishForm((p) => ({ ...p, name: e.target.value }))} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+                    <input type="number" placeholder="Price" value={dishForm.price} onChange={(e) => setDishForm((p) => ({ ...p, price: e.target.value }))} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+                    <textarea placeholder="Description" value={dishForm.description} onChange={(e) => setDishForm((p) => ({ ...p, description: e.target.value }))} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", minHeight: "60px", boxSizing: "border-box" }} />
+                    <select value={dishForm.category} onChange={(e) => setDishForm((p) => ({ ...p, category: e.target.value as Dish["category"] }))} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px" }}>
+                      <option value="Mains">Mains</option>
+                      <option value="Drinks">Drinks</option>
+                      <option value="Snacks">Snacks</option>
+                      <option value="Sides">Sides</option>
+                      <option value="Soups">Soups</option>
+                    </select>
+                    <label style={{ fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <input type="checkbox" checked={dishForm.isSpecial} onChange={(e) => setDishForm((p) => ({ ...p, isSpecial: e.target.checked }))} /> Special
+                    </label>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: "10px" }} />
+                    <button onClick={handleSaveDish} style={{ padding: "8px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "11px" }}>
+                      {editingDish ? "Update" : "Add"}
+                    </button>
+                  </div>
+
+                  <h3 style={{ fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>Dishes ({menu.length})</h3>
+                  <div style={{ display: "grid", gap: "6px" }}>
+                    {menu.map((item) => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f5f5f5", padding: "8px", borderRadius: "4px" }}>
+                        <div style={{ fontSize: "10px" }}>
+                          <div style={{ fontWeight: "bold" }}>{item.name} - ${item.price}</div>
+                          <div style={{ color: "#666" }}>{item.category}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          <button onClick={() => { setEditingDish(item); setDishForm({ name: item.name, price: item.price.toString(), description: item.description, category: item.category, image: item.image, isSpecial: item.isSpecial || false }); }} style={{ backgroundColor: "#0288d1", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "3px", fontSize: "9px", cursor: "pointer" }}>
+                            Edit
+                          </button>
+                          <button onClick={() => setMenu((prev) => prev.filter((d) => d.id !== item.id))} style={{ backgroundColor: "#d32f2f", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "3px", fontSize: "9px", cursor: "pointer" }}>
+                            Delete
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
 
-                  <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Subtotal</span>
-                      <span>${subtotal}</span>
-                    </div>
-                    {orderType === "Delivery" && (
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>Delivery</span>
-                        <span>${currentDeliveryFee}</span>
+              {/* SETTINGS TAB */}
+              {activeAdminTab === "settings" && !isMasterLoggedIn && (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <div>
+                    <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>Shop Name</label>
+                    <input type="text" value={currentShop.name} onChange={(e) => updateCurrentShop("name", e.target.value)} style={{ width: "100%", padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>Theme Color</label>
+                    <input type="color" value={currentShop.themeColor} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} style={{ width: "100%", height: "30px", border: "none", borderRadius: "4px", cursor: "pointer" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>WhatsApp</label>
+                    <input type="text" value={currentShop.whatsapp} onChange={(e) => updateCurrentShop("whatsapp", e.target.value)} style={{ width: "100%", padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>Header Banner</label>
+                    <input type="file" accept="image/*" onChange={handleHeaderBannerUpload} style={{ fontSize: "10px" }} />
+                  </div>
+                </div>
+              )}
+
+              {/* DEV CHAT */}
+              {activeAdminTab === "devChat" && (
+                <div>
+                  <h3 style={{ fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>💬 Developer Chat</h3>
+                  <div style={{ backgroundColor: "#f5f5f5", height: "150px", overflowY: "auto", padding: "8px", borderRadius: "4px", marginBottom: "8px", fontSize: "10px" }}>
+                    {(chatMessages[currentShopId] || []).map((msg) => (
+                      <div key={msg.id} style={{ marginBottom: "6px", textAlign: msg.sender === "admin" ? "right" : "left" }}>
+                        <div style={{ backgroundColor: msg.sender === "admin" ? "#d4522d" : "#ccc", color: msg.sender === "admin" ? "#fff" : "#000", padding: "6px 8px", borderRadius: "4px", display: "inline-block", maxWidth: "80%", wordWrap: "break-word" }}>
+                          {msg.text}
+                        </div>
+                        <div style={{ fontSize: "9px", color: "#999", marginTop: "2px" }}>{msg.timestamp}</div>
                       </div>
-                    )}
-                    {driverTip > 0 && (
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>Tip</span>
-                        <span>${driverTip}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-bold text-lg text-gray-900 pt-2">
-                      <span>Total</span>
-                      <span className="text-orange-600">${total}</span>
-                    </div>
+                    ))}
                   </div>
-
-                  <div className="space-y-2 mb-4">
-                    <input
-                      type="text"
-                      placeholder="Your Name *"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                    {orderType === "Delivery" && (
-                      <input
-                        type="text"
-                        placeholder="Delivery Address *"
-                        value={customerAddress}
-                        onChange={(e) => setCustomerAddress(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <label className="text-sm font-medium text-gray-700">
-                      Delivery Zone
-                    </label>
-                    <select
-                      value={selectedZoneIndex}
-                      onChange={(e) =>
-                        setSelectedZoneIndex(parseInt(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
-                      {currentShop.deliveryZones.map((zone, idx) => (
-                        <option key={idx} value={idx}>
-                          {zone.name} (${zone.price})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      onClick={() => setOrderType("Delivery")}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                        orderType === "Delivery"
-                          ? "bg-orange-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      🚗 Delivery
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <input type="text" placeholder="Message..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} style={{ flex: 1, padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px" }} />
+                    <button onClick={() => handleSendMessage(isMasterLoggedIn ? "master" : "admin")} style={{ backgroundColor: "#d4522d", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "10px" }}>
+                      Send
                     </button>
-                    <button
-                      onClick={() => setOrderType("Pickup")}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                        orderType === "Pickup"
-                          ? "bg-orange-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      🏪 Pickup
+                  </div>
+                </div>
+              )}
+
+              {/* SHOPS TAB (MASTER) */}
+              {activeMasterTab === "shops" && isMasterLoggedIn && (
+                <div>
+                  <h3 style={{ fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>Register New Shop</h3>
+                  <div style={{ display: "grid", gap: "6px", marginBottom: "12px" }}>
+                    <input type="text" placeholder="Shop Name" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} style={{ padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px", boxSizing: "border-box" }} />
+                    <input type="text" placeholder="PIN (4 digits)" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} style={{ padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px", boxSizing: "border-box" }} maxLength={4} />
+                    <button onClick={() => { if (newShopName && newShopPin) { const newShop: ShopProfile = { ...DEFAULT_SHOPS[0], id: newShopName.toLowerCase().replace(/[^a-z0-9]/g, "-"), name: newShopName, pin: newShopPin, adminPin: newShopPin }; setShops((prev) => [...prev, newShop]); setNewShopName(""); setNewShopPin(""); } }} style={{ padding: "6px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "bold" }}>
+                      Create Shop
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => handleDispatchOrder("whatsapp")}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <Zap className="w-4 h-4" /> Place Order via WhatsApp
-                  </button>
-                </>
+                  <h3 style={{ fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>Select Shop</h3>
+                  <select value={currentShopId} onChange={(e) => setCurrentShopId(e.target.value)} style={{ width: "100%", padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px" }}>
+                    {shops.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} (PIN: {s.pin})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
         </div>
-      </main>
-
-      {/* LOGIN MODAL */}
-      {showLoginModal && (
-        <LoginModal
-          onLogin={handleLogin}
-          onClose={() => setShowLoginModal(false)}
-        />
       )}
 
       {/* CUSTOMIZE DISH MODAL */}
       {selectedDishForCart && (
-        <CustomizeDishModal
-          dish={selectedDishForCart}
-          onConfirm={handleConfirmAddToCart}
-          onClose={() => setSelectedDishForCart(null)}
-        />
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }}>
+          <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>Customize: {selectedDishForCart.name}</h3>
+              <button onClick={() => setSelectedDishForCart(null)} style={{ backgroundColor: "transparent", border: "none", cursor: "pointer", fontSize: "16px" }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+              <div>
+                <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>Gravy Level</label>
+                <select value={optGravy} onChange={(e) => setOptGravy(e.target.value)} style={{ width: "100%", padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px" }}>
+                  <option>Normal Gravy</option>
+                  <option>Extra Gravy</option>
+                  <option>No Gravy / Dry</option>
+                  <option>Gravy on Side</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: "10px", color: "#666", display: "block", marginBottom: "4px" }}>Spice Level</label>
+                <select value={optSpice} onChange={(e) => setOptSpice(e.target.value)} style={{ width: "100%", padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "10px" }}>
+                  <option>Mild</option>
+                  <option>Medium</option>
+                  <option>Hot & Spicy</option>
+                </select>
+              </div>
+              <label style={{ fontSize: "10px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                <input type="checkbox" checked={optKetchup} onChange={(e) => setOptKetchup(e.target.checked)} /> Add Ketchup
+              </label>
+              <label style={{ fontSize: "10px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                <input type="checkbox" checked={optPepper} onChange={(e) => setOptPepper(e.target.checked)} /> Add Scotch Bonnet Pepper
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleConfirmAddToCart} style={{ flex: 1, padding: "8px", backgroundColor: "#d4522d", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "11px" }}>
+                Add to Cart
+              </button>
+              <button onClick={() => setSelectedDishForCart(null)} style={{ flex: 1, padding: "8px", backgroundColor: "#eee", color: "#333", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DISH MODAL */}
+      {showCustomDishModal && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }}>
+          <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "8px", width: "90%", maxWidth: "400px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: "bold" }}>🍲 Custom Dish Order</h3>
+            <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+              <input type="text" placeholder="Dish Name" value={customDishName} onChange={(e) => setCustomDishName(e.target.value)} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+              <input type="number" placeholder="Price (JMD)" value={customDishPrice} onChange={(e) => setCustomDishPrice(e.target.value)} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", boxSizing: "border-box" }} />
+              <textarea placeholder="Special instructions..." value={customDishNotes} onChange={(e) => setCustomDishNotes(e.target.value)} style={{ padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "11px", minHeight: "60px", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleAddCustomDish} style={{ flex: 1, padding: "8px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "11px" }}>
+                Add to Cart
+              </button>
+              <button onClick={() => setShowCustomDishModal(false)} style={{ flex: 1, padding: "8px", backgroundColor: "#eee", color: "#333", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "11px" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FULLSCREEN IMAGE */}
       {zoomedImage && (
-        <div
-          onClick={() => setZoomedImage(null)}
-          className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 cursor-pointer"
-        >
-          <img
-            src={zoomedImage}
-            alt="Full View"
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
+        <div onClick={() => setZoomedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, cursor: "pointer" }}>
+          <img src={zoomedImage} alt="Full" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain" }} />
         </div>
       )}
     </div>
   );
-}
+                              }
