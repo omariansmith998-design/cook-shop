@@ -38,9 +38,40 @@ const INITIAL_MENU: Dish[] = [
 const FALLBACK_IMG = IMG("photo-1546069901-ba9599a7e63c");
 const CATEGORIES = ["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"];
 const FONTS: Record<string, string> = { "Sans-Serif": "ui-sans-serif, system-ui, sans-serif", Monospace: "ui-monospace, monospace", Serif: "Georgia, serif", Cursive: "'Comic Sans MS', cursive" };
-const SHOP_TEXT_FIELDS: [string, keyof ShopProfile][] = [["Cookshop Name", "name"], ["Tagline", "tagline"], ["Delivery Coverage Note", "deliveryZoneNote"], ["WhatsApp Number", "whatsapp"], ["Instagram Handle", "instagram"], ["TikTok Handle", "tiktok"], ["Facebook Name", "facebook"], ["Address", "address"], ["Google Maps Link", "mapLink"], ["Admin Access PIN", "adminPin"]];
 
 // ---------- SHARED STYLES ----------
+const THEMES = [
+  { name: "Island Emerald", color: "#10b981", font: "Sans-Serif", blurb: "Fresh and clean" },
+  { name: "Mango Sunset", color: "#f59e0b", font: "Sans-Serif", blurb: "Warm and earthy" },
+  { name: "Jerk Fire", color: "#ef4444", font: "Sans-Serif", blurb: "Bold and spicy" },
+  { name: "Ocean Breeze", color: "#0ea5e9", font: "Sans-Serif", blurb: "Cool and calm" },
+  { name: "Yard Classic", color: "#eab308", font: "Serif", blurb: "Old-school gold" },
+  { name: "Berry Punch", color: "#d946ef", font: "Cursive", blurb: "Fun and playful" },
+];
+const socialUrl = (kind: "instagram" | "tiktok" | "facebook", v: string) => {
+  const t = v.trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  const h = t.replace("@", "");
+  return kind === "instagram" ? `https://instagram.com/${h}` : kind === "tiktok" ? `https://tiktok.com/@${h}` : `https://facebook.com/${h}`;
+};
+// shrink big photos so they never break the site or Supabase
+const shrinkImage = (file: File, maxSize = 900, quality = 0.8) =>
+  new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+const card = "bg-neutral-900 rounded-2xl p-4 border border-white/10";
+const cardTitle = "m-0 text-sm font-bold";
 const inp = "w-full p-2.5 rounded-xl border border-white/10 bg-neutral-900/80 text-white text-xs outline-none focus:border-white/30";
 const lbl = "text-[11px] text-neutral-400 font-medium";
 const btn = "border-none rounded-xl text-xs font-bold cursor-pointer transition active:scale-95 hover:opacity-90 text-white";
@@ -89,7 +120,7 @@ export default function App() {
   const [isMasterLoggedIn, setIsMasterLoggedIn] = useState(false);
   const [masterPin, setMasterPin] = useState(() => localStorage.getItem("MASTER_PIN") || "9999");
   const [newMasterPin, setNewMasterPin] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"control" | "orders" | "menu" | "settings" | "devChat">("control");
+  const [activeAdminTab, setActiveAdminTab] = useState<"today" | "orders" | "menu" | "look" | "delivery" | "contact" | "devChat">("today");
   const [activeMasterTab, setActiveMasterTab] = useState<"shops" | "supabase" | "devChat" | "masterPin">("shops");
   const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({
     "mamas-yard": [{ id: "c1", sender: "master", text: "Welcome! System operational.", timestamp: "10:00 AM" }],
@@ -332,9 +363,7 @@ export default function App() {
     else {
       navigator.clipboard.writeText(text);
       alert("Order summary copied! Paste it in the DM.");
-      url = platform === "instagram" ? `https://instagram.com/${currentShop.instagram.replace("@", "")}`
-        : platform === "tiktok" ? `https://tiktok.com/@${currentShop.tiktok.replace("@", "")}`
-        : `https://facebook.com/${currentShop.facebook}`;
+      url = socialUrl(platform, currentShop[platform]);
     }
     window.open(url, "_blank"); // open first so mobile popup blockers allow it
     setOrders((p) => [order, ...p]);
@@ -348,6 +377,20 @@ export default function App() {
     const shop = updated.find((s) => s.id === currentShopId);
     if (shop) supabaseFetch("shops", "POST", shop);
   };
+
+  const updateShop = (patch: Partial<ShopProfile>) => {
+    const updated = shops.map((x) => (x.id === currentShopId ? { ...x, ...patch } : x));
+    setShops(updated);
+    const shop = updated.find((x) => x.id === currentShopId);
+    if (shop) supabaseFetch("shops", "POST", shop);
+  };
+
+  const shopField = (label: string, key: keyof ShopProfile, placeholder = "") => (
+    <div key={key} className="grid gap-1">
+      <label className={lbl}>{label}</label>
+      <input className={inp} placeholder={placeholder} value={currentShop[key] as string} onChange={(e) => updateCurrentShop(key, e.target.value)} />
+    </div>
+  );
 
   const setDay = (day: string, patch: Partial<ShopProfile["weeklySchedule"][string]>) =>
     updateCurrentShop("weeklySchedule", { ...currentShop.weeklySchedule, [day]: { ...currentShop.weeklySchedule[day], ...patch } });
@@ -385,12 +428,10 @@ export default function App() {
     supabaseFetch("menu", "DELETE", undefined, `?id=eq.${id}`);
   };
 
-  const readImage = (e: React.ChangeEvent<HTMLInputElement>, done: (data: string) => void) => {
+  const readImage = (e: React.ChangeEvent<HTMLInputElement>, done: (data: string) => void, maxSize = 900) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const r = new FileReader();
-    r.onloadend = () => done(r.result as string);
-    r.readAsDataURL(file);
+    shrinkImage(file, maxSize).then(done).catch(() => alert("Couldn't read that picture. Try a different one."));
   };
 
   const handleAddSuggestion = () => {
@@ -415,7 +456,7 @@ export default function App() {
   const handleCreateShop = () => {
     if (!newShopName || !newShopPin) return;
     const id = newShopName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    const profile: ShopProfile = { ...DEFAULT_SHOPS[0], id, name: newShopName, pin: newShopPin, adminPin: newShopPin, whatsapp: newShopWhatsapp || "18765550000" };
+    const profile: ShopProfile = { ...DEFAULT_SHOPS[0], id: shops.some((x) => x.id === id) ? `${id}-${Date.now().toString().slice(-3)}` : id, name: newShopName, tagline: "", pin: newShopPin, adminPin: newShopPin, whatsapp: newShopWhatsapp.replace(/\D/g, ""), instagram: "", tiktok: "", facebook: "", address: "", mapLink: "", headerBanner: "", deliveryZoneNote: "" };
     setShops((p) => [...p, profile]);
     supabaseFetch("shops", "POST", profile);
     setNewShopName(""); setNewShopPin(""); setNewShopWhatsapp("");
@@ -610,11 +651,11 @@ export default function App() {
         </div>
 
         {/* footer */}
-        <footer className="mt-8 py-4 border-t border-white/10 text-center">
-          <div className="flex flex-wrap justify-center gap-4 text-xs font-medium">
-            <a href={`https://instagram.com/${currentShop.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="text-pink-400 no-underline">Instagram</a>
-            <a href={`https://tiktok.com/@${currentShop.tiktok.replace("@", "")}`} target="_blank" rel="noreferrer" className="text-cyan-400 no-underline">TikTok</a>
-            <a href={`https://facebook.com/${currentShop.facebook}`} target="_blank" rel="noreferrer" className="text-blue-400 no-underline">Facebook</a>
+        <footer className="mt-8 py-5 border-t border-white/10 text-center">
+          <div className="flex flex-wrap justify-center gap-2">
+            {([["📸 Instagram", "instagram", currentShop.instagram], ["🎵 TikTok", "tiktok", currentShop.tiktok], ["📘 Facebook", "facebook", currentShop.facebook]] as const)
+              .filter(([, , v]) => v.trim())
+              .map(([n, k, v]) => <a key={k} href={socialUrl(k, v)} target="_blank" rel="noreferrer" className="bg-neutral-800 text-white no-underline text-xs font-semibold px-4 py-2 rounded-full border border-white/10">{n}</a>)}
           </div>
           {currentShop.address && <p className="text-[11px] text-neutral-500 mt-3 mb-0">📍 {currentShop.address} {currentShop.mapLink && <a href={currentShop.mapLink} target="_blank" rel="noreferrer" style={{ color }}>Map</a>}</p>}
         </footer>
@@ -710,11 +751,11 @@ export default function App() {
 
           {activeMasterTab === "shops" && (
             <div>
-              <h4 className={heading}>Register new cookshop</h4>
+              <h4 className={heading}>Add a new shop in seconds</h4>
               <div className="grid gap-2 mb-4">
                 <input className={inp} placeholder="Cookshop name" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} />
-                <input className={inp} placeholder="Access PIN (4 digits)" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} />
-                <input className={inp} placeholder="WhatsApp number" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} />
+                <input className={inp} placeholder="Owner password / PIN" value={newShopPin} onChange={(e) => setNewShopPin(e.target.value)} />
+                <input className={inp} placeholder="WhatsApp number (e.g. 18765551234)" value={newShopWhatsapp} onChange={(e) => setNewShopWhatsapp(e.target.value)} />
                 <button onClick={handleCreateShop} className={`${btn} bg-red-600 py-2.5`}>Create shop</button>
               </div>
               <h4 className={heading}>Open a shop's admin panel ({shops.length})</h4>
@@ -756,31 +797,57 @@ export default function App() {
             <button onClick={logout} className={`${btn} bg-neutral-700 px-3 py-1`}>Log out</button>
           </div>
           <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-            {([["control", "🎛️ Control"], ["orders", `📋 Orders (${shopOrders.length})`], ["menu", "📜 Menu"], ["settings", "⚙️ Settings"], ["devChat", "💬 Dev chat"]] as const).map(([k, n]) => (
+            {([["today", "🏠 Today"], ["orders", `📋 Orders (${shopOrders.length})`], ["menu", "📜 Menu"], ["look", "🎨 Look"], ["delivery", "🚚 Delivery"], ["contact", "📞 Contact"], ["devChat", "💬 Dev chat"]] as const).map(([k, n]) => (
               <Tab key={k} active={activeAdminTab === k} color={color} onClick={() => setActiveAdminTab(k)}>{n}</Tab>
             ))}
           </div>
 
-          {activeAdminTab === "control" && (
-            <div>
-              <h4 className={heading}>Operational toggles</h4>
-              <div className="flex gap-2 mb-4">
-                <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} className={`${btn} flex-1 py-2.5 ${currentShop.isOpenManual ? "bg-emerald-600" : "bg-red-600"}`}>{currentShop.isOpenManual ? "STORE OPEN" : "STORE CLOSED"}</button>
-                <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} className={`${btn} flex-1 py-2.5 ${currentShop.isDeliveryActive ? "bg-emerald-600" : "bg-red-600"}`}>{currentShop.isDeliveryActive ? "DELIVERY ON" : "DELIVERY OFF"}</button>
+          {activeAdminTab === "today" && (
+            <div className="grid gap-3">
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Shop status</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} className={`${btn} py-4 rounded-2xl ${currentShop.isOpenManual ? "bg-emerald-600" : "bg-red-600"}`}>{currentShop.isOpenManual ? "🟢 Open" : "🔴 Closed"}</button>
+                  <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} className={`${btn} py-4 rounded-2xl ${currentShop.isDeliveryActive ? "bg-emerald-600" : "bg-neutral-700"}`}>{currentShop.isDeliveryActive ? "🚚 Delivery on" : "🚚 Delivery off"}</button>
+                </div>
+                <p className="text-[11px] text-neutral-400 m-0">Tap to switch. Customers see it right away.</p>
               </div>
-              <h4 className={heading}>Weekly schedule</h4>
-              {Object.keys(currentShop.weeklySchedule).map((day) => {
-                const d = currentShop.weeklySchedule[day];
-                return (
-                  <div key={day} className="flex items-center gap-2 mb-2 text-xs text-neutral-300">
-                    <span className="w-8 font-bold">{day}</span>
-                    <input type="checkbox" checked={d.isOpen} onChange={(e) => setDay(day, { isOpen: e.target.checked })} />
-                    <input type="time" value={d.openTime} onChange={(e) => setDay(day, { openTime: e.target.value })} className="bg-neutral-900 text-white border border-white/10 rounded-lg p-1 text-xs" />
-                    <span>to</span>
-                    <input type="time" value={d.closeTime} onChange={(e) => setDay(day, { closeTime: e.target.value })} className="bg-neutral-900 text-white border border-white/10 rounded-lg p-1 text-xs" />
+              <div className={`${card} flex justify-between items-center`}>
+                <div><h4 className={cardTitle}>New orders</h4><p className="text-[11px] text-neutral-400 m-0">Waiting for you</p></div>
+                <button onClick={() => setActiveAdminTab("orders")} style={{ backgroundColor: color }} className={`${btn} px-4 py-2`}>{shopOrders.filter((o) => o.status === "Pending").length} pending ›</button>
+              </div>
+            </div>
+          )}
+
+          {activeAdminTab === "delivery" && (
+            <div className="grid gap-3">
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Delivery zones & prices</h4>
+                {currentShop.deliveryZones.map((z, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input className={inp} value={z.name} onChange={(e) => updateCurrentShop("deliveryZones", currentShop.deliveryZones.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+                    <input className={`${inp} w-24`} type="number" value={z.price} onChange={(e) => updateCurrentShop("deliveryZones", currentShop.deliveryZones.map((x, j) => (j === i ? { ...x, price: parseFloat(e.target.value) || 0 } : x)))} />
+                    {currentShop.deliveryZones.length > 1 && <button onClick={() => updateCurrentShop("deliveryZones", currentShop.deliveryZones.filter((_, j) => j !== i))} className={`${btn} bg-neutral-800 text-red-400 px-3`}>✕</button>}
                   </div>
-                );
-              })}
+                ))}
+                <button onClick={() => updateCurrentShop("deliveryZones", [...currentShop.deliveryZones, { name: "New zone", price: 300 }])} className={`${btn} bg-neutral-700 py-2`}>+ Add zone</button>
+                {shopField("Coverage note shown to customers", "deliveryZoneNote")}
+              </div>
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Opening hours</h4>
+                {Object.keys(currentShop.weeklySchedule).map((day) => {
+                  const d = currentShop.weeklySchedule[day];
+                  return (
+                    <div key={day} className="flex items-center gap-2 text-xs text-neutral-300">
+                      <span className="w-8 font-bold">{day}</span>
+                      <input type="checkbox" checked={d.isOpen} onChange={(e) => setDay(day, { isOpen: e.target.checked })} />
+                      <input type="time" value={d.openTime} onChange={(e) => setDay(day, { openTime: e.target.value })} className="bg-neutral-800 text-white border border-white/10 rounded-lg p-1 text-xs" />
+                      <span>to</span>
+                      <input type="time" value={d.closeTime} onChange={(e) => setDay(day, { closeTime: e.target.value })} className="bg-neutral-800 text-white border border-white/10 rounded-lg p-1 text-xs" />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -852,29 +919,60 @@ export default function App() {
             </div>
           )}
 
-          {activeAdminTab === "settings" && (
-            <div className="grid gap-2">
-              <h4 className={heading}>🎨 Branding, delivery & location</h4>
-              <label className={lbl}>Header banner image</label>
-              <input type="file" accept="image/*" onChange={(e) => readImage(e, (img) => updateCurrentShop("headerBanner", img))} className="text-xs text-neutral-400" />
-              {currentShop.headerBanner && <img src={currentShop.headerBanner} alt="Banner preview" className="w-full h-20 object-cover rounded-xl" />}
-              <label className={lbl}>Font style</label>
-              <select className={inp} value={currentShop.fontStyle} onChange={(e) => updateCurrentShop("fontStyle", e.target.value)}>
-                {Object.keys(FONTS).map((f) => <option key={f}>{f}</option>)}
-              </select>
-              <label className={lbl}>Theme color</label>
-              <input type="color" value={color} onChange={(e) => updateCurrentShop("themeColor", e.target.value)} className="w-full h-10 border-none rounded-xl cursor-pointer bg-transparent" />
-              <h4 className={`${heading} mt-2`}>🚚 Delivery pricing zones</h4>
-              {currentShop.deliveryZones.map((z, i) => (
-                <div key={i} className="flex gap-2">
-                  <input className={inp} value={z.name} onChange={(e) => updateCurrentShop("deliveryZones", currentShop.deliveryZones.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-                  <input className={`${inp} w-24`} type="number" value={z.price} onChange={(e) => updateCurrentShop("deliveryZones", currentShop.deliveryZones.map((x, j) => (j === i ? { ...x, price: parseFloat(e.target.value) || 0 } : x)))} />
+          {activeAdminTab === "look" && (
+            <div className="grid gap-3">
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Header picture</h4>
+                {currentShop.headerBanner && <img src={currentShop.headerBanner} alt="Banner preview" className="w-full h-24 object-cover rounded-xl" />}
+                <label className={`${btn} bg-neutral-700 py-2.5 text-center block`}>📷 Choose picture<input type="file" accept="image/*" className="hidden" onChange={(e) => readImage(e, (img) => updateCurrentShop("headerBanner", img), 1400)} /></label>
+                <p className="text-[11px] text-neutral-400 m-0">Customers can tap it to zoom. Big photos are shrunk automatically.</p>
+              </div>
+              <div className={card}>
+                <h4 className={`${cardTitle} mb-2`}>Theme</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {THEMES.map((t) => {
+                    const on = t.color === color && t.font === currentShop.fontStyle;
+                    return (
+                      <button key={t.name} onClick={() => updateShop({ themeColor: t.color, fontStyle: t.font })} style={{ borderColor: on ? t.color : "rgba(255,255,255,0.1)", fontFamily: FONTS[t.font] }} className="text-left bg-neutral-800 rounded-2xl p-3 border-2 cursor-pointer text-white">
+                        <div className="flex items-center gap-2"><span style={{ backgroundColor: t.color }} className="w-5 h-5 rounded-full shrink-0" /><span className="text-sm font-bold">{t.name}</span></div>
+                        <div className="text-[11px] text-neutral-400 mt-1">{t.blurb}</div>
+                      </button>
+                    );
+                  })}
                 </div>
-              ))}
-              {SHOP_TEXT_FIELDS.map(([label, key]) => (
-                <div key={key} className="grid gap-1"><label className={lbl}>{label}</label>
-                  <input className={inp} value={currentShop[key] as string} onChange={(e) => updateCurrentShop(key, e.target.value)} /></div>
-              ))}
+              </div>
+              <div className={card}>
+                <h4 className={`${cardTitle} mb-2`}>Font</h4>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(FONTS).map((f) => (
+                    <button key={f} onClick={() => updateCurrentShop("fontStyle", f)} style={{ fontFamily: FONTS[f], backgroundColor: currentShop.fontStyle === f ? color : "#262626" }} className={`${btn} px-3.5 py-2`}>{f}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeAdminTab === "contact" && (
+            <div className="grid gap-3">
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Shop info</h4>
+                {shopField("Cookshop name", "name")}
+                {shopField("Tagline", "tagline")}
+                {shopField("Address", "address")}
+                {shopField("Google Maps link", "mapLink")}
+              </div>
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Orders & social links</h4>
+                {shopField("📱 WhatsApp number (orders go here)", "whatsapp", "18765551234")}
+                {shopField("📸 Instagram", "instagram", "Link or @handle")}
+                {shopField("🎵 TikTok", "tiktok", "Link or @handle")}
+                {shopField("📘 Facebook", "facebook", "Link or page name")}
+                <p className="text-[11px] text-neutral-400 m-0">Filled-in links show as buttons at the bottom of your menu.</p>
+              </div>
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>Security</h4>
+                {shopField("Owner PIN", "adminPin")}
+              </div>
             </div>
           )}
 
