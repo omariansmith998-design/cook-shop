@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 
 // ---------- TYPES ----------
 interface Dish { id: string; name: string; price: number; description: string; category: "Mains" | "Drinks" | "Snacks" | "Sides" | "Soups"; image: string; inStock: boolean; likes: number; isSpecial?: boolean; shopId?: string; }
-interface CartItem { dish: Dish; quantity: number; spiceLevel: string; gravyType: string; addKetchup: boolean; addPepper: boolean; isItemCompleted?: boolean; }
+interface CartItem { dish: Dish; quantity: number; spiceLevel: string; gravyType: string; addKetchup: boolean; addPepper: boolean; isItemCompleted?: boolean; notes?: string; }
 interface ChatMessage { id: string; sender: "master" | "admin"; text: string; timestamp: string; }
 interface Suggestion { id: string; shopId: string; text: string; votes: number; }
-interface Order { id: string; shopId: string; customerName: string; customerAddress: string; items: CartItem[]; subtotal: number; deliveryFee: number; tip: number; total: number; orderType: "Delivery" | "Pickup"; deliveryZone: string; paymentMethod: string; createdAt: string; estimatedTime?: string; status: "Pending" | "Preparing" | "Ready" | "Completed" | "Cancelled"; }
+interface Order { id: string; shopId: string; customerName: string; customerAddress: string; items: CartItem[]; subtotal: number; deliveryFee: number; tip: number; total: number; orderType: "Delivery" | "Pickup"; deliveryZone: string; paymentMethod: string; createdAt: string; estimatedTime?: string; status: "Pending" | "Preparing" | "Ready" | "Out for delivery" | "Completed" | "Cancelled"; }
 interface DeliveryZoneOption { name: string; price: number; }
-interface ShopProfile { id: string; name: string; tagline: string; whatsapp: string; instagram: string; tiktok: string; facebook: string; address: string; mapLink: string; pin: string; headerBanner: string; deliveryZones: DeliveryZoneOption[]; isOpenManual: boolean; isDeliveryActive: boolean; deliveryZoneNote: string; weeklySchedule: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>; themeColor: string; fontStyle: string; adminPin: string; }
+interface ShopProfile { id: string; name: string; tagline: string; whatsapp: string; instagram: string; tiktok: string; facebook: string; address: string; mapLink: string; pin: string; headerBanner: string; deliveryZones: DeliveryZoneOption[]; isOpenManual: boolean; isDeliveryActive: boolean; deliveryZoneNote: string; weeklySchedule: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>; themeColor: string; fontStyle: string; adminPin: string; eventBanner?: string; }
 
 // ---------- DEFAULTS ----------
 const DEFAULT_SCHEDULE: ShopProfile["weeklySchedule"] = {
@@ -73,6 +73,24 @@ const shrinkImage = (file: File, maxSize = 900, quality = 0.8) =>
     img.onerror = reject;
     img.src = url;
   });
+const loadMap = (k: string): Record<string, boolean> => { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch { return {}; } };
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const fmt12 = (t: string) => { const [h, m] = t.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+// open = owner is taking orders AND today's opening hours say so
+const shopStatus = (shop: ShopProfile, now: Date): { open: boolean; note: string } => {
+  const hm = now.toTimeString().slice(0, 5);
+  const today = shop.weeklySchedule[DAY_NAMES[now.getDay()]];
+  if (!shop.isOpenManual) return { open: false, note: "Not taking orders right now" };
+  if (today && today.isOpen && hm >= today.openTime && hm < today.closeTime) return { open: true, note: `Open until ${fmt12(today.closeTime)}` };
+  for (let i = 0; i < 8; i++) {
+    const name = DAY_NAMES[(now.getDay() + i) % 7];
+    const d = shop.weeklySchedule[name];
+    if (d && d.isOpen && (i > 0 || hm < d.openTime)) return { open: false, note: `Opens ${i === 0 ? "today" : i === 1 ? "tomorrow" : name} at ${fmt12(d.openTime)}` };
+  }
+  return { open: false, note: "Currently closed" };
+};
+const stepsFor = (o: Order): Order["status"][] => o.orderType === "Delivery" ? ["Pending", "Preparing", "Ready", "Out for delivery", "Completed"] : ["Pending", "Preparing", "Ready", "Completed"];
+const orderText = (o: Order) => o.status === "Pending" ? "⏳ Waiting for the cook to confirm" : o.status === "Preparing" ? "🍳 Being prepared" : o.status === "Ready" ? (o.orderType === "Delivery" ? "✅ Cooked! The driver is about to leave" : "🏪 Ready for pickup!") : o.status === "Out for delivery" ? `🚚 Out for delivery${o.estimatedTime ? ` · ${o.estimatedTime}` : ""}` : "🎉 Completed. Enjoy!";
 const card = "bg-neutral-900 rounded-2xl p-4 border border-white/10";
 const cardTitle = "m-0 text-sm font-bold";
 const inp = "w-full p-2.5 rounded-xl border border-white/10 bg-neutral-900/80 text-white text-xs outline-none focus:border-white/30";
@@ -98,9 +116,9 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [sugInput, setSugInput] = useState("");
-  const [votedIds, setVotedIds] = useState<Record<string, boolean>>({});
+  const [votedIds, setVotedIds] = useState<Record<string, boolean>>(() => loadMap("VOTED"));
   const [selectedCategory, setSelectedCategory] = useState("All Items");
-  const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>({});
+  const [likedDishIds, setLikedDishIds] = useState<Record<string, boolean>>(() => loadMap("LIKED"));
   const [showShareModal, setShowShareModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
@@ -110,10 +128,11 @@ export default function App() {
   const [optGravy, setOptGravy] = useState("Normal");
   const [optKetchup, setOptKetchup] = useState(false);
   const [optPepper, setOptPepper] = useState(false);
+  const [optNotes, setOptNotes] = useState("");
   const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
 
   // ----- supabase -----
-  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || (import.meta as any).env?.VITE_SUPABASE_URL || "https://kfrtlshywfpbsyuqhsjx.supabase.co");
+  const [supabaseUrl, setSupabaseUrl] = useState(() => (/supabase\./.test(localStorage.getItem("SUPABASE_URL") || "") ? localStorage.getItem("SUPABASE_URL") : "") || (import.meta as any).env?.VITE_SUPABASE_URL || "https://kfrtlshywfpbsyuqhsjx.supabase.co");
   const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmcnRsc2h5d2ZwYnN5dXFoc2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTI2OTcsImV4cCI6MjEwNTMyODY5N30.Xp5VF5qxPon3VxdfmbZge1TqX_y3Bibr0Ggni9EG2io");
 
   // ----- admin / master -----
@@ -151,13 +170,19 @@ export default function App() {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [pendingId, setPendingId] = useState(() => Date.now().toString());
   const [receipt, setReceipt] = useState<Order | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [myOrderIds, setMyOrderIds] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("MY_ORDERS") || "[]"); } catch { return []; } });
 
   const audioRef = useRef<AudioContext | null>(null);
   const lastPending = useRef(0);
+  const lastCancelled = useRef(-1);
 
   // ----- derived -----
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
   const color = currentShop.themeColor;
+  const status = shopStatus(currentShop, now);
+  const isOpenNow = status.open;
+  const myOrders = orders.filter((o) => myOrderIds.includes(o.id) && o.shopId === currentShopId);
   const shopOrders = orders.filter((o) => o.shopId === currentShopId);
   const currentDeliveryFee = orderType === "Delivery" ? currentShop.deliveryZones[selectedZoneIndex]?.price ?? 300 : 0;
   const subtotal = cart.reduce((a, i) => a + i.dish.price * i.quantity, 0);
@@ -169,13 +194,15 @@ export default function App() {
   const shopLink = `${window.location.origin}${window.location.pathname}?shop=${currentShopId}`;
   const shopSuggestions = suggestions.filter((s) => s.shopId === currentShopId).sort((a, b) => b.votes - a.votes);
 
+  const baseUrl = (/^https?:\/\//i.test(supabaseUrl.trim()) ? supabaseUrl.trim() : `https://${supabaseUrl.trim()}`).replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
+
   // ----- supabase REST helper (upserts + deletes) -----
   const supabaseFetch = async (table: string, method = "GET", body?: any, query = "") => {
     if (!supabaseUrl || !supabaseAnonKey) return null;
     try {
       const headers: Record<string, string> = { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}`, "Content-Type": "application/json" };
       if (method === "POST" || method === "PUT") headers["Prefer"] = "resolution=merge-duplicates,return=representation";
-      const res = await fetch(`${supabaseUrl}/rest/v1/${table}${query}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      const res = await fetch(`${baseUrl}/rest/v1/${table}${query}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
       if (!res.ok) { console.warn("Supabase error", table, res.status, await res.text()); return null; }
       const text = await res.text();
       return text ? JSON.parse(text) : [];
@@ -216,7 +243,6 @@ export default function App() {
         missing.forEach((d) => supabaseFetch("menu", "POST", d));
         setMenu([...m, ...missing]);
       }
-      const o = await supabaseFetch("orders"); if (o) mergeOrders(o);
       const g = await supabaseFetch("suggestions"); if (g) setSuggestions(g);
     })();
   }, [supabaseUrl, supabaseAnonKey]);
@@ -226,6 +252,11 @@ export default function App() {
     const match = shop && shops.find((s) => s.id === shop);
     if (match) setCurrentShopId(match.id);
   }, [shops]);
+
+  useEffect(() => { localStorage.setItem("LIKED", JSON.stringify(likedDishIds)); }, [likedDishIds]);
+  useEffect(() => { localStorage.setItem("VOTED", JSON.stringify(votedIds)); }, [votedIds]);
+  useEffect(() => { localStorage.setItem("MY_ORDERS", JSON.stringify(myOrderIds)); }, [myOrderIds]);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
 
   useEffect(() => { if (!currentShop.isDeliveryActive) setOrderType("Pickup"); }, [currentShop.isDeliveryActive]);
 
@@ -239,22 +270,41 @@ export default function App() {
       const pending = cloud.filter((o) => o.status === "Pending").length;
       if (pending > lastPending.current) playChime();
       lastPending.current = pending;
+      const cancelled = cloud.filter((o) => o.status === "Cancelled").length;
+      if (lastCancelled.current >= 0 && cancelled > lastCancelled.current) playChime();
+      lastCancelled.current = cancelled;
     };
     poll();
     const t = setInterval(poll, 20000);
     return () => clearInterval(t);
   }, [isAdminLoggedIn, supabaseUrl, supabaseAnonKey]);
 
+  // customers: follow their own orders live
+  useEffect(() => {
+    if (!myOrderIds.length || !supabaseUrl) return;
+    const poll = async () => {
+      const cloud = await supabaseFetch("orders", "GET", undefined, `?id=in.(${myOrderIds.join(",")})`);
+      if (cloud) mergeOrders(cloud);
+    };
+    poll();
+    const t = setInterval(poll, 20000);
+    return () => clearInterval(t);
+  }, [myOrderIds, supabaseUrl, supabaseAnonKey]);
+
   // ----- handlers -----
   const handleToggleLike = (id: string) => {
     const was = likedDishIds[id];
     setLikedDishIds((p) => ({ ...p, [id]: !was }));
-    setMenu((p) => p.map((d) => (d.id === id ? { ...d, likes: d.likes + (was ? -1 : 1) } : d)));
+    const dish = menu.find((d) => d.id === id);
+    if (!dish) return;
+    const updated = { ...dish, likes: Math.max(0, dish.likes + (was ? -1 : 1)) };
+    setMenu((p) => p.map((d) => (d.id === id ? updated : d)));
+    supabaseFetch("menu", "POST", updated);
   };
 
   const printReceipt = (o: Order) => {
     const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
-    const rows = o.items.map((it) => `<tr><td>${it.quantity}x ${esc(it.dish.name)}<br><small>Spice: ${esc(it.spiceLevel)} | Gravy: ${esc(it.gravyType)}${it.addKetchup ? " | +Ketchup" : ""}${it.addPepper ? " | +Pepper" : ""}</small></td><td style="text-align:right">$${it.dish.price * it.quantity}</td></tr>`).join("");
+    const rows = o.items.map((it) => `<tr><td>${it.quantity}x ${esc(it.dish.name)}<br><small>Spice: ${esc(it.spiceLevel)} | Gravy: ${esc(it.gravyType)}${it.addKetchup ? " | +Ketchup" : ""}${it.addPepper ? " | +Pepper" : ""}</small>${it.notes ? `<br><small>Note: ${esc(it.notes)}</small>` : ""}</td><td style="text-align:right">$${it.dish.price * it.quantity}</td></tr>`).join("");
     const extra = (label: string, v: number) => (v > 0 ? `<tr class="t"><td>${label}</td><td style="text-align:right">$${v}</td></tr>` : "");
     const w = window.open("", "_blank");
     if (!w) return alert("Allow pop-ups to save your receipt.");
@@ -268,16 +318,24 @@ export default function App() {
     const out: string[] = [];
     for (const t of ["shops", "menu", "orders", "suggestions"]) {
       try {
-        const r = await fetch(`${supabaseUrl}/rest/v1/${t}?limit=1`, { headers: h });
+        const r = await fetch(`${baseUrl}/rest/v1/${t}?limit=1`, { headers: h });
         out.push(`${r.ok ? "✅" : "❌"} ${t} can be read${r.ok ? "" : ` (${r.status})`}`);
       } catch { out.push(`❌ ${t}: can't reach Supabase`); }
     }
     const test = { id: "test" + Date.now(), shopId: "test", customerName: "TEST", customerAddress: "", items: [], subtotal: 0, deliveryFee: 0, tip: 0, total: 0, orderType: "Pickup", deliveryZone: "", paymentMethod: "Cash", createdAt: "", status: "Pending" };
     try {
-      const w = await fetch(`${supabaseUrl}/rest/v1/orders`, { method: "POST", headers: { ...h, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(test) });
+      const w = await fetch(`${baseUrl}/rest/v1/orders`, { method: "POST", headers: { ...h, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(test) });
       out.push(w.ok ? "✅ orders can be saved" : `❌ orders save failed (${w.status}): ${(await w.text()).slice(0, 140)}`);
-      if (w.ok) await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${test.id}`, { method: "DELETE", headers: h });
+      if (w.ok) await fetch(`${baseUrl}/rest/v1/orders?id=eq.${test.id}`, { method: "DELETE", headers: h });
     } catch { out.push("❌ orders save: can't reach Supabase"); }
+    const rows = [["shops", { id: "test" + Date.now(), name: "TEST", eventBanner: "" }], ["menu", { id: "test" + Date.now(), shopId: "test", name: "TEST", price: 0 }]] as const;
+    for (const [t, row] of rows) {
+      try {
+        const w2 = await fetch(`${baseUrl}/rest/v1/${t}`, { method: "POST", headers: { ...h, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(row) });
+        out.push(w2.ok ? `✅ ${t} can be saved` : `❌ ${t} save failed (${w2.status}): ${(await w2.text()).slice(0, 140)}`);
+        if (w2.ok) await fetch(`${baseUrl}/rest/v1/${t}?id=eq.${row.id}`, { method: "DELETE", headers: h });
+      } catch { out.push(`❌ ${t} save: can't reach Supabase`); }
+    }
     alert(out.join("\n"));
   };
 
@@ -329,12 +387,12 @@ export default function App() {
   };
 
   const openCustomize = (dish: Dish) => {
-    setSelectedDishForCart(dish); setOptSpice("Medium"); setOptGravy("Normal"); setOptKetchup(false); setOptPepper(false);
+    setSelectedDishForCart(dish); setOptSpice("Medium"); setOptGravy("Normal"); setOptKetchup(false); setOptPepper(false); setOptNotes("");
   };
 
   const confirmAddToCart = () => {
     if (!selectedDishForCart) return;
-    setCart((p) => [...p, { dish: selectedDishForCart, quantity: 1, spiceLevel: optSpice, gravyType: optGravy, addKetchup: optKetchup, addPepper: optPepper, isItemCompleted: false }]);
+    setCart((p) => [...p, { dish: selectedDishForCart, quantity: 1, spiceLevel: optSpice, gravyType: optGravy, addKetchup: optKetchup, addPepper: optPepper, isItemCompleted: false, notes: optNotes.trim() }]);
     setSelectedDishForCart(null);
   };
 
@@ -354,11 +412,24 @@ export default function App() {
     const o = updated.find((x) => x.id === orderId);
     if (!o) return;
     let msg = `*Order Update - ${currentShop.name}*\nHi ${o.customerName}, your Order #${o.id.slice(-4)} status has changed:\n\n📌 *Status:* ${status.toUpperCase()}\n`;
-    if (estimatedTime) msg += `⏱️ *Estimated Time:* Ready in approx ${estimatedTime}\n`;
+    if (estimatedTime) msg += status === "Out for delivery" ? `🚚 *Driver:* ${estimatedTime}\n` : `⏱️ *Estimated Time:* Ready in approx ${estimatedTime}\n`;
     if (status === "Ready") msg += o.orderType === "Delivery" ? "🚚 Your order is cooked and on its way!" : "🏪 Your order is fresh & ready for pickup at our counter!";
     if (status === "Completed") msg += "🎉 Order completed! Thank you for dining with us!";
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
     supabaseFetch("orders", "POST", o);
+  };
+
+  const handleCustomerCancel = async (o: Order) => {
+    const latest = await supabaseFetch("orders", "GET", undefined, `?id=eq.${o.id}`);
+    const current: Order = latest && latest[0] ? latest[0] : o;
+    if (current.status !== "Pending") {
+      mergeOrders([current]);
+      return alert("The cook has already started this order, so it can't be cancelled here. Please message the shop.");
+    }
+    if (!confirm("Cancel this order?")) return;
+    const updated: Order = { ...current, status: "Cancelled" };
+    setOrders((p) => p.map((x) => (x.id === o.id ? updated : x)));
+    supabaseFetch("orders", "POST", updated);
   };
 
   const handleToggleItemCompleted = (orderId: string, idx: number) => {
@@ -374,6 +445,7 @@ export default function App() {
       msg += `${i + 1}. *${it.dish.name}* (x${it.quantity}) - $${it.dish.price * it.quantity} JMD\n   Spice: ${it.spiceLevel} | Gravy: ${it.gravyType}`;
       if (it.addKetchup) msg += " | +Ketchup";
       if (it.addPepper) msg += " | +Pepper";
+      if (it.notes) msg += `\n   📝 Notes: ${it.notes}`;
       msg += "\n";
     });
     msg += `\n*Order Type:* ${orderType}\n`;
@@ -392,7 +464,7 @@ export default function App() {
   };
 
   const handleDispatchOrder = (platform: "whatsapp" | "instagram" | "tiktok" | "facebook") => {
-    if (!currentShop.isOpenManual) return alert("This cookshop is closed right now.");
+    if (!isOpenNow) return alert(`This cookshop is closed right now. ${status.note}.`);
     if (!customerName.trim()) return alert("Please enter your name/nickname before placing order.");
     if (orderType === "Delivery" && !customerAddress.trim()) return alert("Please enter a delivery address or landmark.");
     if (cart.length === 0) return alert("Your order plate is empty.");
@@ -414,6 +486,7 @@ export default function App() {
     window.open(url, "_blank"); // open first so mobile popup blockers allow it
     setOrders((p) => [order, ...p]);
     setReceipt(order);
+    setMyOrderIds((p) => [order.id, ...p].slice(0, 10));
     supabaseFetch("orders", "POST", order);
     setCart([]); setPendingId(Date.now().toString());
   };
@@ -435,7 +508,7 @@ export default function App() {
   const shopField = (label: string, key: keyof ShopProfile, placeholder = "") => (
     <div key={key} className="grid gap-1">
       <label className={lbl}>{label}</label>
-      <input className={inp} placeholder={placeholder} value={currentShop[key] as string} onChange={(e) => updateCurrentShop(key, e.target.value)} />
+      <input className={inp} placeholder={placeholder} value={(currentShop[key] as string | undefined) ?? ""} onChange={(e) => updateCurrentShop(key, e.target.value)} />
     </div>
   );
 
@@ -545,7 +618,8 @@ export default function App() {
             </div>
           </div>
         </div>
-        {!currentShop.isOpenManual && <div className="mx-4 mt-3 bg-red-950/80 text-red-300 border border-red-600/40 p-2.5 rounded-xl text-center text-xs font-semibold">⛔ We're closed right now. Check back during business hours.</div>}
+        {!isOpenNow && <div className="mx-4 mt-3 bg-red-950/80 text-red-300 border border-red-600/40 p-2.5 rounded-xl text-center text-xs font-semibold">⛔ We're closed right now. {status.note}.</div>}
+        {currentShop.eventBanner?.trim() && <div style={{ borderColor: color }} className="mx-4 mt-3 bg-neutral-900 border p-3 rounded-2xl text-center text-xs font-semibold">📢 {currentShop.eventBanner}</div>}
       </header>
 
       <main className="p-4 max-w-xl mx-auto">
@@ -595,6 +669,7 @@ export default function App() {
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">{it.dish.name}</div>
                       <div className="text-[10px] text-neutral-400">Spice: {it.spiceLevel} | Gravy: {it.gravyType}{it.addKetchup && " | +Ketchup"}{it.addPepper && " | +Pepper"}</div>
+                      {it.notes && <div className="text-[10px] text-amber-300">📝 {it.notes}</div>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => changeQty(idx, -1)} className={`${btn} bg-neutral-700 w-6 h-6`}>−</button>
@@ -671,6 +746,32 @@ export default function App() {
           )}
         </div>
 
+        {/* order tracker */}
+        {myOrders.length > 0 && (
+          <div className="mt-6 bg-neutral-900 rounded-2xl p-4 border border-white/10">
+            <h2 className="text-base font-bold m-0 mb-3">📦 Your orders</h2>
+            <div className="grid gap-3">
+              {myOrders.map((o) => {
+                const steps = stepsFor(o);
+                const step = Math.max(0, steps.indexOf(o.status));
+                return (
+                  <div key={o.id} className="bg-neutral-800 rounded-xl p-3">
+                    <div className="flex justify-between text-xs font-bold"><span>Order #{o.id.slice(-4)}</span><span style={{ color }}>${o.total} JMD</span></div>
+                    {o.status === "Cancelled" ? <p className="text-xs text-red-400 mt-2 mb-0">This order was cancelled.</p> : (
+                      <>
+                        <div className="flex gap-1 mt-2">{steps.map((st, i) => <div key={st} style={{ backgroundColor: i <= step ? color : "#404040" }} className="h-1.5 flex-1 rounded-full" />)}</div>
+                        <p className="text-xs mt-2 mb-0">{orderText(o)}{o.estimatedTime && o.status === "Preparing" ? ` · ready in about ${o.estimatedTime}` : ""}</p>
+                      </>
+                    )}
+                    <button onClick={() => setReceipt(o)} className={`${btn} bg-neutral-700 px-3 py-1.5 mt-2`}>🧾 Receipt</button>
+                    {o.status === "Pending" && <button onClick={() => handleCustomerCancel(o)} className={`${btn} bg-neutral-700 text-red-400 px-3 py-1.5 mt-2 ml-2`}>✖ Cancel order</button>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* suggestion box */}
         <div className="mt-6 bg-neutral-900 rounded-2xl p-4 border border-white/10">
           <h2 className="text-base font-bold m-0 mb-1">💡 Suggestion box</h2>
@@ -742,6 +843,7 @@ export default function App() {
               </select></div>
             <label className="text-xs flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={optKetchup} onChange={(e) => setOptKetchup(e.target.checked)} />Add ketchup</label>
             <label className="text-xs flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={optPepper} onChange={(e) => setOptPepper(e.target.checked)} />Add scotch bonnet pepper</label>
+            <textarea className={inp} placeholder="Special notes (optional), e.g. no onions" value={optNotes} onChange={(e) => setOptNotes(e.target.value)} />
           </div>
           <div className="flex gap-2">
             <button onClick={confirmAddToCart} style={{ backgroundColor: color }} className={`${btn} flex-1 py-2.5`}>Add to plate</button>
@@ -850,10 +952,15 @@ export default function App() {
               <div className={`${card} grid gap-2`}>
                 <h4 className={cardTitle}>Shop status</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} className={`${btn} py-4 rounded-2xl ${currentShop.isOpenManual ? "bg-emerald-600" : "bg-red-600"}`}>{currentShop.isOpenManual ? "🟢 Open" : "🔴 Closed"}</button>
+                  <button onClick={() => updateCurrentShop("isOpenManual", !currentShop.isOpenManual)} className={`${btn} py-4 rounded-2xl ${currentShop.isOpenManual ? "bg-emerald-600" : "bg-red-600"}`}>{currentShop.isOpenManual ? "🟢 Taking orders" : "⏸️ Paused"}</button>
                   <button onClick={() => updateCurrentShop("isDeliveryActive", !currentShop.isDeliveryActive)} className={`${btn} py-4 rounded-2xl ${currentShop.isDeliveryActive ? "bg-emerald-600" : "bg-neutral-700"}`}>{currentShop.isDeliveryActive ? "🚚 Delivery on" : "🚚 Delivery off"}</button>
                 </div>
-                <p className="text-[11px] text-neutral-400 m-0">Tap to switch. Customers see it right away.</p>
+                <p className="text-[11px] text-neutral-400 m-0">{isOpenNow ? "🟢 Open now" : "🔴 Closed now"}: {status.note}. Opening hours are set in the Delivery tab. The first button pauses orders any time.</p>
+              </div>
+              <div className={`${card} grid gap-2`}>
+                <h4 className={cardTitle}>📢 Event banner</h4>
+                {shopField("Shows at the top of your menu", "eventBanner", "e.g. Closed Monday for the holiday")}
+                <p className="text-[11px] text-neutral-400 m-0">Leave it empty to hide the banner.</p>
               </div>
               <div className={`${card} flex justify-between items-center`}>
                 <div><h4 className={cardTitle}>New orders</h4><p className="text-[11px] text-neutral-400 m-0">Waiting for you</p></div>
@@ -910,14 +1017,18 @@ export default function App() {
                           <button onClick={() => handleUpdateOrderStatus(o.id, "Preparing", "15-20 mins")} className={`${btn} bg-amber-600 px-2.5 py-1`}>⏳ 15 min</button>
                           <button onClick={() => handleUpdateOrderStatus(o.id, "Preparing", "30-40 mins")} className={`${btn} bg-amber-600 px-2.5 py-1`}>⏳ 30 min</button>
                           <button onClick={() => handleUpdateOrderStatus(o.id, "Ready")} className={`${btn} bg-emerald-600 px-2.5 py-1`}>✅ Ready & alert</button>
+                          {o.orderType === "Delivery" && [10, 20, 30].map((m) => (
+                            <button key={m} onClick={() => handleUpdateOrderStatus(o.id, "Out for delivery", `about ${m} min away · left ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`)} className={`${btn} bg-sky-700 px-2.5 py-1`}>🚚 Out {m} min</button>
+                          ))}
                           <button onClick={() => handleUpdateOrderStatus(o.id, "Completed")} className={`${btn} bg-sky-600 px-2.5 py-1`}>🎉 Complete</button>
+                          <button onClick={() => handleUpdateOrderStatus(o.id, "Cancelled")} className={`${btn} bg-neutral-700 text-red-400 px-2.5 py-1`}>✖ Cancel</button>
                         </div>
                       </div>
                       <div className="border-t border-white/10 pt-2 text-[11px]">
                         <div className="text-[10px] text-neutral-400 mb-1">Tap an item to mark it done:</div>
                         {o.items.map((it, i) => (
                           <div key={i} onClick={() => handleToggleItemCompleted(o.id, i)} className={`flex justify-between items-center py-1 cursor-pointer ${it.isItemCompleted ? "line-through text-emerald-400" : "text-neutral-200"}`}>
-                            <span>{it.isItemCompleted ? "✅" : "🍳"} {it.quantity}x {it.dish.name} <span className="text-neutral-400">[{it.spiceLevel}, {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]</span></span>
+                            <span>{it.isItemCompleted ? "✅" : "🍳"} {it.quantity}x {it.dish.name} <span className="text-neutral-400">[{it.spiceLevel}, {it.gravyType}{it.addKetchup ? ", +Ketchup" : ""}{it.addPepper ? ", +Pepper" : ""}]</span>{it.notes && <span className="text-amber-300"> 📝 {it.notes}</span>}</span>
                             <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">{it.isItemCompleted ? "Done" : "Cooking"}</span>
                           </div>
                         ))}
