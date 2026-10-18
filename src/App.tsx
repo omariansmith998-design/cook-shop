@@ -110,8 +110,8 @@ export default function App() {
   const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
 
   // ----- supabase -----
-  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || (import.meta as any).env?.VITE_SUPABASE_URL || "");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "");
+  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || (import.meta as any).env?.VITE_SUPABASE_URL || "https://kfrtlshywfpbsyuqhsjx.supabase.co");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmcnRsc2h5d2ZwYnN5dXFoc2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTI2OTcsImV4cCI6MjEwNTMyODY5N30.Xp5VF5qxPon3VxdfmbZge1TqX_y3Bibr0Ggni9EG2io");
 
   // ----- admin / master -----
   const [showAdminModal, setShowAdminModal] = useState(false);
