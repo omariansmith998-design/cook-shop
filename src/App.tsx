@@ -110,8 +110,8 @@ export default function App() {
   const [selectedZoneIndex, setSelectedZoneIndex] = useState(0);
 
   // ----- supabase -----
-  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || "");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || "");
+  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("SUPABASE_URL") || (import.meta as any).env?.VITE_SUPABASE_URL || "");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => localStorage.getItem("SUPABASE_ANON_KEY") || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "");
 
   // ----- admin / master -----
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -147,6 +147,7 @@ export default function App() {
   const [driverTip, setDriverTip] = useState(0);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [pendingId, setPendingId] = useState(() => Date.now().toString());
+  const [receipt, setReceipt] = useState<Order | null>(null);
 
   const audioRef = useRef<AudioContext | null>(null);
   const lastPending = useRef(0);
@@ -171,7 +172,7 @@ export default function App() {
       const headers: Record<string, string> = { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}`, "Content-Type": "application/json" };
       if (method === "POST" || method === "PUT") headers["Prefer"] = "resolution=merge-duplicates,return=representation";
       const res = await fetch(`${supabaseUrl}/rest/v1/${table}${query}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
-      if (!res.ok) return null;
+      if (!res.ok) { console.warn("Supabase error", table, res.status, await res.text()); return null; }
       const text = await res.text();
       return text ? JSON.parse(text) : [];
     } catch (err) {
@@ -179,6 +180,12 @@ export default function App() {
       return null;
     }
   };
+
+  const mergeOrders = (cloud: Order[]) =>
+    setOrders((prev) => {
+      const ids = new Set(cloud.map((o) => o.id));
+      return [...cloud, ...prev.filter((o) => !ids.has(o.id))].sort((a, b) => b.id.localeCompare(a.id));
+    });
 
   const playChime = () => {
     try {
@@ -199,7 +206,7 @@ export default function App() {
     (async () => {
       const s = await supabaseFetch("shops"); if (s && s.length) setShops(s);
       const m = await supabaseFetch("menu"); if (m && m.length) setMenu(m);
-      const o = await supabaseFetch("orders"); if (o) setOrders(o);
+      const o = await supabaseFetch("orders"); if (o) mergeOrders(o);
       const g = await supabaseFetch("suggestions"); if (g) setSuggestions(g);
     })();
   }, [supabaseUrl, supabaseAnonKey]);
@@ -218,7 +225,7 @@ export default function App() {
     const poll = async () => {
       const cloud: Order[] | null = await supabaseFetch("orders");
       if (!cloud) return;
-      setOrders(cloud);
+      mergeOrders(cloud);
       const pending = cloud.filter((o) => o.status === "Pending").length;
       if (pending > lastPending.current) playChime();
       lastPending.current = pending;
@@ -233,6 +240,35 @@ export default function App() {
     const was = likedDishIds[id];
     setLikedDishIds((p) => ({ ...p, [id]: !was }));
     setMenu((p) => p.map((d) => (d.id === id ? { ...d, likes: d.likes + (was ? -1 : 1) } : d)));
+  };
+
+  const printReceipt = (o: Order) => {
+    const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+    const rows = o.items.map((it) => `<tr><td>${it.quantity}x ${esc(it.dish.name)}<br><small>Spice: ${esc(it.spiceLevel)} | Gravy: ${esc(it.gravyType)}${it.addKetchup ? " | +Ketchup" : ""}${it.addPepper ? " | +Pepper" : ""}</small></td><td style="text-align:right">$${it.dish.price * it.quantity}</td></tr>`).join("");
+    const extra = (label: string, v: number) => (v > 0 ? `<tr class="t"><td>${label}</td><td style="text-align:right">$${v}</td></tr>` : "");
+    const w = window.open("", "_blank");
+    if (!w) return alert("Allow pop-ups to save your receipt.");
+    w.document.write(`<html><head><title>Receipt ${o.id.slice(-4)}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,sans-serif;max-width:420px;margin:24px auto;padding:0 16px;color:#111}h1{font-size:20px;margin:0}small{color:#666}table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:6px 0;border-bottom:1px solid #eee;vertical-align:top}.t td{border:0;padding:3px 0}.b td{font-weight:700;font-size:18px;border:0}</style></head><body><h1>${esc(currentShop.name)}</h1><small>Receipt #${o.id.slice(-4)} | ${new Date().toLocaleDateString()} ${esc(o.createdAt)}</small><p>Customer: ${esc(o.customerName)}<br>${o.orderType}${o.orderType === "Delivery" ? " - " + esc(o.deliveryZone) : ""}</p><table>${rows}${extra("Subtotal", o.subtotal)}${extra("Delivery", o.deliveryFee)}${extra("Tip", o.tip)}<tr class="b"><td>Total</td><td style="text-align:right">$${o.total} JMD</td></tr></table><p>Payment: ${esc(o.paymentMethod)}${o.paymentMethod !== "Cash" ? " | Reference YV-" + o.id.slice(-4) : ""}</p><p><small>Thank you for your order!</small></p><script>window.onload=function(){window.print()}<\/script></body></html>`);
+    w.document.close();
+  };
+
+  const testSupabase = async () => {
+    if (!supabaseUrl || !supabaseAnonKey) return alert("Enter your Supabase URL and key first.");
+    const h = { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` };
+    const out: string[] = [];
+    for (const t of ["shops", "menu", "orders", "suggestions"]) {
+      try {
+        const r = await fetch(`${supabaseUrl}/rest/v1/${t}?limit=1`, { headers: h });
+        out.push(`${r.ok ? "✅" : "❌"} ${t} can be read${r.ok ? "" : ` (${r.status})`}`);
+      } catch { out.push(`❌ ${t}: can't reach Supabase`); }
+    }
+    const test = { id: "test" + Date.now(), shopId: "test", customerName: "TEST", customerAddress: "", items: [], subtotal: 0, deliveryFee: 0, tip: 0, total: 0, orderType: "Pickup", deliveryZone: "", paymentMethod: "Cash", createdAt: "", status: "Pending" };
+    try {
+      const w = await fetch(`${supabaseUrl}/rest/v1/orders`, { method: "POST", headers: { ...h, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(test) });
+      out.push(w.ok ? "✅ orders can be saved" : `❌ orders save failed (${w.status}): ${(await w.text()).slice(0, 140)}`);
+      if (w.ok) await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${test.id}`, { method: "DELETE", headers: h });
+    } catch { out.push("❌ orders save: can't reach Supabase"); }
+    alert(out.join("\n"));
   };
 
   const handleSaveSupabaseConfig = () => {
@@ -367,6 +403,7 @@ export default function App() {
     }
     window.open(url, "_blank"); // open first so mobile popup blockers allow it
     setOrders((p) => [order, ...p]);
+    setReceipt(order);
     supabaseFetch("orders", "POST", order);
     setCart([]); setPendingId(Date.now().toString());
   };
@@ -653,6 +690,7 @@ export default function App() {
         {/* footer */}
         <footer className="mt-8 py-5 border-t border-white/10 text-center">
           <div className="flex flex-wrap justify-center gap-2">
+            {currentShop.whatsapp.replace(/\D/g, "") && <a href={`https://wa.me/${currentShop.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="bg-neutral-800 text-white no-underline text-xs font-semibold px-4 py-2 rounded-full border border-white/10">💬 WhatsApp</a>}
             {([["📸 Instagram", "instagram", currentShop.instagram], ["🎵 TikTok", "tiktok", currentShop.tiktok], ["📘 Facebook", "facebook", currentShop.facebook]] as const)
               .filter(([, , v]) => v.trim())
               .map(([n, k, v]) => <a key={k} href={socialUrl(k, v)} target="_blank" rel="noreferrer" className="bg-neutral-800 text-white no-underline text-xs font-semibold px-4 py-2 rounded-full border border-white/10">{n}</a>)}
@@ -774,6 +812,7 @@ export default function App() {
               <label className={lbl}>Anon key</label>
               <textarea className={`${inp} h-20`} placeholder="eyJhbGciOi..." value={supabaseAnonKey} onChange={(e) => setSupabaseAnonKey(e.target.value)} />
               <button onClick={handleSaveSupabaseConfig} className={`${btn} bg-emerald-600 py-2.5`}>Save Supabase settings</button>
+              <button onClick={testSupabase} className={`${btn} bg-sky-600 py-2.5`}>🔍 Test connection</button>
             </div>
           )}
 
@@ -977,6 +1016,29 @@ export default function App() {
           )}
 
           {activeAdminTab === "devChat" && chatBox("admin")}
+        </Modal>
+      )}
+
+      {/* receipt */}
+      {receipt && (
+        <Modal z={1600}>
+          <div className="text-center mb-3">
+            <div className="text-2xl">🧾</div>
+            <h3 className="m-0 text-base font-bold">Order sent!</h3>
+            <p className="text-[11px] text-neutral-400 m-0">Receipt #{receipt.id.slice(-4)} · {receipt.createdAt}</p>
+          </div>
+          <div className="bg-neutral-900 rounded-2xl p-3 text-xs space-y-1.5">
+            {receipt.items.map((it, i) => <div key={i} className="flex justify-between gap-2"><span>{it.quantity}x {it.dish.name}</span><span>${it.dish.price * it.quantity}</span></div>)}
+            <div className="border-t border-white/10 pt-1.5 flex justify-between text-neutral-400"><span>Subtotal</span><span>${receipt.subtotal}</span></div>
+            {receipt.deliveryFee > 0 && <div className="flex justify-between text-neutral-400"><span>Delivery</span><span>${receipt.deliveryFee}</span></div>}
+            {receipt.tip > 0 && <div className="flex justify-between text-neutral-400"><span>Tip</span><span>${receipt.tip}</span></div>}
+            <div className="flex justify-between font-extrabold text-sm"><span>Total</span><span style={{ color }}>${receipt.total} JMD</span></div>
+            <div className="text-[11px] text-neutral-400">💳 {receipt.paymentMethod}{receipt.paymentMethod !== "Cash" && ` · Reference YV-${receipt.id.slice(-4)}`}</div>
+          </div>
+          <div className="grid gap-2 mt-3">
+            <button onClick={() => printReceipt(receipt)} style={{ backgroundColor: color }} className={`${btn} py-2.5`}>📄 Save as PDF / Print</button>
+            <button onClick={() => setReceipt(null)} className={`${btn} bg-neutral-700 py-2`}>Done</button>
+          </div>
         </Modal>
       )}
 
