@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
 // ---------- TYPES ----------
-interface Dish { id: string; name: string; price: number; description: string; category: "Mains" | "Drinks" | "Snacks" | "Sides" | "Soups"; image: string; inStock: boolean; likes: number; isSpecial?: boolean; }
+interface Dish { id: string; name: string; price: number; description: string; category: "Mains" | "Drinks" | "Snacks" | "Sides" | "Soups"; image: string; inStock: boolean; likes: number; isSpecial?: boolean; shopId?: string; }
 interface CartItem { dish: Dish; quantity: number; spiceLevel: string; gravyType: string; addKetchup: boolean; addPepper: boolean; isItemCompleted?: boolean; }
 interface ChatMessage { id: string; sender: "master" | "admin"; text: string; timestamp: string; }
 interface Suggestion { id: string; shopId: string; text: string; votes: number; }
@@ -30,10 +30,13 @@ const DEFAULT_SHOPS: ShopProfile[] = [
 ];
 const IMG = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&q=80&w=300`;
 const INITIAL_MENU: Dish[] = [
-  { id: "1", name: "Brown Stew Chicken", price: 1200, description: "Slow-braised chicken in rich savory spices with carrots and butter beans.", category: "Mains", image: IMG("photo-1544025162-d76694265947"), inStock: true, likes: 12, isSpecial: true },
-  { id: "2", name: "Ackee & Saltfish", price: 1400, description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.", category: "Mains", image: IMG("photo-1588166524941-3bf61a9c41db"), inStock: true, likes: 24 },
-  { id: "3", name: "Fresh Soursop Juice", price: 500, description: "Creamy soursop blended with nutmeg and condensed milk.", category: "Drinks", image: IMG("photo-1551024709-8f23befc6f87"), inStock: true, likes: 18 },
-  { id: "4", name: "Fried Dumplings (4 Pack)", price: 400, description: "Golden, crispy traditional fried Johnny cakes.", category: "Sides", image: IMG("photo-1509722747041-616f39b57569"), inStock: true, likes: 15 },
+  { id: "1", shopId: "mamas-yard", name: "Brown Stew Chicken", price: 1200, description: "Slow-braised chicken in rich savory spices with carrots and butter beans.", category: "Mains", image: IMG("photo-1544025162-d76694265947"), inStock: true, likes: 12, isSpecial: true },
+  { id: "2", shopId: "mamas-yard", name: "Ackee & Saltfish", price: 1400, description: "Classic national dish sautéed with onions, tomatoes, and scotch bonnet peppers.", category: "Mains", image: IMG("photo-1588166524941-3bf61a9c41db"), inStock: true, likes: 24 },
+  { id: "3", shopId: "mamas-yard", name: "Fresh Soursop Juice", price: 500, description: "Creamy soursop blended with nutmeg and condensed milk.", category: "Drinks", image: IMG("photo-1551024709-8f23befc6f87"), inStock: true, likes: 18 },
+  { id: "4", shopId: "mamas-yard", name: "Fried Dumplings (4 Pack)", price: 400, description: "Golden, crispy traditional fried Johnny cakes.", category: "Sides", image: IMG("photo-1509722747041-616f39b57569"), inStock: true, likes: 15 },
+  { id: "a1", shopId: "aunties-ital", name: "Ital Stew Peas & Rice", price: 1100, description: "Coconut-rich stew peas over rice, seasoned the natural Ital way.", category: "Mains", image: IMG("photo-1512621776951-a57141f2eefd"), inStock: true, likes: 0, isSpecial: true },
+  { id: "a2", shopId: "aunties-ital", name: "Callaloo & Steamed Veg", price: 900, description: "Fresh callaloo with steamed cabbage, carrots and pumpkin.", category: "Mains", image: IMG("photo-1546069901-ba9599a7e63c"), inStock: true, likes: 0 },
+  { id: "a3", shopId: "aunties-ital", name: "Fresh Carrot Juice", price: 450, description: "Cold-pressed carrot juice with ginger.", category: "Drinks", image: IMG("photo-1551024709-8f23befc6f87"), inStock: true, likes: 0 },
 ];
 const FALLBACK_IMG = IMG("photo-1546069901-ba9599a7e63c");
 const CATEGORIES = ["All Items", "Mains", "Drinks", "Snacks", "Sides", "Soups"];
@@ -154,7 +157,6 @@ export default function App() {
 
   // ----- derived -----
   const currentShop = shops.find((s) => s.id === currentShopId) || shops[0];
-  const sisterShop = shops.find((s) => s.id !== currentShopId);
   const color = currentShop.themeColor;
   const shopOrders = orders.filter((o) => o.shopId === currentShopId);
   const currentDeliveryFee = orderType === "Delivery" ? currentShop.deliveryZones[selectedZoneIndex]?.price ?? 300 : 0;
@@ -162,7 +164,9 @@ export default function App() {
   const total = subtotal + currentDeliveryFee + driverTip;
   const payRef = `YV-${pendingId.slice(-4)}`;
   const needsRef = paymentMethod !== "Cash";
-  const filteredMenu = selectedCategory === "All Items" ? menu : menu.filter((d) => d.category === selectedCategory);
+  const shopMenu = menu.filter((d) => (d.shopId || "mamas-yard") === currentShopId);
+  const filteredMenu = selectedCategory === "All Items" ? shopMenu : shopMenu.filter((d) => d.category === selectedCategory);
+  const shopLink = `${window.location.origin}${window.location.pathname}?shop=${currentShopId}`;
   const shopSuggestions = suggestions.filter((s) => s.shopId === currentShopId).sort((a, b) => b.votes - a.votes);
 
   // ----- supabase REST helper (upserts + deletes) -----
@@ -204,8 +208,14 @@ export default function App() {
   // ----- effects -----
   useEffect(() => {
     (async () => {
-      const s = await supabaseFetch("shops"); if (s && s.length) setShops(s);
-      const m = await supabaseFetch("menu"); if (m && m.length) setMenu(m);
+      const s = await supabaseFetch("shops");
+      if (s) setShops([...s, ...DEFAULT_SHOPS.filter((d) => !s.some((x: ShopProfile) => x.id === d.id))]);
+      const m = await supabaseFetch("menu");
+      if (m) {
+        const missing = INITIAL_MENU.filter((d) => !m.some((x: Dish) => (x.shopId || "mamas-yard") === d.shopId));
+        missing.forEach((d) => supabaseFetch("menu", "POST", d));
+        setMenu([...m, ...missing]);
+      }
       const o = await supabaseFetch("orders"); if (o) mergeOrders(o);
       const g = await supabaseFetch("suggestions"); if (g) setSuggestions(g);
     })();
@@ -373,7 +383,7 @@ export default function App() {
     if (driverTip > 0) msg += `*Tip:* $${driverTip} JMD\n`;
     msg += `*Total Amount:* $${total} JMD\n*Customer Name:* ${customerName}\n*Payment Method:* ${paymentMethod}\n`;
     if (needsRef) msg += `*Payment Reference:* ${payRef}\n`;
-    return msg + `\n🔗 Reopen App: ${window.location.href}`;
+    return msg + `\n🔗 Reopen App: ${shopLink}`;
   };
 
   const handleCopyOrderText = () => {
@@ -446,7 +456,7 @@ export default function App() {
       saved = { ...editingDish, name: dishForm.name, price: parseFloat(dishForm.price) || 0, description: dishForm.description, category: dishForm.category, image: dishForm.image || editingDish.image, isSpecial: dishForm.isSpecial };
       setMenu((p) => p.map((d) => (d.id === saved.id ? saved : d)));
     } else {
-      saved = { id: Date.now().toString(), name: dishForm.name, price: parseFloat(dishForm.price) || 0, description: dishForm.description, category: dishForm.category, image: dishForm.image || FALLBACK_IMG, inStock: true, likes: 0, isSpecial: dishForm.isSpecial };
+      saved = { id: Date.now().toString(), shopId: currentShopId, name: dishForm.name, price: parseFloat(dishForm.price) || 0, description: dishForm.description, category: dishForm.category, image: dishForm.image || FALLBACK_IMG, inStock: true, likes: 0, isSpecial: dishForm.isSpecial };
       setMenu((p) => [...p, saved]);
     }
     supabaseFetch("menu", "POST", saved);
@@ -519,13 +529,6 @@ export default function App() {
   // =====================================================
   return (
     <div className="bg-neutral-950 text-white min-h-screen pb-24" style={{ fontFamily: FONTS[currentShop.fontStyle] || FONTS["Sans-Serif"] }}>
-      {/* cross-promo */}
-      {sisterShop && (
-        <button onClick={() => { setCurrentShopId(sisterShop.id); setCart([]); setSelectedZoneIndex(0); }} className="w-full bg-neutral-900 text-neutral-300 text-xs py-2 px-4 border-0 border-b border-white/10 cursor-pointer hover:bg-neutral-800 transition">
-          Craving something else? Try <strong className="text-white">{sisterShop.name}</strong> <span style={{ color }} className="font-bold">Switch shop ›</span>
-        </button>
-      )}
-
       {/* header */}
       <header className="max-w-xl mx-auto">
         <div className="relative h-52 overflow-hidden rounded-b-3xl">
@@ -558,6 +561,7 @@ export default function App() {
 
         {/* menu */}
         <h2 className="text-base font-bold m-0 mb-3 text-neutral-100">Today's menu</h2>
+        {filteredMenu.length === 0 && <p className="text-xs text-neutral-500 m-0 mb-3">No dishes here yet.</p>}
         <div className="grid gap-3">
           {filteredMenu.map((item) => (
             <div key={item.id} style={item.isSpecial ? { borderColor: color } : undefined} className="bg-neutral-900 rounded-2xl p-3 flex gap-3 border border-white/10">
@@ -714,9 +718,9 @@ export default function App() {
           <div className="text-center">
             <h3 className="m-0 mb-1 text-base font-bold">📲 Share {currentShop.name}</h3>
             <p className="text-[11px] text-neutral-400 m-0 mb-4">Scan the QR code or copy the link to open the menu.</p>
-            <div className="bg-white p-3 rounded-2xl inline-block mb-4"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(window.location.href)}`} alt="Menu QR code" className="w-44 h-44 block" /></div>
+            <div className="bg-white p-3 rounded-2xl inline-block mb-4"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shopLink)}`} alt="Menu QR code" className="w-44 h-44 block" /></div>
             <div className="grid gap-2">
-              <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Menu link copied!"); }} style={{ backgroundColor: color }} className={`${btn} py-2.5`}>📋 Copy menu link</button>
+              <button onClick={() => { navigator.clipboard.writeText(shopLink); alert("Menu link copied!"); }} style={{ backgroundColor: color }} className={`${btn} py-2.5`}>📋 Copy menu link</button>
               <button onClick={() => setShowShareModal(false)} className={`${btn} bg-neutral-700 py-2`}>Close</button>
             </div>
           </div>
@@ -944,7 +948,7 @@ export default function App() {
               </div>
               <h4 className={heading}>Current items</h4>
               <div className="grid gap-2">
-                {menu.map((item) => (
+                {shopMenu.map((item) => (
                   <div key={item.id} className="flex justify-between items-center gap-2 bg-neutral-900 p-2.5 rounded-xl border border-white/10">
                     <div className="min-w-0"><div className="font-bold text-xs truncate">{item.name} (${item.price}) {item.isSpecial && "⭐"}</div><div className="text-[10px] text-neutral-400">{item.category}</div></div>
                     <div className="flex gap-1.5 shrink-0">
